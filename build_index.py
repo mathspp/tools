@@ -109,7 +109,7 @@ def _render_recent_section(recently_added: Sequence[dict], recently_updated: Seq
                 formatted_date = ""
             
             # Create colophon link for the date
-            colophon_url = f"https://tools.simonwillison.net/colophon#{filename}" if filename else "#"
+            colophon_url = f"https://tools.mathspp.com/colophon#{filename}" if filename else "#"
             date_html = (
                 f'<span class="recent-date"> — <a href="{colophon_url}">{formatted_date}</a></span>'
                 if formatted_date
@@ -171,21 +171,14 @@ def build_index() -> None:
                 body_html[end_idx:]
             )
     else:
-        # Fallback: inject before Image and media heading if markers not found
-        injection_marker = '<h2 id="image-and-media">Image and media</h2>'
-        if injection_marker in body_html:
-            body_html = body_html.replace(
-                injection_marker, recent_section_html + injection_marker, 1
-            )
-        else:
-            body_html = recent_section_html + body_html
+        raise RuntimeError("Markers not found.")
 
     full_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tools.simonwillison.net</title>
+    <title>tools.mathspp.com</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;

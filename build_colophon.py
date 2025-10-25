@@ -57,7 +57,7 @@ def build_colophon():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>tools.simonwillison.net colophon</title>
+    <title>tools.mathspp.com colophon</title>
     <style>
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -190,20 +190,19 @@ def build_colophon():
     </style>
 </head>
 <body>
-    <h1>tools.simonwillison.net colophon</h1>
+    <h1>tools.mathspp.com colophon</h1>
 """
 
     # Add the tool count to the existing paragraph
     html_content += f"""
-    <p>The tools on <a href="https://tools.simonwillison.net/">tools.simonwillison.net</a> were mostly built using <a href="https://simonwillison.net/tags/ai-assisted-programming/">AI-assisted programming</a>. This page lists {tool_count} tools and their development history.</p>
-    <p>This page lists the commit messages for each tool, many of which link to the LLM transcript used to produce the code.</p>
-    <p>Here's <a href="https://simonwillison.net/2025/Mar/11/using-llms-for-code/#a-detailed-example">how I built this colophon page</a>. The descriptions for each of the tools were <a href="https://simonwillison.net/2025/Mar/13/tools-colophon/">generated using Claude 3.7 Sonnet</a>.</p>
+    <p>The tools on <a href="https://tools.mathspp.com/">tools.mathspp.com</a> were mostly built using AI-assisted programming. This page lists {tool_count} tools and their development history.</p>
+    <p>This page lists the commit messages for each tool.</p>
 """
 
     # Modified tool heading HTML
     for page_name, page_data in sorted_pages:
-        tool_url = f"https://tools.simonwillison.net/{page_name.replace('.html', '')}"
-        github_url = f"https://github.com/simonw/tools/blob/main/{page_name}"
+        tool_url = f"https://tools.mathspp.com/{page_name.replace('.html', '')}"
+        github_url = f"https://github.com/mathspp/tools/blob/main/{page_name}"
         commits = page_data.get("commits", [])
 
         # Reverse the commits list to show oldest first
@@ -257,7 +256,7 @@ def build_colophon():
 
             commit_message = commit.get("message", "")
             formatted_message = format_commit_message(commit_message)
-            commit_url = f"https://github.com/simonw/tools/commit/{commit_hash}"
+            commit_url = f"https://github.com/mathspp/tools/commit/{commit_hash}"
 
             html_content += f"""
             <div class="commit" id="commit-{short_hash}">
