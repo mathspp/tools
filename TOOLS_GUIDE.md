@@ -2,11 +2,16 @@
 
 ## Repository Overview
 
-**Location**: `/home/user/tools/`  
-**Type**: Static HTML/JavaScript web tools (200+ tools)  
-**Hosting**: GitHub Pages (tools.simonwillison.net)  
-**Build**: Python scripts generate docs and indices  
-**Testing**: Playwright + pytest for automated testing  
+**Location**: `/home/user/tools/`
+**Type**: Static HTML/JavaScript web tools (200+ tools)
+**Hosting**: GitHub Pages (tools.simonwillison.net)
+**Build**: Python scripts generate docs and indices
+**Testing**: Playwright + pytest for automated testing
+
+### Shared styling
+
+- `styles.css` contains the shared colour palette, typography, and form/table defaults used by every standalone tool.
+- `tool.html.template` provides a ready-to-copy HTML scaffold that already links `styles.css` and demonstrates the standard head/body structure for new tools.
 
 ---
 

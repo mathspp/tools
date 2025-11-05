@@ -5,20 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMARC Report Analyser</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: "Segoe UI", Tahoma, sans-serif;
-            margin: 0;
             padding: 20px;
             max-width: 1100px;
             margin-left: auto;
             margin-right: auto;
-            background: #f4f5f7;
-            color: #1f2933;
         }
 
         h1 {
@@ -28,12 +21,12 @@
 
         p.description {
             text-align: center;
-            color: #52606d;
+            color: var(--tx-2);
         }
 
         #dropzone {
-            border: 2px dashed #4c51bf;
-            background: white;
+            border: 2px dashed var(--accent-2);
+            background: var(--bg-2);
             border-radius: 12px;
             padding: 40px 20px;
             text-align: center;
@@ -43,23 +36,12 @@
         }
 
         #dropzone.dragover {
-            background: #edf2ff;
-            border-color: #3c366b;
+            background: var(--ui);
+            border-color: var(--accent);
         }
 
         #upload-btn {
-            background: #4c51bf;
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
             margin-top: 16px;
-            cursor: pointer;
-        }
-
-        #upload-btn:hover {
-            background: #434190;
         }
 
         .hidden-input {
@@ -67,22 +49,8 @@
         }
 
         .status-message {
-            background: #fff;
-            border-radius: 12px;
-            padding: 16px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
             display: none;
-        }
-
-        .status-message.error {
-            border-left: 4px solid #e53e3e;
-            color: #742a2a;
-        }
-
-        .status-message.success {
-            border-left: 4px solid #38a169;
-            color: #22543d;
         }
 
         .summary-grid {
@@ -93,16 +61,16 @@
         }
 
         .summary-card {
-            background: white;
+            background: var(--bg-2);
             border-radius: 12px;
             padding: 18px;
-            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+            box-shadow: var(--shadow-soft);
         }
 
         .summary-card h3 {
             margin: 0 0 8px 0;
             font-size: 15px;
-            color: #52606d;
+            color: var(--tx-2);
             text-transform: uppercase;
             letter-spacing: 0.03em;
         }
@@ -125,17 +93,17 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            background: white;
+            background: var(--bg-2);
             padding: 8px 12px;
             border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 1px 6px rgba(16, 15, 15, 0.18);
         }
 
         .table-container {
             overflow-x: auto;
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-            background: white;
+            box-shadow: var(--shadow-soft);
+            background: var(--bg-2);
         }
 
         table {
@@ -145,38 +113,38 @@
         }
 
         thead {
-            background: #eef2ff;
+            background: var(--bg);
         }
 
         th,
         td {
             padding: 12px 14px;
             text-align: left;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--ui-2);
             font-size: 14px;
         }
 
         tbody tr:nth-child(even) {
-            background: #f8fafc;
+            background: var(--bg);
         }
 
         tbody tr:hover {
-            background: #f8fafc;
+            background: var(--ui);
         }
 
         tr.failure {
-            background: #fff5f5;
+            background: rgba(175, 48, 41, 0.12);
         }
 
         tr.failure:hover {
-            background: #fed7d7;
+            background: rgba(175, 48, 41, 0.18);
         }
 
         .details-panel {
             margin-top: 24px;
-            background: white;
+            background: var(--bg-2);
             border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+            box-shadow: var(--shadow-soft);
             padding: 20px;
             display: none;
         }
@@ -192,7 +160,7 @@
         }
 
         .details-item {
-            background: #f1f5f9;
+            background: var(--bg);
             border-radius: 10px;
             padding: 12px;
         }
@@ -200,14 +168,14 @@
         .details-item h4 {
             margin: 0 0 6px 0;
             font-size: 13px;
-            color: #52606d;
+            color: var(--tx-2);
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
 
         .details-item p {
             margin: 0;
-            font-family: "Roboto Mono", monospace;
+            font-family: var(--font-mono);
             font-size: 14px;
             word-break: break-word;
         }
@@ -239,12 +207,12 @@
     <p class="description">Drop a DMARC aggregate report (.xml, .gz or .zip) to see summary insights and examine failed
         authentication attempts.</p>
 
-    <div id="dropzone">
+    <div id="dropzone" class="surface">
         <strong>Drop your DMARC report here</strong>
         <br>
         <button id="upload-btn" type="button">Select a file</button>
         <input type="file" id="file-input" class="hidden-input" accept=".xml,.zip,.gz,.gzip,.xml.gz">
-        <p style="margin-top: 12px; color: #52606d; font-size: 14px;">
+        <p style="margin-top: 12px; color: var(--tx-2); font-size: 14px;">
             Supported formats: raw XML, gzip-compressed (.gz) or ZIP archives (.zip)
         </p>
     </div>
@@ -253,23 +221,23 @@
 
     <section id="report-summary" style="display: none;">
         <div class="summary-grid">
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Organization</h3>
                 <p id="summary-org">–</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Domain</h3>
                 <p id="summary-domain">–</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Report Range</h3>
                 <p id="summary-range">–</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Total Messages</h3>
                 <p id="summary-total">0</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Failures</h3>
                 <p id="summary-failures">0</p>
             </div>
@@ -467,7 +435,7 @@
 
             if (!resultsBody.children.length) {
                 const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `<td colspan="8" style="text-align:center; padding: 24px; color: #64748b;">No records to display with the current filters.</td>`;
+                emptyRow.innerHTML = `<td colspan="8" style="text-align:center; padding: 24px; color: var(--tx-2);">No records to display with the current filters.</td>`;
                 resultsBody.appendChild(emptyRow);
             }
         }

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><!-- Replace with tool title --></title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .tool-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1><!-- Tool name --></h1>
+        <p class="lead"><!-- Short description of what the tool does. --></p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <!-- Primary inputs and controls go here. -->
+            <form>
+                <div class="form-group">
+                    <label for="input-field">Example field</label>
+                    <input id="input-field" name="input-field" type="text" placeholder="Enter something">
+                </div>
+
+                <div class="tool-actions">
+                    <button type="submit">Run</button>
+                    <button type="reset">Reset</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <h2>Results</h2>
+            <p class="lead">Output appears here after running the tool.</p>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Example</td>
+                            <td>Example value</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.querySelector('form');
+            const resultTableBody = document.querySelector('tbody');
+
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                const value = new FormData(form).get('input-field');
+                resultTableBody.innerHTML = `
+                    <tr>
+                        <td>Input</td>
+                        <td>${value || '—'}</td>
+                    </tr>
+                `;
+            });
+
+            form.addEventListener('reset', () => {
+                resultTableBody.innerHTML = `
+                    <tr>
+                        <td>Example</td>
+                        <td>Example value</td>
+                    </tr>
+                `;
+            });
+        })();
+    </script>
+</body>
+
+</html>
