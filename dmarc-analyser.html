@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMARC Report Analyser</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            margin: 0;
+            padding: 20px;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+            background: #f4f5f7;
+            color: #1f2933;
+        }
+
+        h1 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        p.description {
+            text-align: center;
+            color: #52606d;
+        }
+
+        #dropzone {
+            border: 2px dashed #4c51bf;
+            background: white;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: background 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+            margin-bottom: 24px;
+        }
+
+        #dropzone.dragover {
+            background: #edf2ff;
+            border-color: #3c366b;
+        }
+
+        #upload-btn {
+            background: #4c51bf;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-top: 16px;
+            cursor: pointer;
+        }
+
+        #upload-btn:hover {
+            background: #434190;
+        }
+
+        .hidden-input {
+            display: none;
+        }
+
+        .status-message {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+            display: none;
+        }
+
+        .status-message.error {
+            border-left: 4px solid #e53e3e;
+            color: #742a2a;
+        }
+
+        .status-message.success {
+            border-left: 4px solid #38a169;
+            color: #22543d;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+        }
+
+        .summary-card h3 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            color: #52606d;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .summary-card p {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .controls label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            background: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+
+        thead {
+            background: #eef2ff;
+        }
+
+        th,
+        td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        tr.failure {
+            background: #fff5f5;
+        }
+
+        tr.failure:hover {
+            background: #fed7d7;
+        }
+
+        .details-panel {
+            margin-top: 24px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+            padding: 20px;
+            display: none;
+        }
+
+        .details-panel h2 {
+            margin-top: 0;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .details-item {
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .details-item h4 {
+            margin: 0 0 6px 0;
+            font-size: 13px;
+            color: #52606d;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .details-item p {
+            margin: 0;
+            font-family: "Roboto Mono", monospace;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        @media (max-width: 700px) {
+            body {
+                padding: 16px;
+            }
+
+            #dropzone {
+                padding: 30px 12px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .controls label {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>DMARC Report Analyser</h1>
+    <p class="description">Drop a DMARC aggregate report (.xml, .gz or .zip) to see summary insights and examine failed
+        authentication attempts.</p>
+
+    <div id="dropzone">
+        <strong>Drop your DMARC report here</strong>
+        <br>
+        <button id="upload-btn" type="button">Select a file</button>
+        <input type="file" id="file-input" class="hidden-input" accept=".xml,.zip,.gz,.gzip,.xml.gz">
+        <p style="margin-top: 12px; color: #52606d; font-size: 14px;">
+            Supported formats: raw XML, gzip-compressed (.gz) or ZIP archives (.zip)
+        </p>
+    </div>
+
+    <div id="status" class="status-message"></div>
+
+    <section id="report-summary" style="display: none;">
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Organization</h3>
+                <p id="summary-org">–</p>
+            </div>
+            <div class="summary-card">
+                <h3>Domain</h3>
+                <p id="summary-domain">–</p>
+            </div>
+            <div class="summary-card">
+                <h3>Report Range</h3>
+                <p id="summary-range">–</p>
+            </div>
+            <div class="summary-card">
+                <h3>Total Messages</h3>
+                <p id="summary-total">0</p>
+            </div>
+            <div class="summary-card">
+                <h3>Failures</h3>
+                <p id="summary-failures">0</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <label>
+                <input type="checkbox" id="show-failures-only">
+                Show only failed evaluations
+            </label>
+            <label>
+                <input type="checkbox" id="highlight-failures" checked>
+                Highlight failed rows
+            </label>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Source IP</th>
+                        <th>Count</th>
+                        <th>Disposition</th>
+                        <th>DKIM</th>
+                        <th>SPF</th>
+                        <th>Header From</th>
+                        <th>Envelope From</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="details" class="details-panel">
+        <h2>Record Details</h2>
+        <div class="details-grid" id="details-grid"></div>
+    </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const uploadButton = document.getElementById('upload-btn');
+        const statusMessage = document.getElementById('status');
+        const resultsBody = document.getElementById('results-body');
+        const reportSummary = document.getElementById('report-summary');
+        const detailsPanel = document.getElementById('details');
+        const detailsGrid = document.getElementById('details-grid');
+        const showFailuresOnlyCheckbox = document.getElementById('show-failures-only');
+        const highlightFailuresCheckbox = document.getElementById('highlight-failures');
+
+        let currentRecords = [];
+
+        function showStatus(message, type = 'success') {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            statusMessage.style.display = 'block';
+        }
+
+        function hideStatus() {
+            statusMessage.style.display = 'none';
+        }
+
+        function formatDateRange(begin, end) {
+            if (!begin || !end) return '–';
+            const beginDate = new Date(parseInt(begin, 10) * 1000);
+            const endDate = new Date(parseInt(end, 10) * 1000);
+            const formatter = new Intl.DateTimeFormat(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            });
+            return `${formatter.format(beginDate)} → ${formatter.format(endDate)}`;
+        }
+
+        function toTextContent(element, selector) {
+            if (!element) {
+                return '';
+            }
+            const node = selector ? element.querySelector(selector) : element;
+            return node ? node.textContent.trim() : '';
+        }
+
+        function parseReport(xmlText) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlText, 'application/xml');
+            if (doc.querySelector('parsererror')) {
+                throw new Error('Unable to parse XML. Please ensure this is a valid DMARC aggregate report.');
+            }
+
+            const metadata = {
+                org: toTextContent(doc, 'report_metadata > org_name') || 'Unknown',
+                domain: toTextContent(doc, 'policy_published > domain') || 'Unknown',
+                begin: toTextContent(doc, 'report_metadata > date_range > begin'),
+                end: toTextContent(doc, 'report_metadata > date_range > end')
+            };
+
+            const records = Array.from(doc.querySelectorAll('record')).map(record => {
+                const policyEvaluated = record.querySelector('policy_evaluated');
+                const reasons = Array.from(record.querySelectorAll('reason')).map(reason => {
+                    const type = toTextContent(reason, 'type');
+                    const comment = toTextContent(reason, 'comment');
+                    return comment ? `${type}: ${comment}` : type;
+                }).filter(Boolean).join('; ');
+
+                const dkim = policyEvaluated ? toTextContent(policyEvaluated, 'dkim') || 'unknown' : 'unknown';
+                const spf = policyEvaluated ? toTextContent(policyEvaluated, 'spf') || 'unknown' : 'unknown';
+                const disposition = policyEvaluated ? toTextContent(policyEvaluated, 'disposition') || 'unknown' : 'unknown';
+
+                return {
+                    sourceIp: toTextContent(record, 'row > source_ip') || '–',
+                    count: parseInt(toTextContent(record, 'row > count'), 10) || 0,
+                    disposition,
+                    dkim,
+                    spf,
+                    headerFrom: toTextContent(record, 'identifiers > header_from') || '–',
+                    envelopeFrom: toTextContent(record, 'identifiers > envelope_from') || '–',
+                    reason: reasons || '—',
+                    alignment: {
+                        dkim: toTextContent(policyEvaluated, 'dkim_alignment') || 'n/a',
+                        spf: toTextContent(policyEvaluated, 'spf_alignment') || 'n/a'
+                    },
+                    policyOverrides: Array.from(record.querySelectorAll('policy_override')).map(override => ({
+                        type: toTextContent(override, 'type'),
+                        comment: toTextContent(override, 'comment')
+                    })),
+                    identifiers: {
+                        headerFrom: toTextContent(record, 'identifiers > header_from') || '–',
+                        envelopeFrom: toTextContent(record, 'identifiers > envelope_from') || '–',
+                        envelopeTo: toTextContent(record, 'identifiers > envelope_to') || '–'
+                    },
+                    authResults: {
+                        dkim: Array.from(record.querySelectorAll('auth_results > dkim')).map(entry => ({
+                            domain: toTextContent(entry, 'domain'),
+                            selector: toTextContent(entry, 'selector'),
+                            result: toTextContent(entry, 'result')
+                        })),
+                        spf: Array.from(record.querySelectorAll('auth_results > spf')).map(entry => ({
+                            domain: toTextContent(entry, 'domain'),
+                            scope: toTextContent(entry, 'scope'),
+                            result: toTextContent(entry, 'result')
+                        }))
+                    }
+                };
+            });
+
+            return { metadata, records };
+        }
+
+        function isFailure(record) {
+            return record.disposition !== 'none' || record.dkim !== 'pass' || record.spf !== 'pass';
+        }
+
+        function renderSummary(metadata, records) {
+            document.getElementById('summary-org').textContent = metadata.org;
+            document.getElementById('summary-domain').textContent = metadata.domain;
+            document.getElementById('summary-range').textContent = formatDateRange(metadata.begin, metadata.end);
+            const totalMessages = records.reduce((sum, record) => sum + record.count, 0);
+            document.getElementById('summary-total').textContent = totalMessages.toLocaleString();
+            const failures = records.filter(isFailure).reduce((sum, record) => sum + record.count, 0);
+            document.getElementById('summary-failures').textContent = failures.toLocaleString();
+        }
+
+        function renderTable(records) {
+            resultsBody.innerHTML = '';
+            const showFailuresOnly = showFailuresOnlyCheckbox.checked;
+            const highlightFailures = highlightFailuresCheckbox.checked;
+
+            records.forEach(record => {
+                if (showFailuresOnly && !isFailure(record)) {
+                    return;
+                }
+
+                const row = document.createElement('tr');
+                if (highlightFailures && isFailure(record)) {
+                    row.classList.add('failure');
+                }
+
+                row.innerHTML = `
+                    <td>${record.sourceIp}</td>
+                    <td>${record.count.toLocaleString()}</td>
+                    <td>${record.disposition}</td>
+                    <td>${record.dkim}</td>
+                    <td>${record.spf}</td>
+                    <td>${record.headerFrom}</td>
+                    <td>${record.envelopeFrom}</td>
+                    <td>${record.reason}</td>
+                `;
+
+                row.addEventListener('click', () => displayDetails(record));
+                resultsBody.appendChild(row);
+            });
+
+            if (!resultsBody.children.length) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `<td colspan="8" style="text-align:center; padding: 24px; color: #64748b;">No records to display with the current filters.</td>`;
+                resultsBody.appendChild(emptyRow);
+            }
+        }
+
+        function displayDetails(record) {
+            detailsPanel.style.display = 'block';
+            detailsGrid.innerHTML = '';
+
+            const addDetail = (title, value) => {
+                const item = document.createElement('div');
+                item.className = 'details-item';
+                item.innerHTML = `<h4>${title}</h4><p>${value || '—'}</p>`;
+                detailsGrid.appendChild(item);
+            };
+
+            addDetail('Source IP', record.sourceIp);
+            addDetail('Message count', record.count.toLocaleString());
+            addDetail('Disposition', record.disposition);
+            addDetail('DKIM result', record.dkim);
+            addDetail('SPF result', record.spf);
+            addDetail('Header From', record.identifiers.headerFrom);
+            addDetail('Envelope From', record.identifiers.envelopeFrom);
+            addDetail('Envelope To', record.identifiers.envelopeTo);
+            addDetail('Alignment (DKIM)', record.alignment.dkim);
+            addDetail('Alignment (SPF)', record.alignment.spf);
+            addDetail('Reason(s)', record.reason);
+
+            if (record.policyOverrides.length) {
+                record.policyOverrides.forEach((override, index) => {
+                    addDetail(`Policy override ${index + 1}`, `${override.type}${override.comment ? ` — ${override.comment}` : ''}`);
+                });
+            }
+
+            if (record.authResults.dkim.length) {
+                record.authResults.dkim.forEach((dkimResult, index) => {
+                    addDetail(`DKIM Auth ${index + 1}`, `Domain: ${dkimResult.domain || '—'}\nSelector: ${dkimResult.selector || '—'}\nResult: ${dkimResult.result || '—'}`.replace(/\n/g, '<br>'));
+                });
+            }
+
+            if (record.authResults.spf.length) {
+                record.authResults.spf.forEach((spfResult, index) => {
+                    addDetail(`SPF Auth ${index + 1}`, `Domain: ${spfResult.domain || '—'}\nScope: ${spfResult.scope || '—'}\nResult: ${spfResult.result || '—'}`.replace(/\n/g, '<br>'));
+                });
+            }
+        }
+
+        async function extractXmlFromFile(file) {
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.zip')) {
+                const arrayBuffer = await file.arrayBuffer();
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                const xmlFile = zip.file(/\.xml$/i)[0];
+                if (!xmlFile) {
+                    throw new Error('No XML file was found inside the ZIP archive.');
+                }
+                return await xmlFile.async('text');
+            }
+
+            if (name.endsWith('.gz') || name.endsWith('.gzip')) {
+                const arrayBuffer = await file.arrayBuffer();
+                const uint8 = new Uint8Array(arrayBuffer);
+                return pako.ungzip(uint8, { to: 'string' });
+            }
+
+            return await file.text();
+        }
+
+        async function handleFile(file) {
+            hideStatus();
+            try {
+                showStatus('Processing report…', 'success');
+                const xmlText = await extractXmlFromFile(file);
+                const { metadata, records } = parseReport(xmlText);
+
+                if (!records.length) {
+                    showStatus('The report was parsed but contains no records.', 'error');
+                    reportSummary.style.display = 'none';
+                    detailsPanel.style.display = 'none';
+                    return;
+                }
+
+                currentRecords = records;
+                renderSummary(metadata, records);
+                renderTable(records);
+                reportSummary.style.display = 'block';
+                detailsPanel.style.display = 'none';
+                showStatus(`Loaded report for ${metadata.domain} from ${metadata.org}.`, 'success');
+            } catch (error) {
+                console.error(error);
+                showStatus(error.message || 'An unexpected error occurred while processing the file.', 'error');
+                reportSummary.style.display = 'none';
+                detailsPanel.style.display = 'none';
+                currentRecords = [];
+                resultsBody.innerHTML = '';
+            }
+        }
+
+        uploadButton.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+                fileInput.value = '';
+            }
+        });
+
+        dropzone.addEventListener('dragover', event => {
+            event.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', event => {
+            event.preventDefault();
+            dropzone.classList.remove('dragover');
+            const file = event.dataTransfer.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        showFailuresOnlyCheckbox.addEventListener('change', () => renderTable(currentRecords));
+        highlightFailuresCheckbox.addEventListener('change', () => renderTable(currentRecords));
+    </script>
+</body>
+
+</html>
