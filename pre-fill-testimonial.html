@@ -16,7 +16,7 @@
         h1 {
             font-size: clamp(1.8rem, 2.5vw, 2.4rem);
             margin-bottom: 0.5rem;
-            color: #1a2a3a;
+            color: var(--tx);
         }
 
         p.lead {
@@ -59,8 +59,8 @@
             display: flex;
             align-items: flex-start;
             gap: 0.6rem;
-            background-color: #f7f9fd;
-            border: 1px solid #d7e2f3;
+            background-color: var(--bg-2);
+            border: 1px solid var(--ui-2);
             border-radius: 8px;
             padding: 0.75rem 1rem;
         }
@@ -83,31 +83,29 @@
         button {
             cursor: pointer;
             border-radius: 8px;
-            border: none;
             padding: 0.65rem 1.2rem;
             font-size: 1rem;
             font-weight: 600;
-            transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+            transition: transform 0.15s ease;
         }
 
-        button[type="submit"] {
-            background-color: #2563eb;
-            color: #ffffff;
-        }
-
-        button[type="submit"]:hover {
-            background-color: #1d4ed8;
-            box-shadow: 0 10px 20px rgba(29, 78, 216, 0.2);
+        button:focus-visible,
+        button:hover {
             transform: translateY(-1px);
         }
 
         button[type="reset"] {
-            background-color: #e2e8f0;
-            color: #1f2937;
+            background-color: var(--bg);
+            color: var(--tx);
+            border: 0.05rem solid var(--ui-2);
         }
 
-        button[type="reset"]:hover {
-            background-color: #cbd5f5;
+        button[type="reset"]:hover,
+        button[type="reset"]:focus,
+        button[type="reset"]:focus-visible {
+            background-color: var(--bg-2);
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         .result-card {
@@ -133,9 +131,9 @@
         }
 
         .generated-url textarea {
-            font-family: "Fira Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-family: var(--font-mono);
             min-height: 70px;
-            background-color: #f9fafc;
+            background-color: var(--bg);
         }
 
         .copy-group {
@@ -146,23 +144,33 @@
         }
 
         .copy-group button {
-            background-color: #0f766e;
-            color: #ffffff;
+            background-color: var(--cy);
+            color: var(--bg);
+            border: 0.05rem solid var(--cy);
         }
 
         .copy-group button:hover {
-            background-color: #0d5f58;
+            background-color: var(--cy-2);
+            border-color: var(--cy-2);
+            color: var(--bg);
+        }
+
+        .copy-group button:focus,
+        .copy-group button:focus-visible {
+            background-color: var(--cy-2);
+            border-color: var(--cy-2);
+            color: var(--bg);
         }
 
         .status-message {
             min-height: 1.25rem;
             font-size: 0.95rem;
-            color: #0f766e;
+            color: var(--cy);
         }
 
         a.result-link {
             word-break: break-all;
-            color: #2563eb;
+            color: var(--accent);
         }
 
         @media (max-width: 600px) {
@@ -311,24 +319,24 @@
                 const value = urlField.value;
                 if (!value) {
                     statusMessage.textContent = 'Nothing to copy yet. Fill out the form first.';
-                    statusMessage.style.color = '#dc2626';
+                    statusMessage.style.color = 'var(--re)';
                     return;
                 }
 
                 try {
                     await navigator.clipboard.writeText(value);
                     statusMessage.textContent = 'Copied link to clipboard!';
-                    statusMessage.style.color = '#0f766e';
+                    statusMessage.style.color = 'var(--cy)';
                 } catch (error) {
                     urlField.focus();
                     urlField.select();
                     const success = document.execCommand && document.execCommand('copy');
                     if (success) {
                         statusMessage.textContent = 'Copied link to clipboard!';
-                        statusMessage.style.color = '#0f766e';
+                        statusMessage.style.color = 'var(--cy)';
                     } else {
                         statusMessage.textContent = 'Unable to copy automatically. Please copy the link manually.';
-                        statusMessage.style.color = '#dc2626';
+                        statusMessage.style.color = 'var(--re)';
                     }
                 }
             });
