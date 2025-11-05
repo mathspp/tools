@@ -96,7 +96,7 @@ def _select_recent(
 def _render_recent_section(recently_added: Sequence[dict], recently_updated: Sequence[dict]) -> str:
     def render_list(tools: Sequence[dict]) -> str:
         if not tools:
-            return "<li>No entries available.</li>"
+            return "        <li class=\"recent-empty\">No entries available.</li>"
         items = []
         for tool in tools:
             slug = tool.get("slug", "")
@@ -107,7 +107,7 @@ def _render_recent_section(recently_added: Sequence[dict], recently_updated: Seq
                 formatted_date = _format_display_date(parsed_date)
             else:
                 formatted_date = ""
-            
+
             # Create colophon link for the date
             colophon_url = f"https://tools.mathspp.com/colophon#{filename}" if filename else "#"
             date_html = (
@@ -116,25 +116,27 @@ def _render_recent_section(recently_added: Sequence[dict], recently_updated: Seq
                 else ""
             )
             items.append(
-                f'<li><a href="{url}">{slug}</a>{date_html}</li>'
+                f"        <li><a href=\"{url}\">{slug}</a>{date_html}</li>"
             )
         return "\n".join(items)
 
     section_html = f"""
-<div class="recent-container">
-  <div class="recent-column">
-    <h2>Recently added</h2>
-    <ul class="recent-list">
-      {render_list(recently_added)}
-    </ul>
+<section class="surface recent-highlights">
+  <div class="recent-grid">
+    <article class="recent-card">
+      <h2>Recently added</h2>
+      <ul class="recent-list">
+{render_list(recently_added)}
+      </ul>
+    </article>
+    <article class="recent-card">
+      <h2>Recently updated</h2>
+      <ul class="recent-list">
+{render_list(recently_updated)}
+      </ul>
+    </article>
   </div>
-  <div class="recent-column">
-    <h2>Recently updated</h2>
-    <ul class="recent-list">
-      {render_list(recently_updated)}
-    </ul>
-  </div>
-</div>
+</section>
 """
     return section_html
 
@@ -179,63 +181,59 @@ def build_index() -> None:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>tools.mathspp.com</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 980px;
+            margin: 0;
+            padding: 0;
+        }}
+        main.page-shell {{
+            max-width: 960px;
             margin: 0 auto;
-            padding: 20px;
-            color: #24292e;
+            padding: 32px 20px 56px;
+            display: grid;
+            gap: 2rem;
         }}
-        h1 {{
-            border-bottom: 1px solid #eaecef;
-            padding-bottom: 0.3em;
+        .recent-highlights {{
+            padding: clamp(1.5rem, 3vw, 2.25rem);
         }}
-        h2 {{
-            border-bottom: 1px solid #eaecef;
-            padding-bottom: 0.3em;
-            margin-top: 24px;
+        .recent-grid {{
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
         }}
-        a {{
-            color: #0366d6;
-            text-decoration: none;
-        }}
-        a:hover {{
-            text-decoration: underline;
-        }}
-        code {{
-            background-color: rgba(27,31,35,0.05);
-            border-radius: 3px;
-            padding: 0.2em 0.4em;
-        }}
-        .recent-container {{
-            display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
-            margin-bottom: 24px;
-        }}
-        .recent-column {{
-            flex: 1 1 300px;
-        }}
-        .recent-column h2 {{
-            margin-top: 0;
+        .recent-card {{
+            display: grid;
+            gap: 0.75rem;
         }}
         .recent-list {{
             list-style: none;
             margin: 0;
             padding: 0;
+            display: grid;
+            gap: 0.6rem;
         }}
-        .recent-list li {{
-            margin-bottom: 0.5em;
+        .recent-list a {{
+            font-weight: 600;
         }}
         .recent-date {{
-            color: #6a737d;
+            font-size: 0.9rem;
+            color: var(--tx-2);
+        }}
+        .recent-empty {{
+            color: var(--tx-2);
+        }}
+        @media (max-width: 720px) {{
+            main.page-shell {{
+                padding: 24px 16px 40px;
+            }}
         }}
     </style>
 </head>
 <body>
+    <main class="page-shell">
 {body_html}
+    </main>
 </body>
 </html>
 """
