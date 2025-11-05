@@ -121,7 +121,7 @@ def _render_recent_section(recently_added: Sequence[dict], recently_updated: Seq
         return "\n".join(items)
 
     section_html = f"""
-<section class="surface recent-highlights">
+<section class="surface recent-highlights content-flow">
   <div class="recent-grid">
     <article class="recent-card">
       <h2>Recently added</h2>
@@ -175,6 +175,8 @@ def build_index() -> None:
     else:
         raise RuntimeError("Markers not found.")
 
+    wrapped_body = f"<article class=\"content-flow\">\n{body_html}\n</article>"
+
     full_html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -182,57 +184,10 @@ def build_index() -> None:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>tools.mathspp.com</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        body {{
-            margin: 0;
-            padding: 0;
-        }}
-        main.page-shell {{
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 32px 20px 56px;
-            display: grid;
-            gap: 2rem;
-        }}
-        .recent-highlights {{
-            padding: clamp(1.5rem, 3vw, 2.25rem);
-        }}
-        .recent-grid {{
-            display: grid;
-            gap: 1.5rem;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        }}
-        .recent-card {{
-            display: grid;
-            gap: 0.75rem;
-        }}
-        .recent-list {{
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: grid;
-            gap: 0.6rem;
-        }}
-        .recent-list a {{
-            font-weight: 600;
-        }}
-        .recent-date {{
-            font-size: 0.9rem;
-            color: var(--tx-2);
-        }}
-        .recent-empty {{
-            color: var(--tx-2);
-        }}
-        @media (max-width: 720px) {{
-            main.page-shell {{
-                padding: 24px 16px 40px;
-            }}
-        }}
-    </style>
 </head>
 <body>
-    <main class="page-shell">
-{body_html}
+    <main class="page-shell content-flow">
+{wrapped_body}
     </main>
 </body>
 </html>

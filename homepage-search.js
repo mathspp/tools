@@ -33,161 +33,12 @@ ready(() => {
         return;
     }
 
-    const style = document.createElement('style');
-    style.textContent = `
-    .tool-search-container {
-      margin: 1.5rem 0 2rem;
-      padding: 1.15rem 1.5rem 1rem;
-      border-radius: 0.45rem;
-      border: 1.5px solid #d9dce6;
-      background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-    }
-    .tool-search-label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      border: 0;
-    }
-    .tool-search-input-wrapper {
-      position: relative;
-      margin-bottom: 0.95rem;
-    }
-    .tool-search-input-icon {
-      position: absolute;
-      top: 50%;
-      left: 1.1rem;
-      transform: translateY(-50%);
-      width: 1rem;
-      height: 1rem;
-      color: #4c5a85;
-      pointer-events: none;
-    }
-    .tool-search-input-icon svg {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-    #tool-search-input {
-      width: 100%;
-      box-sizing: border-box;
-      border-radius: 0.7rem;
-      border: 1.5px solid #94a3d4;
-      background-color: rgba(255, 255, 255, 0.95);
-      padding: 0.75rem 1rem 0.75rem 2.75rem;
-      font-size: 1rem;
-      line-height: 1.5;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-    #tool-search-input::placeholder {
-      color: #4f5c83;
-    }
-    #tool-search-input:focus {
-      outline: none;
-      border-color: #3b4fd4;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
-      background-color: #fff;
-    }
-    #tool-search-input:disabled {
-      color: #6b6f80;
-      background-color: rgba(250, 250, 255, 0.8);
-    }
-    .tool-search-hint {
-      margin: 0 0 0;
-      font-size: 0.875rem;
-      color: #6f7796;
-      max-width: 32rem;
-    }
-    .tool-search-results {
-      list-style: none;
-      padding: 0;
-      margin: 0.75rem 0 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .tool-search-option {
-      border-radius: 0.7rem;
-      border: 1.5px solid #d8dcff;
-      background: #ffffff;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
-    }
-    .tool-search-option.active {
-      border-color: #4454f7;
-      transform: translateY(-1px);
-    }
-    .tool-search-option-link {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      text-decoration: none;
-      color: inherit;
-      padding: 0.75rem 0.9rem 0.8rem;
-    }
-    .tool-search-option-title {
-      font-weight: 600;
-      font-size: 1rem;
-      color: #242847;
-    }
-    .tool-search-option-description {
-      font-size: 0.92rem;
-      color: #3e4261;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .tool-search-option-meta {
-      font-size: 0.82rem;
-      color: #6b6f80;
-    }
-    .tool-search-empty {
-      padding: 0.9rem 1rem;
-      border-radius: 0.7rem;
-      border: 1.5px dashed #c4c8ff;
-      background: rgba(228, 232, 255, 0.5);
-      font-size: 0.95rem;
-      color: #3e4261;
-    }
-    .tool-search-status {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      border: 0;
-    }
-    @media (max-width: 640px) {
-      .tool-search-container {
-        margin: 1.25rem 0 1.75rem;
-        padding: 0.85rem 0.75rem;
-      }
-      .tool-search-input-icon {
-        left: 0.85rem;
-      }
-      #tool-search-input {
-        font-size: 1.05rem;
-        padding: 0.8rem 0.9rem 0.8rem 2.55rem;
-      }
-      .tool-search-option-link {
-        padding: 0.7rem 0.8rem 0.75rem;
-      }
-    }
-  `;
-    document.head.appendChild(style);
-
     const container = document.createElement('section');
-    container.className = 'tool-search-container';
+    container.className = 'surface tool-search content-flow';
     container.setAttribute('role', 'search');
 
     const label = document.createElement('label');
-    label.className = 'tool-search-label';
+    label.className = 'sr-only';
     label.setAttribute('for', 'tool-search-input');
     label.textContent = 'Search tools';
 
@@ -231,7 +82,7 @@ ready(() => {
     results.hidden = true;
 
     const status = document.createElement('div');
-    status.className = 'tool-search-status';
+    status.className = 'sr-only';
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
 
