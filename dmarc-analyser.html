@@ -5,20 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMARC Report Analyser</title>
+    <link rel="stylesheet" href="styles.css">
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: "Segoe UI", Tahoma, sans-serif;
-            margin: 0;
             padding: 20px;
             max-width: 1100px;
             margin-left: auto;
             margin-right: auto;
-            background: #f4f5f7;
-            color: #1f2933;
         }
 
         h1 {
@@ -28,12 +21,12 @@
 
         p.description {
             text-align: center;
-            color: #52606d;
+            color: var(--color-text-muted);
         }
 
         #dropzone {
             border: 2px dashed #4c51bf;
-            background: white;
+            background: var(--color-surface);
             border-radius: 12px;
             padding: 40px 20px;
             text-align: center;
@@ -48,18 +41,7 @@
         }
 
         #upload-btn {
-            background: #4c51bf;
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
             margin-top: 16px;
-            cursor: pointer;
-        }
-
-        #upload-btn:hover {
-            background: #434190;
         }
 
         .hidden-input {
@@ -67,22 +49,8 @@
         }
 
         .status-message {
-            background: #fff;
-            border-radius: 12px;
-            padding: 16px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
             display: none;
-        }
-
-        .status-message.error {
-            border-left: 4px solid #e53e3e;
-            color: #742a2a;
-        }
-
-        .status-message.success {
-            border-left: 4px solid #38a169;
-            color: #22543d;
         }
 
         .summary-grid {
@@ -93,7 +61,7 @@
         }
 
         .summary-card {
-            background: white;
+            background: var(--color-surface);
             border-radius: 12px;
             padding: 18px;
             box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
@@ -239,7 +207,7 @@
     <p class="description">Drop a DMARC aggregate report (.xml, .gz or .zip) to see summary insights and examine failed
         authentication attempts.</p>
 
-    <div id="dropzone">
+    <div id="dropzone" class="surface">
         <strong>Drop your DMARC report here</strong>
         <br>
         <button id="upload-btn" type="button">Select a file</button>
@@ -253,23 +221,23 @@
 
     <section id="report-summary" style="display: none;">
         <div class="summary-grid">
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Organization</h3>
                 <p id="summary-org">–</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Domain</h3>
                 <p id="summary-domain">–</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Report Range</h3>
                 <p id="summary-range">–</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Total Messages</h3>
                 <p id="summary-total">0</p>
             </div>
-            <div class="summary-card">
+            <div class="summary-card surface">
                 <h3>Failures</h3>
                 <p id="summary-failures">0</p>
             </div>
