@@ -16,7 +16,7 @@ def get_file_commit_details(file_path):
     try:
         # Get each commit as a separate record with its hash, date, and message
         result = subprocess.run(
-            ["git", "log", "--format=%H|%aI|%B%x00", "--", file_path],
+            ["git", "log", "--author=Rodrigo", "--format=%H|%aI|%B%x00", "--", file_path],
             capture_output=True,
             text=True,
             check=True,
