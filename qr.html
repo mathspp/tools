@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -158,10 +159,12 @@
         }
     </style>
 </head>
+
 <body>
     <header>
         <h1>Custom QR Code Builder</h1>
-        <p class="lead">Generate downloadable QR codes with custom colours and preset styles. Paste your link, pick your palette, and export the code in SVG or PNG.</p>
+        <p class="lead">Generate downloadable QR codes with custom colours and preset styles. Paste your link, pick your
+            palette, and export the code in SVG or PNG.</p>
     </header>
 
     <div class="layout">
@@ -170,7 +173,8 @@
                 <h2>Link</h2>
                 <div class="field-group">
                     <label for="qr-data">URL or text</label>
-                    <input type="text" id="qr-data" name="qr-data" placeholder="https://example.com" spellcheck="false" required>
+                    <input type="text" id="qr-data" name="qr-data" placeholder="https://example.com" spellcheck="false"
+                        required>
                     <p class="note">Your QR code updates automatically as you type.</p>
                 </div>
             </section>
@@ -180,12 +184,15 @@
                 <div class="field-group">
                     <div class="field-row multi">
                         <label class="sr-only" for="fg-hex">Hex value</label>
-                        <input type="text" id="fg-hex" placeholder="#003366" value="#101828" aria-label="Foreground colour hex value">
+                        <input type="text" id="fg-hex" placeholder="#003366" value="#101828"
+                            aria-label="Foreground colour hex value">
                         <label class="sr-only" for="fg-rgb">RGB value</label>
-                        <input type="text" id="fg-rgb" placeholder="16, 24, 40" aria-label="Foreground colour RGB value">
+                        <input type="text" id="fg-rgb" placeholder="16, 24, 40"
+                            aria-label="Foreground colour RGB value">
                         <input type="color" id="fg-picker" value="#101828" aria-label="Foreground colour picker">
                     </div>
-                    <p class="note">Enter a hex code (e.g. <code>#101828</code>), RGB triple (<code>16, 24, 40</code>), or use the colour picker.</p>
+                    <p class="note">Enter a hex code (e.g. <code>#101828</code>), RGB triple (<code>16, 24, 40</code>),
+                        or use the colour picker.</p>
                 </div>
             </section>
 
@@ -194,9 +201,11 @@
                 <div class="field-group">
                     <div class="field-row multi">
                         <label class="sr-only" for="bg-hex">Hex value</label>
-                        <input type="text" id="bg-hex" placeholder="#ffffff" value="#ffffff" aria-label="Background colour hex value">
+                        <input type="text" id="bg-hex" placeholder="#ffffff" value="#ffffff"
+                            aria-label="Background colour hex value">
                         <label class="sr-only" for="bg-rgb">RGB value</label>
-                        <input type="text" id="bg-rgb" placeholder="255, 255, 255" aria-label="Background colour RGB value">
+                        <input type="text" id="bg-rgb" placeholder="255, 255, 255"
+                            aria-label="Background colour RGB value">
                         <input type="color" id="bg-picker" value="#ffffff" aria-label="Background colour picker">
                     </div>
                     <p class="note">Supports the same formats as the foreground colour controls.</p>
@@ -382,7 +391,7 @@
             fgHexInput.value = normalized;
             fgPicker.value = normalized;
             updateRgbField(fgRgbInput, normalized);
-            applyColorPreview(normalized, [fgHexInput, fgRgbInput, fgPicker]);
+            applyColorPreview(normalized, [fgPicker]);
             state.foreground = normalized;
             refreshQr();
         }
@@ -392,7 +401,7 @@
             bgHexInput.value = normalized;
             bgPicker.value = normalized;
             updateRgbField(bgRgbInput, normalized);
-            applyColorPreview(normalized, [bgHexInput, bgRgbInput, bgPicker]);
+            applyColorPreview(normalized, [bgPicker]);
             state.background = normalized;
             refreshQr();
         }
@@ -525,8 +534,8 @@
         const initialBg = toFullHex(bgHexInput.value);
         updateRgbField(fgRgbInput, initialFg);
         updateRgbField(bgRgbInput, initialBg);
-        applyColorPreview(initialFg, [fgHexInput, fgRgbInput, fgPicker]);
-        applyColorPreview(initialBg, [bgHexInput, bgRgbInput, bgPicker]);
+        applyColorPreview(initialFg, [fgPicker]);
+        applyColorPreview(initialBg, [bgPicker]);
 
         // Seed with example data for quick preview
         urlInput.value = 'https://example.com';
@@ -534,4 +543,5 @@
         refreshQr();
     </script>
 </body>
+
 </html>
