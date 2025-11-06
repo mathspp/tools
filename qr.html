@@ -226,10 +226,14 @@
                 <div id="qr-preview" aria-label="QR code preview"></div>
             </div>
             <div class="download-group">
-                <button type="button" data-size="256" class="secondary download-btn">Download 256px PNG</button>
-                <button type="button" data-size="512" class="secondary download-btn">Download 512px PNG</button>
-                <button type="button" data-size="1024" class="secondary download-btn">Download 1024px PNG</button>
-                <button type="button" id="download-svg" class="secondary">Download SVG</button>
+                <label class="sr-only" for="download-option">Download format</label>
+                <select id="download-option" aria-label="Download format">
+                    <option value="png-256">PNG — 256 × 256</option>
+                    <option value="png-512" selected>PNG — 512 × 512</option>
+                    <option value="png-1024">PNG — 1024 × 1024</option>
+                    <option value="svg">SVG</option>
+                </select>
+                <button type="button" id="download-button" class="secondary">Download</button>
             </div>
         </aside>
     </div>
@@ -245,8 +249,8 @@
         const bgRgbInput = document.getElementById('bg-rgb');
         const bgPicker = document.getElementById('bg-picker');
         const styleSelect = document.getElementById('style-select');
-        const downloadButtons = document.querySelectorAll('.download-btn');
-        const downloadSvgButton = document.getElementById('download-svg');
+        const downloadSelect = document.getElementById('download-option');
+        const downloadButton = document.getElementById('download-button');
 
         const presets = {
             sharp: {
@@ -463,25 +467,28 @@
             }
         }
 
-        downloadButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const size = Number(button.dataset.size);
-                if (!urlInput.value.trim()) {
-                    setError('Enter a link or text before downloading your QR code.');
-                    return;
-                }
-                setError();
-                downloadPng(size);
-            });
-        });
-
-        downloadSvgButton.addEventListener('click', () => {
+        downloadButton.addEventListener('click', () => {
             if (!urlInput.value.trim()) {
                 setError('Enter a link or text before downloading your QR code.');
                 return;
             }
+
+            const selection = downloadSelect.value;
             setError();
-            downloadSvg();
+
+            if (selection === 'svg') {
+                downloadSvg();
+                return;
+            }
+
+            const [, size] = selection.split('-');
+            const numericSize = Number(size);
+
+            if (Number.isFinite(numericSize)) {
+                downloadPng(numericSize);
+            } else {
+                setError('Choose a valid download option.');
+            }
         });
 
         // Initialise RGB text fields
