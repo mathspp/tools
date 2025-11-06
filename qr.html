@@ -173,7 +173,7 @@
                 <h2>Link</h2>
                 <div class="field-group">
                     <label for="qr-data">URL or text</label>
-                    <input type="text" id="qr-data" name="qr-data" placeholder="https://example.com" spellcheck="false"
+                    <input type="text" id="qr-data" name="qr-data" placeholder="https://mathspp.com" spellcheck="false"
                         required>
                     <p class="note">Your QR code updates automatically as you type.</p>
                 </div>
@@ -319,16 +319,30 @@
             errorMessage.textContent = message;
         }
 
+        function normalizeHex(value) {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                return null;
+            }
+
+            const match = trimmed.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+            if (!match) {
+                return null;
+            }
+
+            const hexBody = match[1].toLowerCase();
+            if (hexBody.length === 3) {
+                return '#' + [...hexBody].map(ch => ch + ch).join('');
+            }
+            return '#' + hexBody;
+        }
+
         function isValidHex(value) {
-            return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
+            return Boolean(normalizeHex(value));
         }
 
         function toFullHex(hex) {
-            const clean = hex.trim();
-            if (clean.length === 4) {
-                return '#' + [...clean.slice(1)].map(ch => ch + ch).join('').toLowerCase();
-            }
-            return clean.toLowerCase();
+            return normalizeHex(hex) || '#000000';
         }
 
         function parseRgb(value) {
@@ -465,6 +479,59 @@
             refreshQr();
         });
 
+        function tryParseUrl(value) {
+            if (!value) {
+                return null;
+            }
+
+            try {
+                return new URL(value);
+            } catch (error) {
+                if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) {
+                    try {
+                        return new URL(`https://${value}`);
+                    } catch (innerError) {
+                        return null;
+                    }
+                }
+                return null;
+            }
+        }
+
+        function sanitizeSegment(segment) {
+            return segment
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        function buildDownloadBaseName() {
+            const defaultName = 'qr';
+            const data = (state.data || '').trim();
+
+            if (!data) {
+                return defaultName;
+            }
+
+            const parsedUrl = tryParseUrl(data);
+            if (parsedUrl) {
+                const hostname = parsedUrl.hostname.replace(/^www\./i, '');
+                const hostPart = sanitizeSegment(hostname);
+                const pathSegments = parsedUrl.pathname
+                    .split('/')
+                    .filter(Boolean)
+                    .map(sanitizeSegment)
+                    .filter(Boolean)
+                    .slice(0, 4);
+                const parts = [hostPart, ...pathSegments].filter(Boolean);
+                const slug = parts.join('-');
+                return slug ? `qr-${slug}` : defaultName;
+            }
+
+            const textSlug = sanitizeSegment(data).slice(0, 60);
+            return textSlug ? `qr-${textSlug}` : defaultName;
+        }
+
         async function downloadPng(size) {
             try {
                 const preset = presets[state.presetKey] || presets.sharp;
@@ -478,7 +545,8 @@
                     cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
                     cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
                 });
-                await downloadQr.download({ name: `qr-${size}px`, extension: 'png' });
+                const name = `${buildDownloadBaseName()}${size}`;
+                await downloadQr.download({ name, extension: 'png' });
             } catch (error) {
                 console.error(error);
                 setError('Unable to download PNG. Please try again.');
@@ -498,7 +566,8 @@
                     cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
                     cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
                 });
-                await downloadQr.download({ name: 'qr-code', extension: 'svg' });
+                const name = buildDownloadBaseName();
+                await downloadQr.download({ name, extension: 'svg' });
             } catch (error) {
                 console.error(error);
                 setError('Unable to download SVG. Please try again.');
@@ -538,7 +607,7 @@
         applyColorPreview(initialBg, [bgPicker]);
 
         // Seed with example data for quick preview
-        urlInput.value = 'https://example.com';
+        urlInput.value = 'https://mathspp.com';
         state.data = urlInput.value;
         refreshQr();
     </script>
