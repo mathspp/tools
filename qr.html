@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom QR Code Builder</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2.5rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+        }
+
+        h1 {
+            font-size: clamp(1.9rem, 3.2vw, 2.6rem);
+            margin-bottom: 0.5rem;
+            color: var(--tx);
+        }
+
+        p.lead {
+            margin: 0;
+            color: var(--tx-2);
+            font-size: clamp(1rem, 2.3vw, 1.15rem);
+        }
+
+        .layout {
+            display: grid;
+            gap: clamp(1.5rem, 3vw, 2.5rem);
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(1rem, 2.5vw, 1.5rem);
+            padding: clamp(1.1rem, 2vw, 1.75rem);
+        }
+
+        .form-section {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .form-section h2 {
+            margin: 0;
+            font-size: clamp(1.2rem, 2.5vw, 1.4rem);
+            color: var(--tx);
+        }
+
+        .field-group {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .field-row {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .field-row.multi {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            align-items: center;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        select {
+            width: 100%;
+        }
+
+        .note {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--tx-3);
+        }
+
+        .preview-card {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+            padding: clamp(1.1rem, 2vw, 1.75rem);
+        }
+
+        .preview-wrapper {
+            width: clamp(220px, 40vw, 320px);
+            height: clamp(220px, 40vw, 320px);
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+            border-radius: 12px;
+            background: var(--bg-2);
+            border: 1px solid var(--ui-2);
+        }
+
+        #qr-preview canvas,
+        #qr-preview svg {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .download-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        button {
+            cursor: pointer;
+            border-radius: 8px;
+            padding: 0.6rem 1.1rem;
+            font-weight: 600;
+            transition: transform 0.15s ease;
+        }
+
+        button:hover,
+        button:focus-visible {
+            transform: translateY(-1px);
+        }
+
+        .secondary {
+            background: var(--bg);
+            color: var(--tx);
+            border: 0.05rem solid var(--ui-2);
+        }
+
+        .secondary:hover,
+        .secondary:focus-visible {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .error {
+            color: var(--rd);
+            font-weight: 600;
+            font-size: 0.95rem;
+            min-height: 1.1rem;
+        }
+
+        @media (max-width: 640px) {
+            .field-row.multi {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Custom QR Code Builder</h1>
+        <p class="lead">Generate downloadable QR codes with custom colours and preset styles. Paste your link, pick your palette, and export the code in SVG or PNG.</p>
+    </header>
+
+    <div class="layout">
+        <form id="qr-form" autocomplete="off">
+            <section class="form-section">
+                <h2>Link</h2>
+                <div class="field-group">
+                    <label for="qr-data">URL or text</label>
+                    <input type="text" id="qr-data" name="qr-data" placeholder="https://example.com" spellcheck="false" required>
+                    <p class="note">Your QR code updates automatically as you type.</p>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h2>Foreground colour</h2>
+                <div class="field-group">
+                    <div class="field-row multi">
+                        <label class="sr-only" for="fg-hex">Hex value</label>
+                        <input type="text" id="fg-hex" placeholder="#003366" value="#101828" aria-label="Foreground colour hex value">
+                        <label class="sr-only" for="fg-rgb">RGB value</label>
+                        <input type="text" id="fg-rgb" placeholder="16, 24, 40" aria-label="Foreground colour RGB value">
+                        <input type="color" id="fg-picker" value="#101828" aria-label="Foreground colour picker">
+                    </div>
+                    <p class="note">Enter a hex code (e.g. <code>#101828</code>), RGB triple (<code>16, 24, 40</code>), or use the colour picker.</p>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h2>Background colour</h2>
+                <div class="field-group">
+                    <div class="field-row multi">
+                        <label class="sr-only" for="bg-hex">Hex value</label>
+                        <input type="text" id="bg-hex" placeholder="#ffffff" value="#ffffff" aria-label="Background colour hex value">
+                        <label class="sr-only" for="bg-rgb">RGB value</label>
+                        <input type="text" id="bg-rgb" placeholder="255, 255, 255" aria-label="Background colour RGB value">
+                        <input type="color" id="bg-picker" value="#ffffff" aria-label="Background colour picker">
+                    </div>
+                    <p class="note">Supports the same formats as the foreground colour controls.</p>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h2>Style</h2>
+                <div class="field-group">
+                    <label for="style-select">Preset</label>
+                    <select id="style-select" name="style-select">
+                        <option value="sharp" selected>Sharp squares</option>
+                        <option value="rounded">Rounded modules</option>
+                        <option value="dots">Soft dots</option>
+                        <option value="mixed">Rounded + framed corners</option>
+                    </select>
+                    <p class="note">Switch between classic square QR codes or more fluid rounded variants.</p>
+                </div>
+            </section>
+
+            <div class="error" id="error-message" role="alert" aria-live="polite"></div>
+        </form>
+
+        <aside class="preview-card" aria-live="polite">
+            <h2>Preview</h2>
+            <div class="preview-wrapper">
+                <div id="qr-preview" aria-label="QR code preview"></div>
+            </div>
+            <div class="download-group">
+                <button type="button" data-size="256" class="secondary download-btn">Download 256px PNG</button>
+                <button type="button" data-size="512" class="secondary download-btn">Download 512px PNG</button>
+                <button type="button" data-size="1024" class="secondary download-btn">Download 1024px PNG</button>
+                <button type="button" id="download-svg" class="secondary">Download SVG</button>
+            </div>
+        </aside>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <script>
+        const urlInput = document.getElementById('qr-data');
+        const errorMessage = document.getElementById('error-message');
+        const fgHexInput = document.getElementById('fg-hex');
+        const fgRgbInput = document.getElementById('fg-rgb');
+        const fgPicker = document.getElementById('fg-picker');
+        const bgHexInput = document.getElementById('bg-hex');
+        const bgRgbInput = document.getElementById('bg-rgb');
+        const bgPicker = document.getElementById('bg-picker');
+        const styleSelect = document.getElementById('style-select');
+        const downloadButtons = document.querySelectorAll('.download-btn');
+        const downloadSvgButton = document.getElementById('download-svg');
+
+        const presets = {
+            sharp: {
+                dotsOptions: { type: 'square' },
+                cornersSquareOptions: { type: 'square' },
+                cornersDotOptions: { type: 'square' }
+            },
+            rounded: {
+                dotsOptions: { type: 'rounded' },
+                cornersSquareOptions: { type: 'extra-rounded' },
+                cornersDotOptions: { type: 'dot' }
+            },
+            dots: {
+                dotsOptions: { type: 'dots' },
+                cornersSquareOptions: { type: 'square' },
+                cornersDotOptions: { type: 'dot' }
+            },
+            mixed: {
+                dotsOptions: { type: 'classy-rounded' },
+                cornersSquareOptions: { type: 'classy' },
+                cornersDotOptions: { type: 'dot' }
+            }
+        };
+
+        const state = {
+            data: '',
+            foreground: '#101828',
+            background: '#ffffff',
+            presetKey: 'sharp'
+        };
+
+        const qr = new QRCodeStyling({
+            width: 320,
+            height: 320,
+            margin: 16,
+            data: state.data,
+            dotsOptions: { color: state.foreground, ...presets[state.presetKey].dotsOptions },
+            backgroundOptions: { color: state.background },
+            cornersSquareOptions: { color: state.foreground, ...presets[state.presetKey].cornersSquareOptions },
+            cornersDotOptions: { color: state.foreground, ...presets[state.presetKey].cornersDotOptions }
+        });
+
+        qr.append(document.getElementById('qr-preview'));
+
+        function refreshQr() {
+            const preset = presets[state.presetKey] || presets.sharp;
+            qr.update({
+                data: state.data,
+                dotsOptions: { ...preset.dotsOptions, color: state.foreground },
+                backgroundOptions: { color: state.background },
+                cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
+                cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
+            });
+        }
+
+        function setError(message = '') {
+            errorMessage.textContent = message;
+        }
+
+        function isValidHex(value) {
+            return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
+        }
+
+        function toFullHex(hex) {
+            const clean = hex.trim();
+            if (clean.length === 4) {
+                return '#' + [...clean.slice(1)].map(ch => ch + ch).join('').toLowerCase();
+            }
+            return clean.toLowerCase();
+        }
+
+        function parseRgb(value) {
+            const trimmed = value.trim();
+            if (!trimmed) return null;
+            const rgbMatch = trimmed.match(/^rgb\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i);
+            const listMatch = trimmed.match(/^(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})$/);
+            const match = rgbMatch || listMatch;
+            if (!match) {
+                return null;
+            }
+            const rgb = match.slice(1, 4).map(Number);
+            if (rgb.some(n => n < 0 || n > 255)) {
+                return null;
+            }
+            return rgb;
+        }
+
+        function rgbToHex(rgb) {
+            return '#' + rgb.map(component => component.toString(16).padStart(2, '0')).join('');
+        }
+
+        function updateRgbField(input, hex) {
+            const bigint = parseInt(hex.slice(1), 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            input.value = `${r}, ${g}, ${b}`;
+        }
+
+        function syncForeground(hex) {
+            const normalized = toFullHex(hex);
+            fgHexInput.value = normalized;
+            fgPicker.value = normalized;
+            updateRgbField(fgRgbInput, normalized);
+            state.foreground = normalized;
+            refreshQr();
+        }
+
+        function syncBackground(hex) {
+            const normalized = toFullHex(hex);
+            bgHexInput.value = normalized;
+            bgPicker.value = normalized;
+            updateRgbField(bgRgbInput, normalized);
+            state.background = normalized;
+            refreshQr();
+        }
+
+        urlInput.addEventListener('input', () => {
+            const data = urlInput.value.trim();
+            state.data = data;
+            refreshQr();
+        });
+
+        fgHexInput.addEventListener('input', () => {
+            const value = fgHexInput.value.trim();
+            if (isValidHex(value)) {
+                syncForeground(value);
+                setError();
+            }
+        });
+
+        fgRgbInput.addEventListener('change', () => {
+            const rgb = parseRgb(fgRgbInput.value);
+            if (rgb) {
+                const hex = rgbToHex(rgb);
+                syncForeground(hex);
+                setError();
+            } else {
+                setError('Foreground RGB must be in the format "r, g, b" with values between 0 and 255.');
+            }
+        });
+
+        fgPicker.addEventListener('change', () => {
+            syncForeground(fgPicker.value);
+            setError();
+        });
+
+        bgHexInput.addEventListener('input', () => {
+            const value = bgHexInput.value.trim();
+            if (isValidHex(value)) {
+                syncBackground(value);
+                setError();
+            }
+        });
+
+        bgRgbInput.addEventListener('change', () => {
+            const rgb = parseRgb(bgRgbInput.value);
+            if (rgb) {
+                const hex = rgbToHex(rgb);
+                syncBackground(hex);
+                setError();
+            } else {
+                setError('Background RGB must be in the format "r, g, b" with values between 0 and 255.');
+            }
+        });
+
+        bgPicker.addEventListener('change', () => {
+            syncBackground(bgPicker.value);
+            setError();
+        });
+
+        styleSelect.addEventListener('change', () => {
+            state.presetKey = styleSelect.value in presets ? styleSelect.value : 'sharp';
+            refreshQr();
+        });
+
+        async function downloadPng(size) {
+            try {
+                const preset = presets[state.presetKey] || presets.sharp;
+                const downloadQr = new QRCodeStyling({
+                    width: size,
+                    height: size,
+                    margin: 16,
+                    data: state.data,
+                    dotsOptions: { ...preset.dotsOptions, color: state.foreground },
+                    backgroundOptions: { color: state.background },
+                    cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
+                    cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
+                });
+                await downloadQr.download({ name: `qr-${size}px`, extension: 'png' });
+            } catch (error) {
+                console.error(error);
+                setError('Unable to download PNG. Please try again.');
+            }
+        }
+
+        async function downloadSvg() {
+            try {
+                const preset = presets[state.presetKey] || presets.sharp;
+                const downloadQr = new QRCodeStyling({
+                    width: 320,
+                    height: 320,
+                    margin: 16,
+                    data: state.data,
+                    dotsOptions: { ...preset.dotsOptions, color: state.foreground },
+                    backgroundOptions: { color: state.background },
+                    cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
+                    cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
+                });
+                await downloadQr.download({ name: 'qr-code', extension: 'svg' });
+            } catch (error) {
+                console.error(error);
+                setError('Unable to download SVG. Please try again.');
+            }
+        }
+
+        downloadButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const size = Number(button.dataset.size);
+                if (!urlInput.value.trim()) {
+                    setError('Enter a link or text before downloading your QR code.');
+                    return;
+                }
+                setError();
+                downloadPng(size);
+            });
+        });
+
+        downloadSvgButton.addEventListener('click', () => {
+            if (!urlInput.value.trim()) {
+                setError('Enter a link or text before downloading your QR code.');
+                return;
+            }
+            setError();
+            downloadSvg();
+        });
+
+        // Initialise RGB text fields
+        updateRgbField(fgRgbInput, toFullHex(fgHexInput.value));
+        updateRgbField(bgRgbInput, toFullHex(bgHexInput.value));
+
+        // Seed with example data for quick preview
+        urlInput.value = 'https://example.com';
+        state.data = urlInput.value;
+        refreshQr();
+    </script>
+</body>
+</html>
