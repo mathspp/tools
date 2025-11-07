@@ -419,9 +419,14 @@
             });
         }
 
-        function syncForeground(hex) {
-            const normalized = toFullHex(hex);
-            fgHexInput.value = normalized;
+        function syncForeground(hex, { updateHexInput = true, displayValue } = {}) {
+            const normalized = normalizeHex(hex);
+            if (!normalized) {
+                return;
+            }
+            if (updateHexInput) {
+                fgHexInput.value = displayValue ?? normalized;
+            }
             fgPicker.value = normalized;
             updateRgbField(fgRgbInput, normalized);
             applyColorPreview(normalized, [fgPicker]);
@@ -429,9 +434,14 @@
             refreshQr();
         }
 
-        function syncBackground(hex) {
-            const normalized = toFullHex(hex);
-            bgHexInput.value = normalized;
+        function syncBackground(hex, { updateHexInput = true, displayValue } = {}) {
+            const normalized = normalizeHex(hex);
+            if (!normalized) {
+                return;
+            }
+            if (updateHexInput) {
+                bgHexInput.value = displayValue ?? normalized;
+            }
             bgPicker.value = normalized;
             updateRgbField(bgRgbInput, normalized);
             applyColorPreview(normalized, [bgPicker]);
@@ -448,7 +458,7 @@
         fgHexInput.addEventListener('input', () => {
             const value = fgHexInput.value.trim();
             if (isValidHex(value)) {
-                syncForeground(value);
+                syncForeground(value, { updateHexInput: false });
                 setError();
             }
         });
@@ -457,7 +467,7 @@
             const rgb = parseRgb(fgRgbInput.value);
             if (rgb) {
                 const hex = rgbToHex(rgb);
-                syncForeground(hex);
+                syncForeground(hex, { displayValue: hex });
                 setError();
             } else {
                 setError('Foreground RGB must be in the format "r, g, b" with values between 0 and 255.');
@@ -465,14 +475,14 @@
         });
 
         fgPicker.addEventListener('change', () => {
-            syncForeground(fgPicker.value);
+            syncForeground(fgPicker.value, { displayValue: fgPicker.value });
             setError();
         });
 
         bgHexInput.addEventListener('input', () => {
             const value = bgHexInput.value.trim();
             if (isValidHex(value)) {
-                syncBackground(value);
+                syncBackground(value, { updateHexInput: false });
                 setError();
             }
         });
@@ -481,7 +491,7 @@
             const rgb = parseRgb(bgRgbInput.value);
             if (rgb) {
                 const hex = rgbToHex(rgb);
-                syncBackground(hex);
+                syncBackground(hex, { displayValue: hex });
                 setError();
             } else {
                 setError('Background RGB must be in the format "r, g, b" with values between 0 and 255.');
@@ -489,7 +499,7 @@
         });
 
         bgPicker.addEventListener('change', () => {
-            syncBackground(bgPicker.value);
+            syncBackground(bgPicker.value, { displayValue: bgPicker.value });
             setError();
         });
 
