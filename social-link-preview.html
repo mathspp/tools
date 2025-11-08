@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Link Preview Inspector</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 20px 64px;
+        }
+
+        main {
+            display: grid;
+            gap: 1.75rem;
+        }
+
+        form {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .inline-help {
+            font-size: 0.95rem;
+            color: var(--muted-text-color, #4f5b67);
+            margin: 0;
+        }
+
+        .status-message {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .status-message.loading {
+            color: var(--info-color, #0a66c2);
+        }
+
+        .status-message.error {
+            color: var(--danger-color, #b42318);
+        }
+
+        .status-message.success {
+            color: var(--success-color, #18794e);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.04);
+            font-weight: 600;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border-radius: 999px;
+            padding: 0.15rem 0.65rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .status-pill.pass {
+            background: rgba(16, 185, 129, 0.12);
+            color: #067647;
+        }
+
+        .status-pill.fail {
+            background: rgba(244, 63, 94, 0.12);
+            color: #b42318;
+        }
+
+        .status-pill.warn {
+            background: rgba(234, 179, 8, 0.18);
+            color: #92400e;
+        }
+
+        .platform-report {
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 16px;
+            padding: clamp(1.1rem, 2vw, 1.6rem);
+            display: grid;
+            gap: 1.1rem;
+        }
+
+        .platform-report + .platform-report {
+            margin-top: 1.25rem;
+        }
+
+        .platform-details {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .preview-card {
+            border-radius: 14px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            background: #ffffff;
+        }
+
+        .preview-card header {
+            padding: 0.65rem 0.85rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: inherit;
+        }
+
+        .preview-card .preview-image {
+            background: rgba(15, 23, 42, 0.04);
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: #4f5b67;
+        }
+
+        .preview-card .preview-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-card .preview-body {
+            padding: 0.9rem 0.85rem 1rem;
+            display: grid;
+            gap: 0.45rem;
+        }
+
+        .preview-card .preview-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            line-height: 1.25;
+            color: inherit;
+        }
+
+        .preview-card .preview-description {
+            font-size: 0.95rem;
+            color: #334155;
+            line-height: 1.5;
+        }
+
+        .preview-card .preview-url {
+            font-size: 0.85rem;
+            color: #475569;
+        }
+
+        .preview-card.linkedin {
+            border-color: rgba(10, 102, 194, 0.3);
+        }
+
+        .preview-card.linkedin header {
+            background: linear-gradient(120deg, #0a66c2, #0a5bb5);
+            color: white;
+        }
+
+        .preview-card.x {
+            border-color: rgba(29, 161, 242, 0.3);
+        }
+
+        .preview-card.x header {
+            background: linear-gradient(135deg, #111827, #1f2937);
+            color: #f8fafc;
+        }
+
+        .preview-card.facebook {
+            border-color: rgba(24, 119, 242, 0.32);
+        }
+
+        .preview-card.facebook header {
+            background: linear-gradient(120deg, #1877f2, #1462c6);
+            color: white;
+        }
+
+        .preview-card.mastodon {
+            border-color: rgba(98, 87, 218, 0.3);
+        }
+
+        .preview-card.mastodon header {
+            background: linear-gradient(120deg, #595aff, #6257da);
+            color: white;
+        }
+
+        .preview-card.bluesky {
+            border-color: rgba(0, 153, 255, 0.32);
+        }
+
+        .preview-card.bluesky header {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+        }
+
+        .muted {
+            color: var(--muted-text-color, #4f5b67);
+        }
+
+        .proxy-note {
+            font-size: 0.9rem;
+            color: #92400e;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 22px 16px 56px;
+            }
+
+            .preview-card .preview-image {
+                min-height: 160px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Social Link Preview Inspector</h1>
+        <p class="lead">Fetch a web page and audit its metadata for rich link previews. The tool checks general SEO
+            metadata and validates the Open Graph and Twitter tags needed for sharing on LinkedIn, X (Twitter), Facebook,
+            Mastodon, and BlueSky.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <form id="url-form">
+                <div class="form-group">
+                    <label for="url-input">Page URL</label>
+                    <input id="url-input" name="url" type="url" placeholder="https://example.com/article" required>
+                    <p class="inline-help">Enter a full URL. If the site blocks cross-origin requests the tool will fall back to a
+                        read-only proxy.</p>
+                </div>
+
+                <div class="tool-actions">
+                    <button type="submit">Analyze page</button>
+                    <button type="reset">Reset</button>
+                </div>
+            </form>
+            <p id="status-message" class="status-message muted" aria-live="polite"></p>
+            <p id="proxy-note" class="proxy-note" hidden>Fetched page content via the public r.jina.ai proxy because the origin
+                blocked direct cross-origin requests.</p>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <h2>Metadata health report</h2>
+            <div id="general-report" class="table-container">
+                <p class="muted">Submit a URL to inspect its metadata.</p>
+            </div>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <h2>Social platform previews</h2>
+            <div id="platform-reports">
+                <p class="muted">Run an analysis to see how popular social platforms will render your link previews.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.getElementById('url-form');
+            const urlInput = document.getElementById('url-input');
+            const statusMessage = document.getElementById('status-message');
+            const proxyNote = document.getElementById('proxy-note');
+            const generalReportContainer = document.getElementById('general-report');
+            const platformReportsContainer = document.getElementById('platform-reports');
+
+            const generalGuidelines = [
+                {
+                    id: 'html-lang',
+                    label: 'Document declares an HTML lang attribute',
+                    check: (ctx) => Boolean(ctx.htmlLang),
+                    detail: (ctx) => ctx.htmlLang ? `Found: ${ctx.htmlLang}` : 'Missing'
+                },
+                {
+                    id: 'title',
+                    label: 'Document includes a &lt;title&gt; element',
+                    check: (ctx) => Boolean(ctx.title),
+                    detail: (ctx) => ctx.title ? `“${truncate(ctx.title, 80)}”` : 'Missing'
+                },
+                {
+                    id: 'title-length',
+                    label: 'Title length is between 20 and 70 characters',
+                    check: (ctx) => ctx.title && ctx.title.length >= 20 && ctx.title.length <= 70,
+                    detail: (ctx) => ctx.title ? `${ctx.title.length} characters` : '—'
+                },
+                {
+                    id: 'description',
+                    label: 'Meta description present (50-160 characters)',
+                    check: (ctx) => ctx.description && ctx.description.length >= 50 && ctx.description.length <= 160,
+                    detail: (ctx) => ctx.description ? `${ctx.description.length} chars: “${truncate(ctx.description, 100)}”` : 'Missing'
+                },
+                {
+                    id: 'charset',
+                    label: 'Character set declared with &lt;meta charset&gt;',
+                    check: (ctx) => Boolean(ctx.charset),
+                    detail: (ctx) => ctx.charset ? `charset=${ctx.charset}` : 'Missing'
+                },
+                {
+                    id: 'viewport',
+                    label: 'Responsive viewport meta tag present',
+                    check: (ctx) => ctx.viewport && /width\s*=\s*device-width/i.test(ctx.viewport),
+                    detail: (ctx) => ctx.viewport ? truncate(ctx.viewport, 80) : 'Missing'
+                },
+                {
+                    id: 'canonical',
+                    label: 'Canonical URL provided via &lt;link rel="canonical"&gt;',
+                    check: (ctx) => Boolean(ctx.canonical),
+                    detail: (ctx) => ctx.canonical ? ctx.canonical : 'Missing'
+                }
+            ];
+
+            const platformSpecs = [
+                {
+                    name: 'LinkedIn',
+                    slug: 'linkedin',
+                    summary: 'LinkedIn uses Open Graph tags. Title, description, image, canonical URL, and site name should be supplied.',
+                    guidelines: [
+                        presenceGuideline('og:title', 'og:title provided'),
+                        presenceGuideline('og:description', 'og:description provided (90-200 characters)', (ctx) => {
+                            const value = ctx.meta['og:description'];
+                            if (!value) return false;
+                            return value.length >= 90 && value.length <= 200;
+                        }, (ctx) => {
+                            const value = ctx.meta['og:description'];
+                            return value ? `${value.length} chars: “${truncate(value, 100)}”` : 'Missing';
+                        }),
+                        presenceGuideline('og:image', 'og:image URL provided'),
+                        presenceGuideline('og:url', 'og:url points to the canonical page'),
+                        presenceGuideline('og:site_name', 'og:site_name provided')
+                    ],
+                    preview: (ctx) => ({
+                        title: ctx.meta['og:title'] || ctx.title,
+                        description: ctx.meta['og:description'] || ctx.description,
+                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
+                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
+                        siteName: ctx.meta['og:site_name'] || ctx.hostname
+                    })
+                },
+                {
+                    name: 'X (Twitter)',
+                    slug: 'x',
+                    summary: 'X requires Twitter Card tags in addition to Open Graph for the best preview.',
+                    guidelines: [
+                        {
+                            id: 'twitter:card',
+                            label: 'twitter:card present (summary or summary_large_image)',
+                            check: (ctx) => {
+                                const value = ctx.meta['twitter:card'];
+                                return value === 'summary' || value === 'summary_large_image';
+                            },
+                            detail: (ctx) => {
+                                const value = ctx.meta['twitter:card'];
+                                return value ? `twitter:card=${value}` : 'Missing';
+                            }
+                        },
+                        presenceGuideline('twitter:title', 'twitter:title provided'),
+                        presenceGuideline('twitter:description', 'twitter:description provided (50-200 characters)', (ctx) => {
+                            const value = ctx.meta['twitter:description'];
+                            if (!value) return false;
+                            return value.length >= 50 && value.length <= 200;
+                        }, (ctx) => {
+                            const value = ctx.meta['twitter:description'];
+                            return value ? `${value.length} chars: “${truncate(value, 100)}”` : 'Missing';
+                        }),
+                        presenceGuideline('twitter:image', 'twitter:image URL provided'),
+                        {
+                            id: 'twitter:site',
+                            label: 'twitter:site or twitter:creator handle provided',
+                            check: (ctx) => Boolean(ctx.meta['twitter:site'] || ctx.meta['twitter:creator']),
+                            detail: (ctx) => {
+                                const site = ctx.meta['twitter:site'];
+                                const creator = ctx.meta['twitter:creator'];
+                                if (site) return `twitter:site=${site}`;
+                                if (creator) return `twitter:creator=${creator}`;
+                                return 'Missing';
+                            }
+                        },
+                        presenceGuideline('twitter:image:alt', 'twitter:image:alt text provided')
+                    ],
+                    preview: (ctx) => ({
+                        title: ctx.meta['twitter:title'] || ctx.meta['og:title'] || ctx.title,
+                        description: ctx.meta['twitter:description'] || ctx.meta['og:description'] || ctx.description,
+                        image: resolveUrl(ctx.meta['twitter:image'] || ctx.meta['og:image'], ctx.baseUrl),
+                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
+                        siteName: ctx.meta['twitter:site'] || ctx.hostname,
+                        cardType: ctx.meta['twitter:card']
+                    })
+                },
+                {
+                    name: 'Facebook',
+                    slug: 'facebook',
+                    summary: 'Facebook shares rely on Open Graph metadata and benefit from image dimensions of at least 1200×630.',
+                    guidelines: [
+                        presenceGuideline('og:title', 'og:title provided'),
+                        presenceGuideline('og:description', 'og:description provided'),
+                        presenceGuideline('og:image', 'og:image URL provided'),
+                        presenceGuideline('og:image:width', 'og:image:width declared'),
+                        presenceGuideline('og:image:height', 'og:image:height declared'),
+                        presenceGuideline('og:type', 'og:type specified (usually website or article)'),
+                        presenceGuideline('og:url', 'og:url provided')
+                    ],
+                    preview: (ctx) => ({
+                        title: ctx.meta['og:title'] || ctx.title,
+                        description: ctx.meta['og:description'] || ctx.description,
+                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
+                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
+                        siteName: ctx.meta['og:site_name'] || ctx.hostname
+                    })
+                },
+                {
+                    name: 'Mastodon',
+                    slug: 'mastodon',
+                    summary: 'Mastodon uses Open Graph tags for link cards and respects twitter:card fallbacks.',
+                    guidelines: [
+                        presenceGuideline('og:title', 'og:title provided'),
+                        presenceGuideline('og:description', 'og:description provided'),
+                        presenceGuideline('og:image', 'og:image URL provided'),
+                        presenceGuideline('og:type', 'og:type specified'),
+                        presenceGuideline('og:url', 'og:url provided'),
+                        presenceGuideline('twitter:card', 'twitter:card present for fallback rendering')
+                    ],
+                    preview: (ctx) => ({
+                        title: ctx.meta['og:title'] || ctx.title,
+                        description: ctx.meta['og:description'] || ctx.description,
+                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
+                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
+                        siteName: ctx.meta['og:site_name'] || ctx.hostname
+                    })
+                },
+                {
+                    name: 'BlueSky',
+                    slug: 'bluesky',
+                    summary: 'BlueSky reads Open Graph metadata for card previews and benefits from twitter:card fallbacks.',
+                    guidelines: [
+                        presenceGuideline('og:title', 'og:title provided'),
+                        presenceGuideline('og:description', 'og:description provided'),
+                        presenceGuideline('og:image', 'og:image URL provided'),
+                        presenceGuideline('og:url', 'og:url provided'),
+                        presenceGuideline('og:type', 'og:type specified'),
+                        presenceGuideline('twitter:card', 'twitter:card present for fallback clients')
+                    ],
+                    preview: (ctx) => ({
+                        title: ctx.meta['og:title'] || ctx.title,
+                        description: ctx.meta['og:description'] || ctx.description,
+                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
+                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
+                        siteName: ctx.meta['og:site_name'] || ctx.hostname
+                    })
+                }
+            ];
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                clearStatus();
+                const rawUrl = urlInput.value.trim();
+                if (!rawUrl) {
+                    showStatus('Enter a URL to inspect.', 'error');
+                    return;
+                }
+
+                const normalizedUrl = normaliseUrl(rawUrl);
+                if (!normalizedUrl) {
+                    showStatus('Please provide a valid HTTP or HTTPS URL.', 'error');
+                    return;
+                }
+
+                urlInput.value = normalizedUrl;
+                showStatus('Fetching page and analysing metadata…', 'loading');
+                proxyNote.hidden = true;
+                setLoadingState(true);
+
+                try {
+                    const { html, usedProxy, finalUrl } = await fetchPage(normalizedUrl);
+                    proxyNote.hidden = !usedProxy;
+                    const documentContext = parseDocument(html, normalizedUrl, finalUrl);
+                    renderGeneralReport(documentContext);
+                    renderPlatformReports(documentContext);
+                    showStatus('Metadata analysis complete.', 'success');
+                } catch (error) {
+                    console.error(error);
+                    proxyNote.hidden = true;
+                    showStatus(error.message || 'Failed to fetch the requested page.', 'error');
+                    generalReportContainer.innerHTML = '<p class="muted">No results to display.</p>';
+                    platformReportsContainer.innerHTML = '<p class="muted">No previews available.</p>';
+                } finally {
+                    setLoadingState(false);
+                }
+            });
+
+            form.addEventListener('reset', () => {
+                clearStatus();
+                proxyNote.hidden = true;
+                generalReportContainer.innerHTML = '<p class="muted">Submit a URL to inspect its metadata.</p>';
+                platformReportsContainer.innerHTML = '<p class="muted">Run an analysis to see how popular social platforms will render your link previews.</p>';
+            });
+
+            function setLoadingState(isLoading) {
+                const submitButton = form.querySelector('button[type="submit"]');
+                submitButton.disabled = isLoading;
+            }
+
+            function showStatus(message, type) {
+                statusMessage.textContent = message;
+                statusMessage.className = `status-message ${type}`;
+            }
+
+            function clearStatus() {
+                statusMessage.textContent = '';
+                statusMessage.className = 'status-message muted';
+            }
+
+            function normaliseUrl(rawUrl) {
+                let candidate = rawUrl.trim();
+                if (!candidate) {
+                    return null;
+                }
+                if (!/^https?:\/\//i.test(candidate)) {
+                    candidate = `https://${candidate}`;
+                }
+                try {
+                    const parsed = new URL(candidate);
+                    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                        return null;
+                    }
+                    return parsed.toString();
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            async function fetchPage(url) {
+                try {
+                    const response = await fetch(url, { redirect: 'follow' });
+                    if (!response.ok) {
+                        throw new Error(`The server responded with ${response.status} ${response.statusText}.`);
+                    }
+                    const html = await response.text();
+                    return { html, usedProxy: false, finalUrl: response.url || url };
+                } catch (error) {
+                    const proxyUrl = buildProxyUrl(url);
+                    try {
+                        const response = await fetch(proxyUrl, { redirect: 'follow' });
+                        if (!response.ok) {
+                            throw new Error(`Unable to fetch the URL directly or via proxy (status ${response.status}).`);
+                        }
+                        const html = await response.text();
+                        return { html, usedProxy: true, finalUrl: url };
+                    } catch (proxyError) {
+                        throw new Error('Unable to fetch the requested URL. It may block cross-origin access.');
+                    }
+                }
+            }
+
+            function buildProxyUrl(url) {
+                try {
+                    const parsed = new URL(url);
+                    return `https://r.jina.ai/${parsed.protocol}//${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+                } catch (error) {
+                    return url;
+                }
+            }
+
+            function parseDocument(html, requestedUrl, finalUrl) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const meta = {};
+                doc.querySelectorAll('meta').forEach((metaTag) => {
+                    const key = metaTag.getAttribute('property') || metaTag.getAttribute('name');
+                    if (!key) return;
+                    const content = metaTag.getAttribute('content') || '';
+                    meta[key.toLowerCase()] = content.trim();
+                });
+
+                const links = {};
+                doc.querySelectorAll('link[rel]').forEach((linkTag) => {
+                    const rel = linkTag.getAttribute('rel');
+                    if (!rel) return;
+                    const relKey = rel.toLowerCase();
+                    const href = linkTag.getAttribute('href') || '';
+                    if (!links[relKey]) {
+                        links[relKey] = [];
+                    }
+                    links[relKey].push(resolveUrl(href, requestedUrl));
+                });
+
+                const title = (doc.querySelector('title')?.textContent || '').trim();
+                const description = meta['description'] || '';
+                const charset = (doc.querySelector('meta[charset]')?.getAttribute('charset') || '').trim();
+                const viewport = meta['viewport'] || '';
+                const canonical = links['canonical'] ? links['canonical'][0] : '';
+                const htmlLang = (doc.documentElement.getAttribute('lang') || '').trim();
+                const baseHref = doc.querySelector('base[href]')?.getAttribute('href') || '';
+                const baseUrl = resolveUrl(baseHref, requestedUrl) || finalUrl || requestedUrl;
+                const hostname = safeHostname(finalUrl || requestedUrl);
+
+                return {
+                    meta,
+                    links,
+                    title,
+                    description,
+                    charset,
+                    viewport,
+                    canonical,
+                    htmlLang,
+                    baseUrl,
+                    finalUrl: finalUrl || requestedUrl,
+                    hostname
+                };
+            }
+
+            function safeHostname(url) {
+                try {
+                    return new URL(url).hostname;
+                } catch (error) {
+                    return '';
+                }
+            }
+
+            function renderGeneralReport(context) {
+                const results = evaluateGuidelines(generalGuidelines, context);
+                generalReportContainer.innerHTML = '';
+                const table = document.createElement('table');
+                const thead = document.createElement('thead');
+                thead.innerHTML = `<tr><th>Guideline</th><th>Status</th><th>Details</th></tr>`;
+                table.appendChild(thead);
+                const tbody = document.createElement('tbody');
+                results.forEach((result) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${result.label}</td>
+                        <td><span class="status-pill ${result.pass ? 'pass' : 'fail'}">${result.pass ? 'Pass' : 'Fail'}</span></td>
+                        <td>${result.detail}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+                generalReportContainer.appendChild(table);
+            }
+
+            function renderPlatformReports(context) {
+                platformReportsContainer.innerHTML = '';
+                platformSpecs.forEach((platform) => {
+                    const article = document.createElement('article');
+                    article.className = 'platform-report';
+                    const platformHeader = document.createElement('div');
+                    platformHeader.innerHTML = `<h3>${platform.name}</h3><p class="muted">${platform.summary}</p>`;
+
+                    const reportResults = evaluateGuidelines(platform.guidelines, context);
+                    const table = document.createElement('table');
+                    const thead = document.createElement('thead');
+                    thead.innerHTML = `<tr><th>Guideline</th><th>Status</th><th>Details</th></tr>`;
+                    table.appendChild(thead);
+                    const tbody = document.createElement('tbody');
+                    reportResults.forEach((result) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${result.label}</td>
+                            <td><span class="status-pill ${result.pass ? 'pass' : 'fail'}">${result.pass ? 'Pass' : 'Fail'}</span></td>
+                            <td>${result.detail}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    table.appendChild(tbody);
+
+                    const previewData = platform.preview(context);
+                    const preview = renderPreview(platform.slug, platform.name, previewData);
+
+                    article.appendChild(platformHeader);
+                    const detailsWrapper = document.createElement('div');
+                    detailsWrapper.className = 'platform-details';
+                    const tableWrapper = document.createElement('div');
+                    tableWrapper.className = 'table-container';
+                    tableWrapper.appendChild(table);
+                    detailsWrapper.appendChild(tableWrapper);
+                    detailsWrapper.appendChild(preview);
+                    article.appendChild(detailsWrapper);
+                    platformReportsContainer.appendChild(article);
+                });
+            }
+
+            function renderPreview(slug, platformName, previewData) {
+                const card = document.createElement('div');
+                card.className = `preview-card ${slug}`;
+
+                const header = document.createElement('header');
+                header.innerHTML = `<span>${platformName}</span><span>${previewData.cardType ? previewData.cardType : ''}</span>`;
+                card.appendChild(header);
+
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'preview-image';
+                if (previewData.image) {
+                    const img = document.createElement('img');
+                    img.src = previewData.image;
+                    img.alt = previewData.title ? `Preview image for ${previewData.title}` : 'Preview image';
+                    imageContainer.textContent = '';
+                    imageContainer.appendChild(img);
+                } else {
+                    imageContainer.textContent = 'No image provided';
+                }
+                card.appendChild(imageContainer);
+
+                const body = document.createElement('div');
+                body.className = 'preview-body';
+                const title = document.createElement('div');
+                title.className = 'preview-title';
+                title.textContent = previewData.title || 'No title available';
+                const description = document.createElement('div');
+                description.className = 'preview-description';
+                description.textContent = previewData.description || 'No description provided.';
+                const url = document.createElement('div');
+                url.className = 'preview-url';
+                url.textContent = previewData.url || '';
+                body.appendChild(title);
+                body.appendChild(description);
+                if (previewData.siteName) {
+                    const site = document.createElement('div');
+                    site.className = 'preview-url';
+                    site.textContent = previewData.siteName;
+                    body.appendChild(site);
+                }
+                if (previewData.url) {
+                    body.appendChild(url);
+                }
+                card.appendChild(body);
+
+                return card;
+            }
+
+            function evaluateGuidelines(guidelines, context) {
+                return guidelines.map((guideline) => {
+                    const pass = guideline.check(context);
+                    const detail = typeof guideline.detail === 'function' ? guideline.detail(context, pass) : (guideline.detail || '');
+                    return {
+                        id: guideline.id,
+                        label: guideline.label,
+                        pass,
+                        detail
+                    };
+                });
+            }
+
+            function presenceGuideline(key, label, customCheck, customDetail) {
+                return {
+                    id: key,
+                    label,
+                    check: (ctx) => {
+                        if (typeof customCheck === 'function') {
+                            return customCheck(ctx);
+                        }
+                        return Boolean(ctx.meta[key]);
+                    },
+                    detail: (ctx) => {
+                        if (typeof customDetail === 'function') {
+                            return customDetail(ctx);
+                        }
+                        const value = ctx.meta[key];
+                        return value ? truncate(value, 100) : 'Missing';
+                    }
+                };
+            }
+
+            function truncate(value, maxLength = 120) {
+                if (!value) return '';
+                return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+            }
+
+            function resolveUrl(value, base) {
+                if (!value) return '';
+                try {
+                    return new URL(value, base).toString();
+                } catch (error) {
+                    return value;
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
