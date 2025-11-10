@@ -234,7 +234,7 @@
         }
     </style>
 </head>
-<body>
+<body data-default-origin="https://mathspp.com">
     <header>
         <h1>Social Link Preview Inspector</h1>
         <p class="lead">Fetch a web page and audit its metadata for rich link previews. The tool checks general SEO
@@ -248,7 +248,7 @@
                 <div class="form-group">
                     <label for="url-input">Page URL</label>
                     <input id="url-input" name="url" type="url" placeholder="https://example.com/article" required>
-                    <p class="inline-help">Enter a full URL. If the site blocks cross-origin requests the tool will fall back to a
+                    <p class="inline-help">Enter a full URL or a site-relative path. Paths resolve against <span id="default-origin-hint">https://mathspp.com</span>. If the site blocks cross-origin requests the tool will fall back to a
                         read-only proxy.</p>
                 </div>
 
@@ -285,6 +285,16 @@
             const proxyNote = document.getElementById('proxy-note');
             const generalReportContainer = document.getElementById('general-report');
             const platformReportsContainer = document.getElementById('platform-reports');
+            const defaultInspectionOrigin = determineDefaultInspectionOrigin();
+            const defaultOriginHint = document.getElementById('default-origin-hint');
+
+            if (defaultOriginHint && defaultInspectionOrigin) {
+                try {
+                    defaultOriginHint.textContent = new URL(defaultInspectionOrigin).origin;
+                } catch (error) {
+                    defaultOriginHint.textContent = defaultInspectionOrigin;
+                }
+            }
 
             const generalGuidelines = [
                 {
@@ -536,9 +546,23 @@
                 if (!candidate) {
                     return null;
                 }
-                if (!/^https?:\/\//i.test(candidate)) {
-                    candidate = `https://${candidate}`;
+
+                if (/^\/\//.test(candidate)) {
+                    candidate = `${window.location.protocol}${candidate}`;
                 }
+
+                if (!hasScheme(candidate)) {
+                    if (shouldTreatAsRelative(candidate)) {
+                        try {
+                            candidate = new URL(candidate, defaultInspectionOrigin).toString();
+                        } catch (error) {
+                            return null;
+                        }
+                    } else {
+                        candidate = `https://${candidate}`;
+                    }
+                }
+
                 try {
                     const parsed = new URL(candidate);
                     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
@@ -793,6 +817,50 @@
                 } catch (error) {
                     return value;
                 }
+            }
+
+            function hasScheme(value) {
+                return /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(value);
+            }
+
+            function shouldTreatAsRelative(value) {
+                if (!value) return false;
+                if (value.startsWith('/') || value.startsWith('?') || value.startsWith('#')) {
+                    return true;
+                }
+                if (value.startsWith('./') || value.startsWith('../')) {
+                    return true;
+                }
+                if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(value)) {
+                    return false;
+                }
+                if (/^localhost(?:$|[:/])/i.test(value)) {
+                    return false;
+                }
+                if (value.includes('://')) {
+                    return false;
+                }
+                if (value.includes('.')) {
+                    return false;
+                }
+                return true;
+            }
+
+            function determineDefaultInspectionOrigin() {
+                const configured = document.body?.dataset?.defaultOrigin;
+                if (configured) {
+                    try {
+                        return new URL(configured).origin;
+                    } catch (error) {
+                        // ignore invalid configured origin and fall back below
+                    }
+                }
+
+                const { protocol, hostname, port } = window.location;
+                if (/mathspp\.com$/i.test(hostname) && hostname !== 'mathspp.com') {
+                    return `${protocol}//mathspp.com`;
+                }
+                return `${protocol}//${hostname}${port ? `:${port}` : ''}`;
             }
         })();
     </script>
