@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,10 +46,12 @@
         }
     </style>
 </head>
+
 <body>
     <header>
         <h1>What time is it for me?</h1>
-        <p class="lead">Pick a date, time, and timezone to create a shareable link that shows what that moment looks like from your timezone.</p>
+        <p class="lead">Pick a date, time, and timezone to create a shareable link that shows what that moment looks
+            like from your timezone.</p>
     </header>
 
     <main>
@@ -73,12 +76,14 @@
 
         <section class="surface tool-card" aria-live="polite" aria-labelledby="comparison-heading">
             <h2 id="comparison-heading">Comparison</h2>
-            <p id="comparison-output" class="lead">Choose a date, time, and timezone to see how it translates to your current timezone.</p>
+            <p id="comparison-output" class="lead">Choose a date, time, and timezone to see how it translates to your
+                current timezone.</p>
         </section>
 
         <section class="surface tool-card" aria-labelledby="share-heading">
             <h2 id="share-heading">Shareable link</h2>
-            <p>Use the button above to copy a link that includes this moment as URL parameters. Anyone who opens the link will see what that time looks like from their own timezone.</p>
+            <p>Use the button above to copy a link that includes this moment as URL parameters. Anyone who opens the
+                link will see what that time looks like from their own timezone.</p>
             <div class="form-group">
                 <label for="shareable-url">Preview of copied link</label>
                 <input id="shareable-url" type="url" readonly value="">
@@ -86,7 +91,8 @@
         </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js" integrity="sha384-qbz0zdHqsBd0P3gGwICwbg0Ob9wZjC1IcWqbUb9SkSLyWFSbM8hwx2p/9DoUom4Q" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.7.2/build/global/luxon.min.js"></script>
+
     <script>
         (function () {
             const { DateTime } = luxon;
@@ -290,4 +296,5 @@
         })();
     </script>
 </body>
+
 </html>
