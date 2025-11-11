@@ -39,6 +39,72 @@
             flex-direction: column;
         }
 
+        .comparison-table {
+            margin-top: 1rem;
+        }
+
+        .comparison-table[hidden] {
+            display: none;
+        }
+
+        .comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid var(--surface-border, rgba(0, 0, 0, 0.08));
+            vertical-align: top;
+        }
+
+        .comparison-table th {
+            text-align: left;
+        }
+
+        .comparison-label {
+            font-weight: 600;
+        }
+
+        .comparison-zone {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            word-break: break-word;
+        }
+
+        .comparison-select-wrapper select {
+            width: 100%;
+        }
+
+        .comparison-controls {
+            margin-top: 0.75rem;
+        }
+
+        .comparison-actions-header {
+            width: 1%;
+        }
+
+        .comparison-actions-cell {
+            text-align: right;
+        }
+
+        .link-button {
+            background: none;
+            border: none;
+            color: var(--link-color, var(--accent-color, #0051ff));
+            cursor: pointer;
+            padding: 0;
+            font: inherit;
+            text-decoration: underline;
+        }
+
+        .link-button:hover,
+        .link-button:focus {
+            text-decoration: none;
+        }
+
         @media (max-width: 720px) {
             body {
                 padding: 20px 16px 40px;
@@ -55,6 +121,9 @@
     </header>
 
     <main>
+        <section class="surface tool-card" aria-live="polite" aria-label="Inferred timezone">
+            <p>Your inferred timezone: <span id="inferred-timezone-value">Detecting…</span></p>
+        </section>
         <section class="surface tool-card" aria-labelledby="selection-heading">
             <h2 id="selection-heading">Pick a moment</h2>
             <form id="moment-form">
@@ -78,6 +147,21 @@
             <h2 id="comparison-heading">Comparison</h2>
             <p id="comparison-output" class="lead">Choose a date, time, and timezone to see how it translates to your
                 current timezone.</p>
+            <div id="comparison-table" class="comparison-table" hidden>
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Timezone</th>
+                            <th scope="col">Local time</th>
+                            <th scope="col" class="comparison-actions-header" aria-label="Actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparison-rows"></tbody>
+                </table>
+                <div class="comparison-controls">
+                    <button type="button" id="add-comparison-row">Add timezone</button>
+                </div>
+            </div>
         </section>
 
         <section class="surface tool-card" aria-labelledby="share-heading">
@@ -99,12 +183,20 @@
             const datetimeInput = document.getElementById('datetime-input');
             const timezoneSelect = document.getElementById('timezone-select');
             const comparisonOutput = document.getElementById('comparison-output');
+            const comparisonTable = document.getElementById('comparison-table');
+            const comparisonRowsContainer = document.getElementById('comparison-rows');
+            const addComparisonRowButton = document.getElementById('add-comparison-row');
             const copyButton = document.getElementById('copy-link-button');
             const copyStatus = document.getElementById('copy-status');
             const shareableUrlInput = document.getElementById('shareable-url');
+            const inferredTimezoneValue = document.getElementById('inferred-timezone-value');
 
             const resolvedZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            const localZone = resolvedZone || DateTime.local().zoneName || 'UTC';
+            const fallbackZone = resolvedZone || DateTime.local().zoneName || 'UTC';
+            let localZone = fallbackZone;
+            let localRowEntry = null;
+            let timezoneManuallySet = false;
+            const comparisonRows = [];
 
             function ensureOptionForZone(zone) {
                 const exists = Array.from(timezoneSelect.options).some(option => option.value === zone);
@@ -142,6 +234,126 @@
                 }
 
                 ensureOptionForZone(localZone);
+            }
+
+            function createTimezoneSelectElement() {
+                const select = document.createElement('select');
+                select.className = 'comparison-timezone-select';
+                select.innerHTML = timezoneSelect.innerHTML;
+                return select;
+            }
+
+            function updateInferredTimezoneDisplay(zone) {
+                inferredTimezoneValue.textContent = zone || 'Unavailable';
+            }
+
+            function addLocalComparisonRow() {
+                const row = document.createElement('tr');
+                row.className = 'comparison-row comparison-row-fixed';
+                row.dataset.rowType = 'local';
+
+                const labelCell = document.createElement('th');
+                labelCell.scope = 'row';
+                labelCell.innerHTML = `<div class="comparison-label">Your timezone</div><div class="comparison-zone">${localZone}</div>`;
+
+                const timeCell = document.createElement('td');
+                timeCell.className = 'comparison-time';
+
+                const actionCell = document.createElement('td');
+                actionCell.className = 'comparison-actions-cell';
+
+                row.append(labelCell, timeCell, actionCell);
+                comparisonRowsContainer.append(row);
+
+                localRowEntry = {
+                    getZone: () => localZone,
+                    timeCell,
+                    updateLabel(zone) {
+                        labelCell.innerHTML = `<div class="comparison-label">Your timezone</div><div class="comparison-zone">${zone}</div>`;
+                    }
+                };
+
+                comparisonRows.push(localRowEntry);
+            }
+
+            function addCustomComparisonRow(initialZone) {
+                ensureOptionForZone(initialZone);
+                const row = document.createElement('tr');
+                row.className = 'comparison-row comparison-row-custom';
+
+                const labelCell = document.createElement('th');
+                labelCell.scope = 'row';
+                const select = createTimezoneSelectElement();
+                select.value = initialZone;
+                if (initialZone && select.value !== initialZone) {
+                    const option = document.createElement('option');
+                    option.value = initialZone;
+                    option.textContent = initialZone;
+                    select.append(option);
+                    select.value = initialZone;
+                }
+                const selectWrapper = document.createElement('div');
+                selectWrapper.className = 'comparison-select-wrapper';
+                selectWrapper.append(select);
+                labelCell.append(selectWrapper);
+
+                const timeCell = document.createElement('td');
+                timeCell.className = 'comparison-time';
+
+                const actionCell = document.createElement('td');
+                actionCell.className = 'comparison-actions-cell';
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.className = 'link-button';
+                removeButton.textContent = 'Remove';
+                removeButton.addEventListener('click', () => {
+                    row.remove();
+                    const index = comparisonRows.findIndex(entry => entry.row === row);
+                    if (index >= 0) {
+                        comparisonRows.splice(index, 1);
+                    }
+                    updateComparison(true);
+                });
+                actionCell.append(removeButton);
+
+                row.append(labelCell, timeCell, actionCell);
+                comparisonRowsContainer.append(row);
+
+                const entry = {
+                    row,
+                    getZone: () => select.value,
+                    timeCell
+                };
+                comparisonRows.push(entry);
+
+                select.addEventListener('change', () => updateComparison());
+                return row;
+            }
+
+            function updateLocalZone(zone, { updateSelect = true, updateComparison = true } = {}) {
+                if (!zone) {
+                    updateInferredTimezoneDisplay('Unavailable');
+                    return;
+                }
+
+                const previousZone = localZone;
+                const zoneChanged = zone !== localZone;
+                localZone = zone;
+
+                if (localRowEntry) {
+                    localRowEntry.updateLabel(zone);
+                }
+
+                updateInferredTimezoneDisplay(zone);
+                ensureOptionForZone(zone);
+
+                if (updateSelect && !timezoneManuallySet && (timezoneSelect.value === previousZone || !timezoneSelect.value)) {
+                    timezoneSelect.value = zone;
+                }
+
+                if (updateComparison && (zoneChanged || !comparisonTable.hidden)) {
+                    updateComparison();
+                }
             }
 
             function formatOffset(minutes) {
@@ -189,6 +401,7 @@
 
                 if (!datetimeValue || !selectedZone) {
                     comparisonOutput.textContent = 'Choose a date, time, and timezone to see how it translates to your current timezone.';
+                    comparisonTable.hidden = true;
                     shareableUrlInput.value = location.href;
                     return;
                 }
@@ -197,18 +410,32 @@
 
                 if (!momentInSelectedZone.isValid) {
                     comparisonOutput.textContent = 'The selected date or timezone could not be parsed. Please check your inputs.';
+                    comparisonTable.hidden = true;
                     shareableUrlInput.value = location.href;
                     return;
                 }
 
-                const momentInLocalZone = momentInSelectedZone.setZone(localZone);
                 const selectedOffset = formatOffset(momentInSelectedZone.offset);
-                const localOffset = formatOffset(momentInLocalZone.offset);
 
                 const sourceText = `${formatDateTime(momentInSelectedZone)} in ${momentInSelectedZone.zoneName} (${selectedOffset})`;
-                const localText = `${formatDateTime(momentInLocalZone)} in ${localZone} (${localOffset})`;
+                comparisonOutput.textContent = `${sourceText}. Here's how that moment translates across the selected timezones:`;
+                comparisonTable.hidden = false;
 
-                comparisonOutput.textContent = `${sourceText} will be ${localText}.`;
+                for (const entry of comparisonRows) {
+                    const zoneName = entry.getZone();
+                    if (!zoneName) {
+                        entry.timeCell.textContent = 'Pick a timezone to see the converted time.';
+                        continue;
+                    }
+
+                    const zoned = momentInSelectedZone.setZone(zoneName);
+                    if (!zoned.isValid) {
+                        entry.timeCell.textContent = 'Unable to resolve that timezone.';
+                        continue;
+                    }
+
+                    entry.timeCell.textContent = `${formatDateTime(zoned)} (${formatOffset(zoned.offset)})`;
+                }
 
                 const shareUrl = buildShareableUrl(momentInSelectedZone);
                 shareableUrlInput.value = shareUrl;
@@ -275,6 +502,7 @@
                 if (timezoneParam) {
                     ensureOptionForZone(timezoneParam);
                     timezoneSelect.value = timezoneParam;
+                    timezoneManuallySet = true;
                 }
 
                 if (datetimeInput.value && timezoneSelect.value) {
@@ -282,17 +510,48 @@
                 }
             }
 
+            async function detectTimezoneFromIp() {
+                let detectedZone = null;
+                try {
+                    const response = await fetch('https://worldtimeapi.org/api/ip');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && typeof data.timezone === 'string' && data.timezone) {
+                            detectedZone = data.timezone;
+                        }
+                    }
+                } catch (error) {
+                    // Ignore network or parsing issues and fall back to browser detection
+                }
+
+                if (detectedZone) {
+                    updateLocalZone(detectedZone);
+                } else {
+                    updateLocalZone(fallbackZone, { updateSelect: false, updateComparison: false });
+                }
+            }
+
             populateTimezones();
+            addLocalComparisonRow();
             timezoneSelect.value = localZone;
             datetimeInput.value = DateTime.now().toISO({ suppressSeconds: true, suppressMilliseconds: true }).slice(0, 16);
             updateComparison(true);
 
             applyQueryParameters();
+            detectTimezoneFromIp();
 
             datetimeInput.addEventListener('input', () => updateComparison());
             datetimeInput.addEventListener('change', () => updateComparison());
-            timezoneSelect.addEventListener('change', () => updateComparison());
+            timezoneSelect.addEventListener('change', () => {
+                timezoneManuallySet = true;
+                updateComparison();
+            });
             copyButton.addEventListener('click', copyLink);
+            addComparisonRowButton.addEventListener('click', () => {
+                const defaultZone = timezoneSelect.value || localZone;
+                addCustomComparisonRow(defaultZone);
+                updateComparison();
+            });
         })();
     </script>
 </body>
