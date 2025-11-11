@@ -15,6 +15,7 @@ The [colophon](https://tools.mathspp.com/colophon) lists commit messages and tra
 
  - [QR code generator](./qr.html)
  - [What time is it for me?](./what-time-is-it-for-me.html)
+ - [Gumroad link builder](./gumroad-links.html)
  - [Social link preview](./social-link-preview.html)
  - [DMARC analyser](./dmarc-analyser.html)
 
