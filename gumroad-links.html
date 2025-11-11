@@ -95,6 +95,16 @@
             font-weight: 500;
         }
 
+        .checkbox-stack label span {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .checkbox-stack input[type="checkbox"] {
+            margin-top: 0.25rem;
+            flex-shrink: 0;
+        }
+
         .custom-fields {
             display: grid;
             gap: 0.75rem;
@@ -205,10 +215,21 @@
             <div class="form-grid">
                 <div class="field-group">
                     <label for="product-url">Product URL</label>
-                    <input type="url" id="product-url" name="product-url" placeholder="https://username.gumroad.com/l/product"
-                        required>
-                    <p class="helper-text">Start with the exact product link you share from Gumroad. Discount codes can be
-                        added below.</p>
+                    <input type="url" id="product-url" name="product-url"
+                        placeholder="https://username.gumroad.com/l/product" required>
+                    <p class="helper-text">Paste your Gumroad product link or fill out the username and product fields
+                        below to compose it automatically.</p>
+                </div>
+
+                <div class="field-row split">
+                    <div class="field-group">
+                        <label for="username">Gumroad username</label>
+                        <input type="text" id="username" name="username" placeholder="username">
+                    </div>
+                    <div class="field-group">
+                        <label for="product-slug">Product ID</label>
+                        <input type="text" id="product-slug" name="product-slug" placeholder="product">
+                    </div>
                 </div>
 
                 <div class="field-group">
@@ -221,11 +242,11 @@
                     <legend>Checkout behaviour</legend>
                     <label for="wanted">
                         <input type="checkbox" id="wanted" name="wanted">
-                        Take the customer straight to checkout (<code>wanted=true</code>)
+                        <span>Take the customer straight to checkout (<code>wanted=true</code>)</span>
                     </label>
                     <label for="pay_in_installments">
                         <input type="checkbox" id="pay_in_installments" name="pay_in_installments">
-                        Prefer the installments option when available (<code>pay_in_installments=true</code>)
+                        <span>Prefer the installments option when available (<code>pay_in_installments=true</code>)</span>
                     </label>
                 </fieldset>
 
@@ -345,11 +366,120 @@
             const customFieldsContainer = document.getElementById('custom-fields');
             const addCustomFieldButton = document.getElementById('add-custom-field');
             const template = document.getElementById('custom-field-template');
+            const productUrlInput = document.getElementById('product-url');
+            const usernameInput = document.getElementById('username');
+            const productSlugInput = document.getElementById('product-slug');
 
             let customFieldCount = 0;
+            let syncingFromParts = false;
+            let syncingFromUrl = false;
 
             function normaliseBaseUrl(url) {
                 return url.replace(/\s+/g, '').replace(/\/+$/, '');
+            }
+
+            function sanitiseSlug(value) {
+                let slug = value.trim();
+                if (/https?:\/\//i.test(slug)) {
+                    const parsed = parseProductUrl(slug);
+                    if (parsed) {
+                        slug = parsed.slug;
+                    }
+                }
+                slug = slug.replace(/^\/+/, '');
+                if (slug.startsWith('l/')) {
+                    slug = slug.slice(2);
+                }
+                const slashIndex = slug.indexOf('/');
+                if (slashIndex !== -1) {
+                    slug = slug.slice(0, slashIndex);
+                }
+                const queryIndex = slug.indexOf('?');
+                if (queryIndex !== -1) {
+                    slug = slug.slice(0, queryIndex);
+                }
+                const hashIndex = slug.indexOf('#');
+                if (hashIndex !== -1) {
+                    slug = slug.slice(0, hashIndex);
+                }
+                return slug;
+            }
+
+            function composeProductUrl(username, slug) {
+                const cleanUsername = username.trim();
+                const cleanSlug = sanitiseSlug(slug);
+                if (!cleanUsername || !cleanSlug) {
+                    return '';
+                }
+                return `https://${cleanUsername}.gumroad.com/l/${cleanSlug}`;
+            }
+
+            function parseProductUrl(value) {
+                if (!value) {
+                    return null;
+                }
+                let parsedValue = value.trim();
+                if (!/^https?:\/\//i.test(parsedValue)) {
+                    parsedValue = `https://${parsedValue}`;
+                }
+                try {
+                    const url = new URL(parsedValue);
+                    const hostParts = url.hostname.split('.');
+                    if (hostParts.length < 2 || hostParts.slice(-2).join('.') !== 'gumroad.com') {
+                        return null;
+                    }
+                    const username = hostParts.length > 2 ? hostParts[0] : '';
+                    const path = url.pathname.replace(/^\/+/, '');
+                    const segments = path.split('/');
+                    if (segments[0] !== 'l' || !segments[1]) {
+                        return null;
+                    }
+                    const canonicalBase = normaliseBaseUrl(`${url.origin}${url.pathname}`);
+                    return {
+                        username,
+                        slug: segments[1],
+                        canonicalBase,
+                    };
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            function updateUrlFromParts() {
+                if (syncingFromUrl) {
+                    return;
+                }
+                const username = usernameInput.value.trim();
+                const slug = sanitiseSlug(productSlugInput.value);
+                if (productSlugInput.value !== slug) {
+                    productSlugInput.value = slug;
+                }
+                const composedUrl = composeProductUrl(username, slug);
+                syncingFromParts = true;
+                productUrlInput.value = composedUrl;
+                syncingFromParts = false;
+                buildLink();
+            }
+
+            function updatePartsFromUrl() {
+                if (syncingFromParts) {
+                    return;
+                }
+                const rawUrl = productUrlInput.value.trim();
+                const parts = parseProductUrl(rawUrl);
+                syncingFromUrl = true;
+                if (parts) {
+                    usernameInput.value = parts.username;
+                    productSlugInput.value = parts.slug;
+                    if (parts.canonicalBase && productUrlInput.value.trim() !== parts.canonicalBase) {
+                        productUrlInput.value = parts.canonicalBase;
+                    }
+                } else if (!rawUrl) {
+                    usernameInput.value = '';
+                    productSlugInput.value = '';
+                }
+                syncingFromUrl = false;
+                buildLink();
             }
 
             function buildLink() {
@@ -498,6 +628,8 @@
             form.addEventListener('reset', () => {
                 window.setTimeout(() => {
                     customFieldsContainer.innerHTML = '';
+                    usernameInput.value = '';
+                    productSlugInput.value = '';
                     buildLink();
                 }, 0);
             });
@@ -512,6 +644,11 @@
             customFieldsContainer.addEventListener('input', () => {
                 buildLink();
             });
+
+            usernameInput.addEventListener('input', updateUrlFromParts);
+            productSlugInput.addEventListener('input', updateUrlFromParts);
+            productUrlInput.addEventListener('input', updatePartsFromUrl);
+            productUrlInput.addEventListener('change', updatePartsFromUrl);
 
             copyButton.addEventListener('click', async () => {
                 const text = output.value.trim();
@@ -543,6 +680,7 @@
             });
 
             // Initialise state on load
+            updatePartsFromUrl();
             buildLink();
         })();
     </script>
