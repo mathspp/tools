@@ -1,0 +1,1 @@
+This tool lets you pick a date, time, and source timezone to generate a shareable link. Opening that link shows how the chosen moment translates into the visitor's current timezone, making it simple to coordinate across regions.
