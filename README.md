@@ -9,4 +9,17 @@ The [colophon](https://tools.mathspp.com/colophon) lists commit messages and tra
 <!-- recently starts -->
 <!-- recently stops -->
 
+## Tools index
+
+### General tools
+
+ - [QR code generator](./qr.html)
+ - [What time is it for me?](./what-time-is-it-for-me.html)
+ - [Social link preview](./social-link-preview.html)
+ - [DMARC analyser](./dmarc-analyser.html)
+
+### mathspp-specific tools
+
+ - [Pre-fill testimonial form](./pre-fill-testimonial.html)
+
 <script type="module" src="homepage-search.js" data-tool-search></script>
