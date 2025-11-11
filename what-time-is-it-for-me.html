@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What time is it for me?</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .tool-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .status-message {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .inline-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>What time is it for me?</h1>
+        <p class="lead">Pick a date, time, and timezone to create a shareable link that shows what that moment looks like from your timezone.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card" aria-labelledby="selection-heading">
+            <h2 id="selection-heading">Pick a moment</h2>
+            <form id="moment-form">
+                <div class="form-group">
+                    <label for="datetime-input">Date and time</label>
+                    <input id="datetime-input" name="datetime" type="datetime-local" required>
+                </div>
+                <div class="form-group">
+                    <label for="timezone-select">Timezone</label>
+                    <select id="timezone-select" name="timezone" required>
+                    </select>
+                </div>
+                <div class="tool-actions">
+                    <button type="button" id="copy-link-button">Copy link with this moment</button>
+                    <span class="status-message" id="copy-status" role="status" aria-live="polite"></span>
+                </div>
+            </form>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite" aria-labelledby="comparison-heading">
+            <h2 id="comparison-heading">Comparison</h2>
+            <p id="comparison-output" class="lead">Choose a date, time, and timezone to see how it translates to your current timezone.</p>
+        </section>
+
+        <section class="surface tool-card" aria-labelledby="share-heading">
+            <h2 id="share-heading">Shareable link</h2>
+            <p>Use the button above to copy a link that includes this moment as URL parameters. Anyone who opens the link will see what that time looks like from their own timezone.</p>
+            <div class="form-group">
+                <label for="shareable-url">Preview of copied link</label>
+                <input id="shareable-url" type="url" readonly value="">
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js" integrity="sha384-qbz0zdHqsBd0P3gGwICwbg0Ob9wZjC1IcWqbUb9SkSLyWFSbM8hwx2p/9DoUom4Q" crossorigin="anonymous"></script>
+    <script>
+        (function () {
+            const { DateTime } = luxon;
+            const datetimeInput = document.getElementById('datetime-input');
+            const timezoneSelect = document.getElementById('timezone-select');
+            const comparisonOutput = document.getElementById('comparison-output');
+            const copyButton = document.getElementById('copy-link-button');
+            const copyStatus = document.getElementById('copy-status');
+            const shareableUrlInput = document.getElementById('shareable-url');
+
+            const resolvedZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const localZone = resolvedZone || DateTime.local().zoneName || 'UTC';
+
+            function ensureOptionForZone(zone) {
+                const exists = Array.from(timezoneSelect.options).some(option => option.value === zone);
+                if (!exists && zone) {
+                    const option = document.createElement('option');
+                    option.value = zone;
+                    option.textContent = zone;
+                    timezoneSelect.append(option);
+                }
+            }
+
+            function populateTimezones() {
+                let zones = [];
+                if (typeof Intl.supportedValuesOf === 'function') {
+                    try {
+                        zones = Intl.supportedValuesOf('timeZone');
+                    } catch (error) {
+                        // Ignore and fall back
+                    }
+                }
+
+                if (!zones.length) {
+                    zones = [
+                        'UTC', 'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid',
+                        'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+                        'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Kolkata', 'Australia/Sydney'
+                    ];
+                }
+
+                for (const zone of zones) {
+                    const option = document.createElement('option');
+                    option.value = zone;
+                    option.textContent = zone;
+                    timezoneSelect.append(option);
+                }
+
+                ensureOptionForZone(localZone);
+            }
+
+            function formatOffset(minutes) {
+                const sign = minutes >= 0 ? '+' : '-';
+                const absolute = Math.abs(minutes);
+                const hours = String(Math.floor(absolute / 60)).padStart(2, '0');
+                const mins = String(absolute % 60).padStart(2, '0');
+                return `UTC${sign}${hours}:${mins}`;
+            }
+
+            function formatDateTime(dt) {
+                const dayNumber = Number(dt.toFormat('d'));
+                const suffix = (function (n) {
+                    const tens = n % 100;
+                    if (tens >= 11 && tens <= 13) {
+                        return 'th';
+                    }
+                    switch (n % 10) {
+                        case 1: return 'st';
+                        case 2: return 'nd';
+                        case 3: return 'rd';
+                        default: return 'th';
+                    }
+                })(dayNumber);
+
+                const formattedDate = dt.toFormat(`d'${suffix}' MMMM yyyy`);
+                const formattedTime = dt.toFormat('h:mm a');
+                return `${formattedDate}, ${formattedTime}`;
+            }
+
+            function buildShareableUrl(dt) {
+                if (!dt || !dt.isValid) {
+                    return location.href;
+                }
+                const url = new URL(location.href);
+                url.searchParams.set('date', dt.toFormat('yyyy-LL-dd'));
+                url.searchParams.set('time', dt.toFormat('HH:mm'));
+                url.searchParams.set('timezone', dt.zoneName);
+                return url.toString();
+            }
+
+            function updateComparison(fromUrl = false) {
+                const datetimeValue = datetimeInput.value;
+                const selectedZone = timezoneSelect.value;
+
+                if (!datetimeValue || !selectedZone) {
+                    comparisonOutput.textContent = 'Choose a date, time, and timezone to see how it translates to your current timezone.';
+                    shareableUrlInput.value = location.href;
+                    return;
+                }
+
+                const momentInSelectedZone = DateTime.fromISO(datetimeValue, { zone: selectedZone });
+
+                if (!momentInSelectedZone.isValid) {
+                    comparisonOutput.textContent = 'The selected date or timezone could not be parsed. Please check your inputs.';
+                    shareableUrlInput.value = location.href;
+                    return;
+                }
+
+                const momentInLocalZone = momentInSelectedZone.setZone(localZone);
+                const selectedOffset = formatOffset(momentInSelectedZone.offset);
+                const localOffset = formatOffset(momentInLocalZone.offset);
+
+                const sourceText = `${formatDateTime(momentInSelectedZone)} in ${momentInSelectedZone.zoneName} (${selectedOffset})`;
+                const localText = `${formatDateTime(momentInLocalZone)} in ${localZone} (${localOffset})`;
+
+                comparisonOutput.textContent = `${sourceText} will be ${localText}.`;
+
+                const shareUrl = buildShareableUrl(momentInSelectedZone);
+                shareableUrlInput.value = shareUrl;
+                copyStatus.textContent = '';
+
+                if (!fromUrl) {
+                    const url = new URL(location.href);
+                    url.searchParams.set('date', momentInSelectedZone.toFormat('yyyy-LL-dd'));
+                    url.searchParams.set('time', momentInSelectedZone.toFormat('HH:mm'));
+                    url.searchParams.set('timezone', momentInSelectedZone.zoneName);
+                    window.history.replaceState({}, '', url);
+                }
+            }
+
+            async function copyLink() {
+                const datetimeValue = datetimeInput.value;
+                const selectedZone = timezoneSelect.value;
+
+                if (!datetimeValue || !selectedZone) {
+                    copyStatus.textContent = 'Select a date, time, and timezone first.';
+                    return;
+                }
+
+                const momentInSelectedZone = DateTime.fromISO(datetimeValue, { zone: selectedZone });
+                if (!momentInSelectedZone.isValid) {
+                    copyStatus.textContent = 'Unable to copy—please check the selected date and timezone.';
+                    return;
+                }
+
+                const shareUrl = buildShareableUrl(momentInSelectedZone);
+                shareableUrlInput.value = shareUrl;
+
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(shareUrl);
+                    } else {
+                        const textarea = document.createElement('textarea');
+                        textarea.value = shareUrl;
+                        textarea.setAttribute('readonly', '');
+                        textarea.style.position = 'absolute';
+                        textarea.style.left = '-9999px';
+                        document.body.append(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        textarea.remove();
+                    }
+                    copyStatus.textContent = 'Link copied to clipboard!';
+                } catch (error) {
+                    copyStatus.textContent = 'Copy failed—select and copy the link manually.';
+                }
+            }
+
+            function applyQueryParameters() {
+                const params = new URLSearchParams(window.location.search);
+                const dateParam = params.get('date');
+                const timeParam = params.get('time');
+                const timezoneParam = params.get('timezone');
+
+                if (dateParam && timeParam) {
+                    const combined = `${dateParam}T${timeParam}`;
+                    datetimeInput.value = combined;
+                }
+
+                if (timezoneParam) {
+                    ensureOptionForZone(timezoneParam);
+                    timezoneSelect.value = timezoneParam;
+                }
+
+                if (datetimeInput.value && timezoneSelect.value) {
+                    updateComparison(true);
+                }
+            }
+
+            populateTimezones();
+            timezoneSelect.value = localZone;
+            datetimeInput.value = DateTime.now().toISO({ suppressSeconds: true, suppressMilliseconds: true }).slice(0, 16);
+            updateComparison(true);
+
+            applyQueryParameters();
+
+            datetimeInput.addEventListener('input', () => updateComparison());
+            datetimeInput.addEventListener('change', () => updateComparison());
+            timezoneSelect.addEventListener('change', () => updateComparison());
+            copyButton.addEventListener('click', copyLink);
+        })();
+    </script>
+</body>
+</html>
