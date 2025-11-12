@@ -1,27 +1,29 @@
-// worker.js
+// worker.js (simplified, no explicit caching)
+
 const DEFAULT_ALLOWED_ORIGINS = [
     "https://tools.mathspp.com",
     "http://localhost:5173",
     "http://localhost:3000",
 ];
 
-const S_MAX_AGE = 3600;         // 1h fresh cache
-const STALE_WINDOW = 24 * 3600; // 24h serve-stale if upstream errors
-
 function buildAllowedOrigins(env) {
     const allowList = (env?.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(","))
-        .split(",").map(s => s.trim()).filter(Boolean);
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
     return new Set(allowList);
 }
+
 function corsHeaders(origin, allowed) {
     const allow = allowed.has(origin) ? origin : "";
     return {
         "Access-Control-Allow-Origin": allow,
         "Access-Control-Allow-Methods": "GET, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type",
-        "Vary": "Origin",
+        Vary: "Origin",
     };
 }
+
 function respondJSON(origin, allowed, data, status = 200, extra = {}) {
     return new Response(JSON.stringify(data), {
         status,
@@ -32,8 +34,12 @@ function respondJSON(origin, allowed, data, status = 200, extra = {}) {
         },
     });
 }
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+}
+
+// Simple backoff for 429/503; not related to caching.
 async function fetchWithBackoff(url, init, attempts = 3) {
     for (let i = 0; i < attempts; i++) {
         const res = await fetch(url, init);
@@ -58,7 +64,7 @@ async function fetchWithBackoff(url, init, attempts = 3) {
 }
 
 export default {
-    async fetch(request, env, ctx) {
+    async fetch(request, env) {
         const origin = request.headers.get("Origin") || "";
         const allowed = buildAllowedOrigins(env);
         const url = new URL(request.url);
@@ -70,7 +76,9 @@ export default {
             return respondJSON(origin, allowed, { error: "Method Not Allowed" }, 405);
         }
 
-        const goodPath = url.pathname === "/api/gumroad-products" || url.pathname === "/api/gumroad-products/";
+        const goodPath =
+            url.pathname === "/api/gumroad-products" ||
+            url.pathname === "/api/gumroad-products/";
         if (!goodPath) {
             return respondJSON(origin, allowed, { error: "Not Found" }, 404);
         }
@@ -80,119 +88,54 @@ export default {
             return respondJSON(origin, allowed, { error: "Invalid or missing Gumroad username." }, 400);
         }
 
-        const profileUrl = `https://${u}.gumroad.com/`;
-        const cache = caches.default;
-        const dataKey = new Request(`https://gumroad-products.internal/cache?u=${encodeURIComponent(u)}`);
-        const metaKey = new Request(`https://gumroad-products.internal/meta?u=${encodeURIComponent(u)}`);
-
-        let cachedBody = null, cachedTs = 0;
-        const c = await cache.match(dataKey);
-        if (c) cachedBody = await c.text();
-        const cm = await cache.match(metaKey);
-        if (cm) try { cachedTs = (await cm.json()).ts || 0; } catch { }
-
-        // Serve fresh cache (<= 1h)
-        const age = Math.floor(Date.now() / 1000) - cachedTs;
-        if (cachedBody && age <= S_MAX_AGE) {
-            return new Response(cachedBody, {
-                headers: {
-                    "Content-Type": "application/json; charset=utf-8",
-                    "Cache-Control": `public, max-age=${S_MAX_AGE}`,
-                    "X-Cache": "HIT",
-                    "X-Upstream-Status": "none",
-                    ...corsHeaders(origin, allowed),
-                },
-            });
-        }
-
-        // Try subdomain first, then path-based profile
+        // Try subdomain profile, then path-based profile as fallback
         const profileUrlA = `https://${u}.gumroad.com/`;
         const profileUrlB = `https://gumroad.com/${encodeURIComponent(u)}`;
 
         async function getProfileHTML(urlStr) {
-            const res = await fetchWithBackoff(urlStr, {
+            return fetchWithBackoff(urlStr, {
                 redirect: "follow",
                 headers: {
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                    Accept:
+                        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.9",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-                    "Referer": "https://gumroad.com/",
-                    "Cache-Control": "no-cache",
-                    "Pragma": "no-cache",
+                    "User-Agent":
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                    Referer: "https://gumroad.com/",
                 },
             });
-            return res;
         }
 
-        // 1) Try subdomain and then path profile if it fails.
         let upstream = await getProfileHTML(profileUrlA);
         if (!upstream.ok && (upstream.status === 429 || upstream.status === 403)) {
             upstream = await getProfileHTML(profileUrlB);
         }
-
-        // If still not ok, serve stale or bubble error
         if (!upstream.ok) {
-            // Serve stale (<= 25h old total) instead of failing
-            if (cachedBody && age <= (S_MAX_AGE + STALE_WINDOW)) {
-                return new Response(cachedBody, {
-                    headers: {
-                        "Content-Type": "application/json; charset=utf-8",
-                        "Cache-Control": `public, max-age=0, stale-while-revalidate=${STALE_WINDOW}`,
-                        "X-Cache": "STALE",
-                        "X-Upstream-Status": String(upstream.status),
-                        ...corsHeaders(origin, allowed),
-                    },
-                });
-            }
-            // No cache to fall back to
-            return respondJSON(origin, allowed, { error: "Upstream error", status: upstream.status }, upstream.status, {
-                "X-Cache": "MISS",
-                "X-Upstream-Status": String(upstream.status),
-            });
+            return respondJSON(
+                origin,
+                allowed,
+                { error: "Upstream error", status: upstream.status },
+                upstream.status
+            );
         }
 
         const html = await upstream.text();
-
         const products = extractProducts(html);
 
         const payload = {
             username: u,
-            profile_url: profileUrl,
+            profile_url: `https://${u}.gumroad.com/`,
             count: products.length,
             products,
             fetched_at: new Date().toISOString(),
         };
-        const body = JSON.stringify(payload);
 
-        // Update cache
-        const now = Math.floor(Date.now() / 1000);
-        const dataResp = new Response(body, {
-            headers: {
-                "Content-Type": "application/json; charset=utf-8",
-                "Cache-Control": `public, max-age=${S_MAX_AGE}`,
-            },
-        });
-        const metaResp = new Response(JSON.stringify({ ts: now }), {
-            headers: { "Content-Type": "application/json" },
-        });
-        ctx.waitUntil(cache.put(dataKey, dataResp.clone()));
-        ctx.waitUntil(cache.put(metaKey, metaResp.clone()));
-
-        return new Response(body, {
-            headers: {
-                "Content-Type": "application/json; charset=utf-8",
-                "Cache-Control": `public, max-age=${S_MAX_AGE}`,
-                "X-Cache": cachedBody ? "MISS-REVAL" : "MISS",
-                "X-Upstream-Status": "200",
-                ...corsHeaders(origin, allowed),
-            },
-        });
+        return respondJSON(origin, allowed, payload, 200);
     },
 };
 
 function extractProducts(html) {
     // Lightweight HTML parsing without DOM: heuristic regex over links.
-    // For more robustness, you could use an HTML parser lib with Workers Bundler.
     const linkRe = /<a\b[^>]*href=["']([^"']*\/l\/[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
     const tagRe = /<\/?[^>]+>/g;
     const nbspRe = /&nbsp;/g;
@@ -202,14 +145,16 @@ function extractProducts(html) {
     let m;
     while ((m = linkRe.exec(html)) !== null) {
         const href = m[1];
-        let title = m[2].replace(tagRe, '').replace(nbspRe, ' ').trim();
+        let title = m[2].replace(tagRe, "").replace(nbspRe, " ").trim();
         if (!title) continue;
 
         // Normalize absolute vs relative
-        const url = href.startsWith('http') ? href : new URL(href, 'https://example.com').href;
-        const slug = url.split('/').filter(Boolean).pop();
+        const url = href.startsWith("http")
+            ? href
+            : new URL(href, "https://example.com").href;
+        const slug = url.split("/").filter(Boolean).pop();
 
-        const key = url + '|' + title;
+        const key = url + "|" + title;
         if (seen.has(key)) continue;
         seen.add(key);
 
