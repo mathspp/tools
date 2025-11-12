@@ -124,10 +124,8 @@ export default {
             return res;
         }
 
-        // 1) Try subdomain
+        // 1) Try subdomain and then path profile if it fails.
         let upstream = await getProfileHTML(profileUrlA);
-
-        // 2) If still throttled, try path profile
         if (!upstream.ok && (upstream.status === 429 || upstream.status === 403)) {
             upstream = await getProfileHTML(profileUrlB);
         }
