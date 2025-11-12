@@ -757,7 +757,7 @@
                         usernameInput.value = cleanUsername;
                     }
 
-                    const apiUrl = `https://gumroad-products.rodrigogiraoserrao.workers.dev/api/gumroad-products?u=${encodeURIComponent(cleanUsername)}`;
+                    const apiUrl = `https://gumroad-products-production.rodrigogiraoserrao.workers.dev/api/gumroad-products?u=${encodeURIComponent(cleanUsername)}`;
 
                     try {
                         const response = await fetch(apiUrl, { credentials: 'omit' });
