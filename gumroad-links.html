@@ -89,7 +89,6 @@
         }
 
         .checkbox-stack label {
-            display: flex;
             align-items: flex-start;
             gap: 0.6rem;
             font-weight: 500;
@@ -103,6 +102,7 @@
         .checkbox-stack input[type="checkbox"] {
             margin-top: 0.25rem;
             flex-shrink: 0;
+            width: auto;
         }
 
         .custom-fields {
@@ -213,18 +213,10 @@
     <div class="layout">
         <form id="gumroad-form" class="surface" autocomplete="off">
             <div class="form-grid">
-                <div class="field-group">
-                    <label for="product-url">Product URL</label>
-                    <input type="url" id="product-url" name="product-url"
-                        placeholder="https://username.gumroad.com/l/product" required>
-                    <p class="helper-text">Paste your Gumroad product link or fill out the username and product fields
-                        below to compose it automatically.</p>
-                </div>
-
                 <div class="field-row split">
                     <div class="field-group">
                         <label for="username">Gumroad username</label>
-                        <input type="text" id="username" name="username" placeholder="username">
+                        <input type="text" id="username" name="username" placeholder="username" value="mathspp">
                         <div class="actions">
                             <button type="button" id="fetch-products">Fetch products</button>
                         </div>
@@ -232,7 +224,7 @@
                     </div>
                     <div class="field-group">
                         <label for="product-slug">Product ID</label>
-                        <input type="text" id="product-slug" name="product-slug" placeholder="product">
+                        <input type="text" id="product-slug" name="product-slug" placeholder="product" value="">
                     </div>
                 </div>
 
@@ -245,20 +237,28 @@
                 </div>
 
                 <div class="field-group">
+                    <label for="product-url">Product URL</label>
+                    <input type="url" id="product-url" name="product-url"
+                        placeholder="https://username.gumroad.com/l/product" value="https://mathspp.gumroad.com"
+                        readonly required>
+                    <p class="helper-text">Fill out the username and product fields below to compose it automatically.
+                    </p>
+                </div>
+
+                <div class="field-group">
                     <label for="discount-code">Discount code (optional)</label>
                     <input type="text" id="discount-code" name="discount-code" placeholder="SUMMER25">
-                    <p class="helper-text">Codes are appended to the URL path like <code>/SUMMER25</code>.</p>
                 </div>
 
                 <fieldset class="checkbox-stack">
                     <legend>Checkout behaviour</legend>
                     <label for="wanted">
                         <input type="checkbox" id="wanted" name="wanted">
-                        <span>Take the customer straight to checkout (<code>wanted=true</code>)</span>
+                        <span>Take the customer straight to checkout</span>
                     </label>
                     <label for="pay_in_installments">
                         <input type="checkbox" id="pay_in_installments" name="pay_in_installments">
-                        <span>Prefer the installments option when available (<code>pay_in_installments=true</code>)</span>
+                        <span>Prefer the installments option when available</span>
                     </label>
                 </fieldset>
 
@@ -271,13 +271,12 @@
                         <option value="biannually">Biannually</option>
                         <option value="yearly">Yearly</option>
                     </select>
-                    <p class="helper-text">Adds <code>?monthly=true</code>, <code>?yearly=true</code>, and so on.</p>
                 </div>
 
                 <div class="field-group">
                     <label for="variant">Variant / version / tier</label>
                     <input type="text" id="variant" name="variant" placeholder="Professional">
-                    <p class="helper-text">Links to a specific variant via <code>variant=</code>. The value will be URL encoded for
+                    <p class="helper-text">Links to a specific variant. The value will be URL encoded for
                         you.</p>
                 </div>
 
@@ -307,8 +306,8 @@
                     <div class="field-row">
                         <div>
                             <h2 style="margin: 0; font-size: 1.1rem;">Custom checkout fields</h2>
-                            <p class="helper-text">Provide the exact label from your Gumroad custom field to prefill it. Only rows
-                                with both a label and value are added.</p>
+                            <p class="helper-text">Provide the exact label from your Gumroad custom field to prefill it.
+                                Only rows with both a label and value are added.</p>
                         </div>
                         <div class="actions">
                             <button type="button" id="add-custom-field">Add custom field</button>
@@ -344,7 +343,8 @@
                         <tbody id="parameters-body">
                             <tr>
                                 <td colspan="2">
-                                    <p class="empty-state" id="parameters-description">No query parameters yet. Fill in the
+                                    <p class="empty-state" id="parameters-description">No query parameters yet. Fill in
+                                        the
                                         form to generate them.</p>
                                 </td>
                             </tr>
