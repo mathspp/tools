@@ -106,19 +106,36 @@ export default {
             });
         }
 
-        // Upstream fetch with backoff; try to look like a polite browser
-        const upstream = await fetchWithBackoff(profileUrl, {
-            redirect: "follow",
-            headers: {
-                "Accept": "text/html",
-                "Accept-Language": "en",
-                "User-Agent": UA,
-                "Referer": "https://gumroad.com/",
-            },
-            // You can experiment with cf options if needed:
-            // cf: { cacheTtl: 0, fetchAlgorithms: ["http/2"] }
-        });
+        // Try subdomain first, then path-based profile
+        const profileUrlA = `https://${u}.gumroad.com/`;
+        const profileUrlB = `https://gumroad.com/${encodeURIComponent(u)}`;
 
+        async function getProfileHTML(urlStr) {
+            // Stronger browser-like headers
+            const res = await fetchWithBackoff(urlStr, {
+                redirect: "follow",
+                headers: {
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    // A very standard UA; tweak as desired
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                    "Referer": "https://gumroad.com/",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache",
+                },
+            });
+            return res;
+        }
+
+        // 1) Try subdomain
+        let upstream = await getProfileHTML(profileUrlA);
+
+        // 2) If still throttled, try path profile
+        if (!upstream.ok && (upstream.status === 429 || upstream.status === 403)) {
+            upstream = await getProfileHTML(profileUrlB);
+        }
+
+        // If still not ok, serve stale or bubble error
         if (!upstream.ok) {
             // Serve stale (<= 25h old total) instead of failing
             if (cachedBody && age <= (S_MAX_AGE + STALE_WINDOW)) {
