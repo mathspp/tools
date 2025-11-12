@@ -217,11 +217,23 @@
                     <div class="field-group">
                         <label for="username">Gumroad username</label>
                         <input type="text" id="username" name="username" placeholder="username" value="mathspp">
+                        <div class="actions">
+                            <button type="button" id="fetch-products">Fetch products</button>
+                        </div>
+                        <p class="helper-text" id="fetch-status" role="status" aria-live="polite" hidden></p>
                     </div>
                     <div class="field-group">
                         <label for="product-slug">Product ID</label>
                         <input type="text" id="product-slug" name="product-slug" placeholder="product" value="">
                     </div>
+                </div>
+
+                <div class="field-group" id="product-select-group" hidden>
+                    <label for="product-select">Products found</label>
+                    <select id="product-select" name="product-select">
+                        <option value="">Select a product</option>
+                    </select>
+                    <p class="helper-text">Selecting a product updates the Product ID field automatically.</p>
                 </div>
 
                 <div class="field-group">
@@ -369,6 +381,11 @@
             const productUrlInput = document.getElementById('product-url');
             const usernameInput = document.getElementById('username');
             const productSlugInput = document.getElementById('product-slug');
+            const fetchProductsButton = document.getElementById('fetch-products');
+            const productSelect = document.getElementById('product-select');
+            const productSelectGroup = document.getElementById('product-select-group');
+            const fetchStatus = document.getElementById('fetch-status');
+            const fetchButtonDefaultText = fetchProductsButton ? fetchProductsButton.textContent : '';
 
             let customFieldCount = 0;
             let syncingFromParts = false;
@@ -623,6 +640,79 @@
                 }
             }
 
+            function setFetchStatus(message) {
+                if (!fetchStatus) {
+                    return;
+                }
+                if (message) {
+                    fetchStatus.textContent = message;
+                    fetchStatus.hidden = false;
+                } else {
+                    fetchStatus.textContent = '';
+                    fetchStatus.hidden = true;
+                }
+            }
+
+            function parseProductsFromProfile(html, profileUrl, username) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const productCards = Array.from(doc.querySelectorAll('article.product-card'));
+                const products = new Map();
+
+                for (const card of productCards) {
+                    const link = card.querySelector('a[href]');
+                    if (!link) {
+                        continue;
+                    }
+                    let resolvedUrl;
+                    try {
+                        resolvedUrl = new URL(link.getAttribute('href'), profileUrl);
+                    } catch (error) {
+                        continue;
+                    }
+                    const slug = sanitiseSlug(resolvedUrl.pathname);
+                    if (!slug || products.has(slug)) {
+                        continue;
+                    }
+                    const titleElement = card.querySelector('[itemprop="name"], h4, h3') || link;
+                    const name = (titleElement.textContent || '').trim();
+                    const productUrl = composeProductUrl(username, slug) || resolvedUrl.href;
+                    products.set(slug, {
+                        slug,
+                        name: name || slug,
+                        url: productUrl,
+                    });
+                }
+
+                return Array.from(products.values());
+            }
+
+            function populateProductSelect(products) {
+                if (!productSelectGroup || !productSelect) {
+                    return;
+                }
+
+                productSelect.innerHTML = '<option value="">Select a product</option>';
+
+                for (const product of products) {
+                    const option = document.createElement('option');
+                    option.value = product.slug;
+                    option.textContent = product.name;
+                    option.dataset.url = product.url;
+                    productSelect.appendChild(option);
+                }
+
+                productSelectGroup.hidden = products.length === 0;
+            }
+
+            function resetProductSelect() {
+                if (!productSelectGroup || !productSelect) {
+                    return;
+                }
+                productSelect.innerHTML = '<option value="">Select a product</option>';
+                productSelectGroup.hidden = true;
+            }
+
             form.addEventListener('input', buildLink);
             form.addEventListener('change', buildLink);
             form.addEventListener('reset', () => {
@@ -630,6 +720,8 @@
                     customFieldsContainer.innerHTML = '';
                     usernameInput.value = '';
                     productSlugInput.value = '';
+                    resetProductSelect();
+                    setFetchStatus('');
                     buildLink();
                 }, 0);
             });
@@ -649,6 +741,80 @@
             productSlugInput.addEventListener('input', updateUrlFromParts);
             productUrlInput.addEventListener('input', updatePartsFromUrl);
             productUrlInput.addEventListener('change', updatePartsFromUrl);
+
+            if (fetchProductsButton) {
+                fetchProductsButton.addEventListener('click', async () => {
+                    const rawUsername = usernameInput.value.trim();
+                    const cleanUsername = rawUsername.replace(/\s+/g, '');
+
+                    if (!cleanUsername) {
+                        setFetchStatus('Enter a Gumroad username first.');
+                        resetProductSelect();
+                        return;
+                    }
+
+                    if (cleanUsername !== rawUsername) {
+                        usernameInput.value = cleanUsername;
+                    }
+
+                    const profileUrl = `https://${encodeURIComponent(cleanUsername)}.gumroad.com/`;
+
+                    resetProductSelect();
+                    setFetchStatus(`Fetching products from ${profileUrl}…`);
+                    fetchProductsButton.disabled = true;
+                    fetchProductsButton.textContent = 'Fetching…';
+
+                    try {
+                        const response = await fetch(profileUrl, {
+                            credentials: 'omit',
+                            headers: { 'Accept': 'text/html' },
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Request failed with status ${response.status}`);
+                        }
+
+                        const html = await response.text();
+                        const products = parseProductsFromProfile(html, profileUrl, cleanUsername);
+
+                        if (products.length === 0) {
+                            populateProductSelect([]);
+                            setFetchStatus('No products were found on that profile.');
+                            return;
+                        }
+
+                        populateProductSelect(products);
+                        setFetchStatus(`Found ${products.length} product${products.length === 1 ? '' : 's'}. Select one below.`);
+                    } catch (error) {
+                        console.error('Unable to fetch products', error);
+                        resetProductSelect();
+                        setFetchStatus('Unable to fetch products. Gumroad may be blocking cross-origin requests.');
+                    } finally {
+                        fetchProductsButton.disabled = false;
+                        fetchProductsButton.textContent = fetchButtonDefaultText || 'Fetch products';
+                    }
+                });
+            }
+
+            if (productSelect) {
+                productSelect.addEventListener('change', () => {
+                    const selectedOption = productSelect.selectedOptions[0];
+                    if (!selectedOption || !selectedOption.value) {
+                        return;
+                    }
+
+                    const selectedSlug = selectedOption.value;
+                    const selectedUrl = selectedOption.dataset.url || '';
+
+                    productSlugInput.value = selectedSlug;
+
+                    if (selectedUrl) {
+                        productUrlInput.value = selectedUrl;
+                    }
+
+                    updatePartsFromUrl();
+                });
+            }
 
             copyButton.addEventListener('click', async () => {
                 const text = output.value.trim();
