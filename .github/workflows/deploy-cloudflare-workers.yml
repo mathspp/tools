@@ -9,13 +9,27 @@ on:
   workflow_dispatch: # Allow manual triggering
 
 jobs:
+  changes: # Use https://github.com/dorny/paths-filter to check what workers were changed
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      gumroad-products: ${{ steps.filter.outputs.gumroad-products }}
+      # If I add more filters below, I need to “export them” here.
+    steps:
+    # For pull requests it's not necessary to checkout the code
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          gumroad-products:
+            - 'cloudflare-workers/gumroad-products/**'
+        # I can add more filters here and access them separately.
+
   deploy-gumroad-products:
     name: Deploy Gumroad Products Worker
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.head_commit.modified, 'cloudflare-workers/gumroad-products/') ||
-      contains(github.event.head_commit.added, 'cloudflare-workers/gumroad-products/')
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.gumroad-products == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
