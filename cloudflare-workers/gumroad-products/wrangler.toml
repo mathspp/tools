@@ -1,0 +1,6 @@
+name = "gumroad-products"         # service name you’ll see in the CF dashboard
+main = "worker.js"                # entry file relative to this folder
+compatibility_date = "2025-11-12" # use today's date
+
+[env.production]
+# put prod-only settings here later if you need
