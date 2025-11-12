@@ -757,25 +757,18 @@
                         usernameInput.value = cleanUsername;
                     }
 
-                    const profileUrl = `https://${encodeURIComponent(cleanUsername)}.gumroad.com/`;
-
-                    resetProductSelect();
-                    setFetchStatus(`Fetching products from ${profileUrl}…`);
-                    fetchProductsButton.disabled = true;
-                    fetchProductsButton.textContent = 'Fetching…';
+                    const apiUrl = `https://gumroad-products.rodrigogiraoserrao.workers.dev/api/gumroad-products?u=${encodeURIComponent(cleanUsername)}`;
 
                     try {
-                        const response = await fetch(profileUrl, {
-                            credentials: 'omit',
-                            headers: { 'Accept': 'text/html' },
-                        });
+                        const response = await fetch(apiUrl, { credentials: 'omit' });
+                        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+                        const data = await response.json();
 
-                        if (!response.ok) {
-                            throw new Error(`Request failed with status ${response.status}`);
-                        }
-
-                        const html = await response.text();
-                        const products = parseProductsFromProfile(html, profileUrl, cleanUsername);
+                        const products = (data.products || []).map(p => ({
+                            title: p.title,
+                            slug: p.slug,
+                            url: p.url,
+                        }));
 
                         if (products.length === 0) {
                             populateProductSelect([]);
@@ -785,14 +778,15 @@
 
                         populateProductSelect(products);
                         setFetchStatus(`Found ${products.length} product${products.length === 1 ? '' : 's'}. Select one below.`);
-                    } catch (error) {
-                        console.error('Unable to fetch products', error);
+                    } catch (err) {
+                        console.error('Unable to fetch products', err);
                         resetProductSelect();
-                        setFetchStatus('Unable to fetch products. Gumroad may be blocking cross-origin requests.');
+                        setFetchStatus('Unable to fetch products.');
                     } finally {
                         fetchProductsButton.disabled = false;
                         fetchProductsButton.textContent = fetchButtonDefaultText || 'Fetch products';
                     }
+
                 });
             }
 
