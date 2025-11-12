@@ -7,7 +7,6 @@ const DEFAULT_ALLOWED_ORIGINS = [
 
 const S_MAX_AGE = 3600;         // 1h fresh cache
 const STALE_WINDOW = 24 * 3600; // 24h serve-stale if upstream errors
-const UA = "tools.mathspp.com gumroad fetcher (contact: you@example.com)";
 
 function buildAllowedOrigins(env) {
     const allowList = (env?.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(","))
