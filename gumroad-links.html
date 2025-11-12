@@ -742,8 +742,12 @@
             productUrlInput.addEventListener('input', updatePartsFromUrl);
             productUrlInput.addEventListener('change', updatePartsFromUrl);
 
+            let isFetching = false;
+
             if (fetchProductsButton) {
                 fetchProductsButton.addEventListener('click', async () => {
+                    if (isFetching) return; // guard
+
                     const rawUsername = usernameInput.value.trim();
                     const cleanUsername = rawUsername.replace(/\s+/g, '');
 
@@ -752,18 +756,31 @@
                         resetProductSelect();
                         return;
                     }
-
                     if (cleanUsername !== rawUsername) {
                         usernameInput.value = cleanUsername;
                     }
 
                     const apiUrl = `https://gumroad-products-production.rodrigogiraoserrao.workers.dev/api/gumroad-products?u=${encodeURIComponent(cleanUsername)}`;
 
+                    // disable immediately
+                    isFetching = true;
+                    fetchProductsButton.disabled = true;
+                    const oldText = fetchButtonDefaultText || fetchProductsButton.textContent || 'Fetch products';
+                    fetchProductsButton.textContent = 'Fetching…';
+                    setFetchStatus(`Fetching ${cleanUsername}…`);
+
                     try {
                         const response = await fetch(apiUrl, { credentials: 'omit' });
-                        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-                        const data = await response.json();
+                        // Peek diagnostics
+                        const xCache = response.headers.get('X-Cache');
+                        const xUp = response.headers.get('X-Upstream-Status');
 
+                        if (!response.ok) {
+                            // show more helpful status to you in the UI
+                            throw new Error(`Request failed: ${response.status} (X-Cache=${xCache}, Upstream=${xUp})`);
+                        }
+
+                        const data = await response.json();
                         const products = (data.products || []).map(p => ({
                             title: p.title,
                             slug: p.slug,
@@ -778,15 +795,16 @@
 
                         populateProductSelect(products);
                         setFetchStatus(`Found ${products.length} product${products.length === 1 ? '' : 's'}. Select one below.`);
+
                     } catch (err) {
                         console.error('Unable to fetch products', err);
                         resetProductSelect();
                         setFetchStatus('Unable to fetch products.');
                     } finally {
+                        isFetching = false;
                         fetchProductsButton.disabled = false;
                         fetchProductsButton.textContent = fetchButtonDefaultText || 'Fetch products';
                     }
-
                 });
             }
 
