@@ -110,13 +110,11 @@ export default {
         const profileUrlB = `https://gumroad.com/${encodeURIComponent(u)}`;
 
         async function getProfileHTML(urlStr) {
-            // Stronger browser-like headers
             const res = await fetchWithBackoff(urlStr, {
                 redirect: "follow",
                 headers: {
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
                     "Accept-Language": "en-US,en;q=0.9",
-                    // A very standard UA; tweak as desired
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
                     "Referer": "https://gumroad.com/",
                     "Cache-Control": "no-cache",
