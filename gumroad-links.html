@@ -781,11 +781,11 @@
                         }
 
                         const data = await response.json();
-                        const products = (data.products || []).map(p => ({
-                            title: p.title,
+                        const products = (data.products || []).map((p) => ({
+                            name: p.name || p.title || p.slug || '',
                             slug: p.slug,
                             url: p.url,
-                        }));
+                        })).filter((product) => Boolean(product.slug));
 
                         if (products.length === 0) {
                             populateProductSelect([]);
