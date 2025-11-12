@@ -17,7 +17,9 @@ jobs:
       gumroad-products: ${{ steps.filter.outputs.gumroad-products }}
       # If I add more filters below, I need to “export them” here.
     steps:
-    # For pull requests it's not necessary to checkout the code
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - uses: dorny/paths-filter@v3
       id: filter
       with:
