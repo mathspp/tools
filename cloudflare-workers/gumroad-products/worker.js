@@ -158,27 +158,7 @@ export default {
 
         const html = await upstream.text();
 
-        // Extract hrefs → /l/<slug>
-        const hrefs = [];
-        const reHref = /href\s*=\s*["']([^"']+)["']/gi;
-        let m;
-        while ((m = reHref.exec(html)) !== null) hrefs.push(m[1]);
-
-        const seen = new Set();
-        const products = [];
-        for (const href of hrefs) {
-            let absolute;
-            try { absolute = new URL(href, profileUrl).toString(); } catch { continue; }
-            const mm = absolute.match(/\/l\/([A-Za-z0-9-_]+)\/?$/);
-            if (!mm) continue;
-            const slug = mm[1];
-            if (seen.has(slug)) continue;
-            seen.add(slug);
-            const title = slug.replace(/[-_]+/g, " ").trim();
-            products.push({ slug, url: absolute, title });
-        }
-
-        products.sort((a, b) => a.slug.localeCompare(b.slug));
+        const products = extractProducts(html);
 
         const payload = {
             username: u,
@@ -214,3 +194,31 @@ export default {
         });
     },
 };
+
+function extractProducts(html) {
+    // Lightweight HTML parsing without DOM: heuristic regex over links.
+    // For more robustness, you could use an HTML parser lib with Workers Bundler.
+    const linkRe = /<a\b[^>]*href=["']([^"']*\/l\/[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    const tagRe = /<\/?[^>]+>/g;
+    const nbspRe = /&nbsp;/g;
+
+    const seen = new Set();
+    const items = [];
+    let m;
+    while ((m = linkRe.exec(html)) !== null) {
+        const href = m[1];
+        let title = m[2].replace(tagRe, '').replace(nbspRe, ' ').trim();
+        if (!title) continue;
+
+        // Normalize absolute vs relative
+        const url = href.startsWith('http') ? href : new URL(href, 'https://example.com').href;
+        const slug = url.split('/').filter(Boolean).pop();
+
+        const key = url + '|' + title;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        items.push({ title, url, slug });
+    }
+    return items;
+}
