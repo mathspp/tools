@@ -10,11 +10,12 @@ on:
 
 jobs:
   changes: # Use https://github.com/dorny/paths-filter to check what workers were changed
+    name: Detect Cloudflare worker changes
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
     outputs:
-      gumroad-products: ${{ steps.filter.outputs.gumroad-products }}
+      gumroad_products: ${{ steps.filter.outputs.gumroad-products }}
       # If I add more filters below, I need to “export them” here.
     steps:
     - uses: actions/checkout@v4
@@ -31,7 +32,8 @@ jobs:
   deploy-gumroad-products:
     name: Deploy Gumroad Products Worker
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.gumroad-products == 'true' }}
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.gumroad_products == 'true' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
