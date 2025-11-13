@@ -218,11 +218,6 @@
             color: var(--muted-text-color, #4f5b67);
         }
 
-        .proxy-note {
-            font-size: 0.9rem;
-            color: #92400e;
-        }
-
         @media (max-width: 720px) {
             body {
                 padding: 22px 16px 56px;
@@ -234,7 +229,7 @@
         }
     </style>
 </head>
-<body data-default-origin="https://mathspp.com">
+<body data-default-origin="https://mathspp.com" data-worker-endpoint="https://social-link-preview-production.rodrigogiraoserrao.workers.dev/api/social-link-preview">
     <header>
         <h1>Social Link Preview Inspector</h1>
         <p class="lead">Fetch a web page and audit its metadata for rich link previews. The tool checks general SEO
@@ -248,8 +243,8 @@
                 <div class="form-group">
                     <label for="url-input">Page URL</label>
                     <input id="url-input" name="url" type="url" placeholder="https://example.com/article" required>
-                    <p class="inline-help">Enter a full URL or a site-relative path. Paths resolve against <span id="default-origin-hint">https://mathspp.com</span>. If the site blocks cross-origin requests the tool will fall back to a
-                        read-only proxy.</p>
+                    <p class="inline-help">Enter a full URL or a site-relative path. Paths resolve against <span id="default-origin-hint">https://mathspp.com</span>. Requests are proxied through a Cloudflare Worker to bypass
+                        cross-origin restrictions.</p>
                 </div>
 
                 <div class="tool-actions">
@@ -258,8 +253,6 @@
                 </div>
             </form>
             <p id="status-message" class="status-message muted" aria-live="polite"></p>
-            <p id="proxy-note" class="proxy-note" hidden>Fetched page content via the public r.jina.ai proxy because the origin
-                blocked direct cross-origin requests.</p>
         </section>
 
         <section class="surface tool-card" aria-live="polite">
@@ -282,11 +275,11 @@
             const form = document.getElementById('url-form');
             const urlInput = document.getElementById('url-input');
             const statusMessage = document.getElementById('status-message');
-            const proxyNote = document.getElementById('proxy-note');
             const generalReportContainer = document.getElementById('general-report');
             const platformReportsContainer = document.getElementById('platform-reports');
             const defaultInspectionOrigin = determineDefaultInspectionOrigin();
             const defaultOriginHint = document.getElementById('default-origin-hint');
+            const workerEndpoint = determineWorkerEndpoint();
 
             if (defaultOriginHint && defaultInspectionOrigin) {
                 try {
@@ -296,239 +289,48 @@
                 }
             }
 
-            const generalGuidelines = [
-                {
-                    id: 'html-lang',
-                    label: 'Document declares an HTML lang attribute',
-                    check: (ctx) => Boolean(ctx.htmlLang),
-                    detail: (ctx) => ctx.htmlLang ? `Found: ${ctx.htmlLang}` : 'Missing'
-                },
-                {
-                    id: 'title',
-                    label: 'Document includes a &lt;title&gt; element',
-                    check: (ctx) => Boolean(ctx.title),
-                    detail: (ctx) => ctx.title ? `“${truncate(ctx.title, 80)}”` : 'Missing'
-                },
-                {
-                    id: 'title-length',
-                    label: 'Title length is between 20 and 70 characters',
-                    check: (ctx) => ctx.title && ctx.title.length >= 20 && ctx.title.length <= 70,
-                    detail: (ctx) => ctx.title ? `${ctx.title.length} characters` : '—'
-                },
-                {
-                    id: 'description',
-                    label: 'Meta description present (50-160 characters)',
-                    check: (ctx) => ctx.description && ctx.description.length >= 50 && ctx.description.length <= 160,
-                    detail: (ctx) => ctx.description ? `${ctx.description.length} chars: “${truncate(ctx.description, 100)}”` : 'Missing'
-                },
-                {
-                    id: 'charset',
-                    label: 'Character set declared with &lt;meta charset&gt;',
-                    check: (ctx) => Boolean(ctx.charset),
-                    detail: (ctx) => ctx.charset ? `charset=${ctx.charset}` : 'Missing'
-                },
-                {
-                    id: 'viewport',
-                    label: 'Responsive viewport meta tag present',
-                    check: (ctx) => ctx.viewport && /width\s*=\s*device-width/i.test(ctx.viewport),
-                    detail: (ctx) => ctx.viewport ? truncate(ctx.viewport, 80) : 'Missing'
-                },
-                {
-                    id: 'canonical',
-                    label: 'Canonical URL provided via &lt;link rel="canonical"&gt;',
-                    check: (ctx) => Boolean(ctx.canonical),
-                    detail: (ctx) => ctx.canonical ? ctx.canonical : 'Missing'
-                }
-            ];
-
-            const platformSpecs = [
-                {
-                    name: 'LinkedIn',
-                    slug: 'linkedin',
-                    summary: 'LinkedIn uses Open Graph tags. Title, description, image, canonical URL, and site name should be supplied.',
-                    guidelines: [
-                        presenceGuideline('og:title', 'og:title provided'),
-                        presenceGuideline('og:description', 'og:description provided (90-200 characters)', (ctx) => {
-                            const value = ctx.meta['og:description'];
-                            if (!value) return false;
-                            return value.length >= 90 && value.length <= 200;
-                        }, (ctx) => {
-                            const value = ctx.meta['og:description'];
-                            return value ? `${value.length} chars: “${truncate(value, 100)}”` : 'Missing';
-                        }),
-                        presenceGuideline('og:image', 'og:image URL provided'),
-                        presenceGuideline('og:url', 'og:url points to the canonical page'),
-                        presenceGuideline('og:site_name', 'og:site_name provided')
-                    ],
-                    preview: (ctx) => ({
-                        title: ctx.meta['og:title'] || ctx.title,
-                        description: ctx.meta['og:description'] || ctx.description,
-                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
-                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
-                        siteName: ctx.meta['og:site_name'] || ctx.hostname
-                    })
-                },
-                {
-                    name: 'X (Twitter)',
-                    slug: 'x',
-                    summary: 'X requires Twitter Card tags in addition to Open Graph for the best preview.',
-                    guidelines: [
-                        {
-                            id: 'twitter:card',
-                            label: 'twitter:card present (summary or summary_large_image)',
-                            check: (ctx) => {
-                                const value = ctx.meta['twitter:card'];
-                                return value === 'summary' || value === 'summary_large_image';
-                            },
-                            detail: (ctx) => {
-                                const value = ctx.meta['twitter:card'];
-                                return value ? `twitter:card=${value}` : 'Missing';
-                            }
-                        },
-                        presenceGuideline('twitter:title', 'twitter:title provided'),
-                        presenceGuideline('twitter:description', 'twitter:description provided (50-200 characters)', (ctx) => {
-                            const value = ctx.meta['twitter:description'];
-                            if (!value) return false;
-                            return value.length >= 50 && value.length <= 200;
-                        }, (ctx) => {
-                            const value = ctx.meta['twitter:description'];
-                            return value ? `${value.length} chars: “${truncate(value, 100)}”` : 'Missing';
-                        }),
-                        presenceGuideline('twitter:image', 'twitter:image URL provided'),
-                        {
-                            id: 'twitter:site',
-                            label: 'twitter:site or twitter:creator handle provided',
-                            check: (ctx) => Boolean(ctx.meta['twitter:site'] || ctx.meta['twitter:creator']),
-                            detail: (ctx) => {
-                                const site = ctx.meta['twitter:site'];
-                                const creator = ctx.meta['twitter:creator'];
-                                if (site) return `twitter:site=${site}`;
-                                if (creator) return `twitter:creator=${creator}`;
-                                return 'Missing';
-                            }
-                        },
-                        presenceGuideline('twitter:image:alt', 'twitter:image:alt text provided')
-                    ],
-                    preview: (ctx) => ({
-                        title: ctx.meta['twitter:title'] || ctx.meta['og:title'] || ctx.title,
-                        description: ctx.meta['twitter:description'] || ctx.meta['og:description'] || ctx.description,
-                        image: resolveUrl(ctx.meta['twitter:image'] || ctx.meta['og:image'], ctx.baseUrl),
-                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
-                        siteName: ctx.meta['twitter:site'] || ctx.hostname,
-                        cardType: ctx.meta['twitter:card']
-                    })
-                },
-                {
-                    name: 'Facebook',
-                    slug: 'facebook',
-                    summary: 'Facebook shares rely on Open Graph metadata and benefit from image dimensions of at least 1200×630.',
-                    guidelines: [
-                        presenceGuideline('og:title', 'og:title provided'),
-                        presenceGuideline('og:description', 'og:description provided'),
-                        presenceGuideline('og:image', 'og:image URL provided'),
-                        presenceGuideline('og:image:width', 'og:image:width declared'),
-                        presenceGuideline('og:image:height', 'og:image:height declared'),
-                        presenceGuideline('og:type', 'og:type specified (usually website or article)'),
-                        presenceGuideline('og:url', 'og:url provided')
-                    ],
-                    preview: (ctx) => ({
-                        title: ctx.meta['og:title'] || ctx.title,
-                        description: ctx.meta['og:description'] || ctx.description,
-                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
-                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
-                        siteName: ctx.meta['og:site_name'] || ctx.hostname
-                    })
-                },
-                {
-                    name: 'Mastodon',
-                    slug: 'mastodon',
-                    summary: 'Mastodon uses Open Graph tags for link cards and respects twitter:card fallbacks.',
-                    guidelines: [
-                        presenceGuideline('og:title', 'og:title provided'),
-                        presenceGuideline('og:description', 'og:description provided'),
-                        presenceGuideline('og:image', 'og:image URL provided'),
-                        presenceGuideline('og:type', 'og:type specified'),
-                        presenceGuideline('og:url', 'og:url provided'),
-                        presenceGuideline('twitter:card', 'twitter:card present for fallback rendering')
-                    ],
-                    preview: (ctx) => ({
-                        title: ctx.meta['og:title'] || ctx.title,
-                        description: ctx.meta['og:description'] || ctx.description,
-                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
-                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
-                        siteName: ctx.meta['og:site_name'] || ctx.hostname
-                    })
-                },
-                {
-                    name: 'BlueSky',
-                    slug: 'bluesky',
-                    summary: 'BlueSky reads Open Graph metadata for card previews and benefits from twitter:card fallbacks.',
-                    guidelines: [
-                        presenceGuideline('og:title', 'og:title provided'),
-                        presenceGuideline('og:description', 'og:description provided'),
-                        presenceGuideline('og:image', 'og:image URL provided'),
-                        presenceGuideline('og:url', 'og:url provided'),
-                        presenceGuideline('og:type', 'og:type specified'),
-                        presenceGuideline('twitter:card', 'twitter:card present for fallback clients')
-                    ],
-                    preview: (ctx) => ({
-                        title: ctx.meta['og:title'] || ctx.title,
-                        description: ctx.meta['og:description'] || ctx.description,
-                        image: resolveUrl(ctx.meta['og:image'], ctx.baseUrl),
-                        url: ctx.meta['og:url'] || ctx.canonical || ctx.finalUrl,
-                        siteName: ctx.meta['og:site_name'] || ctx.hostname
-                    })
-                }
-            ];
+            form.addEventListener('reset', () => {
+                clearStatus();
+                generalReportContainer.innerHTML = '<p class="muted">Submit a URL to inspect its metadata.</p>';
+                platformReportsContainer.innerHTML = '<p class="muted">Run an analysis to see how popular social platforms will render your link previews.</p>';
+            });
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 clearStatus();
-                const rawUrl = urlInput.value.trim();
-                if (!rawUrl) {
-                    showStatus('Enter a URL to inspect.', 'error');
+
+                const normalised = normaliseUrl(urlInput.value);
+                if (!normalised) {
+                    showStatus('Please enter a valid HTTP or HTTPS URL.', 'error');
                     return;
                 }
 
-                const normalizedUrl = normaliseUrl(rawUrl);
-                if (!normalizedUrl) {
-                    showStatus('Please provide a valid HTTP or HTTPS URL.', 'error');
-                    return;
-                }
-
-                urlInput.value = normalizedUrl;
-                showStatus('Fetching page and analysing metadata…', 'loading');
-                proxyNote.hidden = true;
                 setLoadingState(true);
+                showStatus('Requesting metadata from the analysis worker…', 'loading');
 
                 try {
-                    const { html, usedProxy, finalUrl } = await fetchPage(normalizedUrl);
-                    proxyNote.hidden = !usedProxy;
-                    const documentContext = parseDocument(html, normalizedUrl, finalUrl);
-                    renderGeneralReport(documentContext);
-                    renderPlatformReports(documentContext);
-                    showStatus('Metadata analysis complete.', 'success');
+                    const payload = await analyseUrl(normalised);
+                    const analysedHostname = safeHostname(payload.finalUrl) || normalised;
+                    showStatus(`Analysis complete for ${analysedHostname}.`, 'success');
+
+                    const generalResults = payload.reports?.general ?? [];
+                    const platformResults = payload.reports?.platforms ?? [];
+                    renderGeneralReport(generalResults);
+                    renderPlatformReports(platformResults);
                 } catch (error) {
-                    console.error(error);
-                    proxyNote.hidden = true;
-                    showStatus(error.message || 'Failed to fetch the requested page.', 'error');
-                    generalReportContainer.innerHTML = '<p class="muted">No results to display.</p>';
-                    platformReportsContainer.innerHTML = '<p class="muted">No previews available.</p>';
+                    showStatus(error.message || 'Unable to analyse the requested URL.', 'error');
+                    generalReportContainer.innerHTML = '<p class="muted">No analysis available.</p>';
+                    platformReportsContainer.innerHTML = '<p class="muted">No platform previews available.</p>';
                 } finally {
                     setLoadingState(false);
                 }
             });
 
-            form.addEventListener('reset', () => {
-                clearStatus();
-                proxyNote.hidden = true;
-                generalReportContainer.innerHTML = '<p class="muted">Submit a URL to inspect its metadata.</p>';
-                platformReportsContainer.innerHTML = '<p class="muted">Run an analysis to see how popular social platforms will render your link previews.</p>';
-            });
-
             function setLoadingState(isLoading) {
                 const submitButton = form.querySelector('button[type="submit"]');
-                submitButton.disabled = isLoading;
+                if (submitButton) {
+                    submitButton.disabled = isLoading;
+                }
             }
 
             function showStatus(message, type) {
@@ -574,100 +376,48 @@
                 }
             }
 
-            async function fetchPage(url) {
+            async function analyseUrl(url) {
+                const endpoint = buildWorkerUrl(url);
+                let payload;
                 try {
-                    const response = await fetch(url, { redirect: 'follow' });
-                    if (!response.ok) {
-                        throw new Error(`The server responded with ${response.status} ${response.statusText}.`);
-                    }
-                    const html = await response.text();
-                    return { html, usedProxy: false, finalUrl: response.url || url };
-                } catch (error) {
-                    const proxyUrl = buildProxyUrl(url);
-                    try {
-                        const response = await fetch(proxyUrl, { redirect: 'follow' });
-                        if (!response.ok) {
-                            throw new Error(`Unable to fetch the URL directly or via proxy (status ${response.status}).`);
+                    const response = await fetch(endpoint, {
+                        headers: {
+                            'Accept': 'application/json'
                         }
-                        const html = await response.text();
-                        return { html, usedProxy: true, finalUrl: url };
-                    } catch (proxyError) {
-                        throw new Error('Unable to fetch the requested URL. It may block cross-origin access.');
+                    });
+                    try {
+                        payload = await response.json();
+                    } catch (parseError) {
+                        throw new Error('The analysis worker returned an unexpected response.');
                     }
-                }
-            }
 
-            function buildProxyUrl(url) {
-                try {
-                    const parsed = new URL(url);
-                    return `https://r.jina.ai/${parsed.protocol}//${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
-                } catch (error) {
-                    return url;
-                }
-            }
-
-            function parseDocument(html, requestedUrl, finalUrl) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const meta = {};
-                doc.querySelectorAll('meta').forEach((metaTag) => {
-                    const key = metaTag.getAttribute('property') || metaTag.getAttribute('name');
-                    if (!key) return;
-                    const content = metaTag.getAttribute('content') || '';
-                    meta[key.toLowerCase()] = content.trim();
-                });
-
-                const links = {};
-                doc.querySelectorAll('link[rel]').forEach((linkTag) => {
-                    const rel = linkTag.getAttribute('rel');
-                    if (!rel) return;
-                    const relKey = rel.toLowerCase();
-                    const href = linkTag.getAttribute('href') || '';
-                    if (!links[relKey]) {
-                        links[relKey] = [];
+                    if (!response.ok) {
+                        throw new Error(payload?.error || `The analysis worker responded with ${response.status}.`);
                     }
-                    links[relKey].push(resolveUrl(href, requestedUrl));
-                });
-
-                const title = (doc.querySelector('title')?.textContent || '').trim();
-                const description = meta['description'] || '';
-                const charset = (doc.querySelector('meta[charset]')?.getAttribute('charset') || '').trim();
-                const viewport = meta['viewport'] || '';
-                const canonical = links['canonical'] ? links['canonical'][0] : '';
-                const htmlLang = (doc.documentElement.getAttribute('lang') || '').trim();
-                const baseHref = doc.querySelector('base[href]')?.getAttribute('href') || '';
-                const baseUrl = resolveUrl(baseHref, requestedUrl) || finalUrl || requestedUrl;
-                const hostname = safeHostname(finalUrl || requestedUrl);
-
-                return {
-                    meta,
-                    links,
-                    title,
-                    description,
-                    charset,
-                    viewport,
-                    canonical,
-                    htmlLang,
-                    baseUrl,
-                    finalUrl: finalUrl || requestedUrl,
-                    hostname
-                };
-            }
-
-            function safeHostname(url) {
-                try {
-                    return new URL(url).hostname;
-                } catch (error) {
-                    return '';
+                } catch (networkError) {
+                    if (networkError instanceof Error) {
+                        throw networkError;
+                    }
+                    throw new Error('Unable to reach the analysis worker.');
                 }
+
+                if (!payload?.ok) {
+                    throw new Error(payload?.error || 'Analysis failed for the requested URL.');
+                }
+
+                return payload;
             }
 
-            function renderGeneralReport(context) {
-                const results = evaluateGuidelines(generalGuidelines, context);
+            function renderGeneralReport(results) {
+                if (!Array.isArray(results) || results.length === 0) {
+                    generalReportContainer.innerHTML = '<p class="muted">The analysis worker did not return any general guidelines.</p>';
+                    return;
+                }
+
                 generalReportContainer.innerHTML = '';
                 const table = document.createElement('table');
                 const thead = document.createElement('thead');
-                thead.innerHTML = `<tr><th>Guideline</th><th>Status</th><th>Details</th></tr>`;
+                thead.innerHTML = '<tr><th>Guideline</th><th>Status</th><th>Details</th></tr>';
                 table.appendChild(thead);
                 const tbody = document.createElement('tbody');
                 results.forEach((result) => {
@@ -683,21 +433,25 @@
                 generalReportContainer.appendChild(table);
             }
 
-            function renderPlatformReports(context) {
+            function renderPlatformReports(platformReports) {
+                if (!Array.isArray(platformReports) || platformReports.length === 0) {
+                    platformReportsContainer.innerHTML = '<p class="muted">The analysis worker did not return any platform reports.</p>';
+                    return;
+                }
+
                 platformReportsContainer.innerHTML = '';
-                platformSpecs.forEach((platform) => {
+                platformReports.forEach((platform) => {
                     const article = document.createElement('article');
                     article.className = 'platform-report';
                     const platformHeader = document.createElement('div');
                     platformHeader.innerHTML = `<h3>${platform.name}</h3><p class="muted">${platform.summary}</p>`;
 
-                    const reportResults = evaluateGuidelines(platform.guidelines, context);
                     const table = document.createElement('table');
                     const thead = document.createElement('thead');
-                    thead.innerHTML = `<tr><th>Guideline</th><th>Status</th><th>Details</th></tr>`;
+                    thead.innerHTML = '<tr><th>Guideline</th><th>Status</th><th>Details</th></tr>';
                     table.appendChild(thead);
                     const tbody = document.createElement('tbody');
-                    reportResults.forEach((result) => {
+                    (platform.results || []).forEach((result) => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${result.label}</td>
@@ -708,8 +462,7 @@
                     });
                     table.appendChild(tbody);
 
-                    const previewData = platform.preview(context);
-                    const preview = renderPreview(platform.slug, platform.name, previewData);
+                    const preview = renderPreview(platform.slug, platform.name, platform.preview || {});
 
                     article.appendChild(platformHeader);
                     const detailsWrapper = document.createElement('div');
@@ -772,53 +525,6 @@
                 return card;
             }
 
-            function evaluateGuidelines(guidelines, context) {
-                return guidelines.map((guideline) => {
-                    const pass = guideline.check(context);
-                    const detail = typeof guideline.detail === 'function' ? guideline.detail(context, pass) : (guideline.detail || '');
-                    return {
-                        id: guideline.id,
-                        label: guideline.label,
-                        pass,
-                        detail
-                    };
-                });
-            }
-
-            function presenceGuideline(key, label, customCheck, customDetail) {
-                return {
-                    id: key,
-                    label,
-                    check: (ctx) => {
-                        if (typeof customCheck === 'function') {
-                            return customCheck(ctx);
-                        }
-                        return Boolean(ctx.meta[key]);
-                    },
-                    detail: (ctx) => {
-                        if (typeof customDetail === 'function') {
-                            return customDetail(ctx);
-                        }
-                        const value = ctx.meta[key];
-                        return value ? truncate(value, 100) : 'Missing';
-                    }
-                };
-            }
-
-            function truncate(value, maxLength = 120) {
-                if (!value) return '';
-                return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
-            }
-
-            function resolveUrl(value, base) {
-                if (!value) return '';
-                try {
-                    return new URL(value, base).toString();
-                } catch (error) {
-                    return value;
-                }
-            }
-
             function hasScheme(value) {
                 return /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(value);
             }
@@ -861,6 +567,28 @@
                     return `${protocol}//mathspp.com`;
                 }
                 return `${protocol}//${hostname}${port ? `:${port}` : ''}`;
+            }
+
+            function determineWorkerEndpoint() {
+                const configured = document.body?.dataset?.workerEndpoint;
+                if (configured) {
+                    return configured;
+                }
+                return 'https://social-link-preview-production.rodrigogiraoserrao.workers.dev/api/social-link-preview';
+            }
+
+            function buildWorkerUrl(url) {
+                const workerUrl = new URL(workerEndpoint);
+                workerUrl.searchParams.set('url', url);
+                return workerUrl.toString();
+            }
+
+            function safeHostname(url) {
+                try {
+                    return new URL(url).hostname;
+                } catch (error) {
+                    return '';
+                }
             }
         })();
     </script>

@@ -1,0 +1,6 @@
+name = "social-link-preview-production"
+main = "worker.js"
+compatibility_date = "2025-11-12"
+
+[env.production]
+name = "social-link-preview-production"
