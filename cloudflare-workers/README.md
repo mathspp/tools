@@ -14,6 +14,10 @@ Each worker lives in its own subdirectory with:
 - **Location**: `cloudflare-workers/gumroad-products/`
 - **Purpose**: Fetch products from a Gumroad user profile page
 
+### social-link-preview
+- **Location**: `cloudflare-workers/social-link-preview/`
+- **Purpose**: Fetch a URL server-side, extract metadata, and return link preview reports for the frontend tool
+
 ## Setup Instructions
 
 ### 1. Install Wrangler CLI (Optional - for local development)
