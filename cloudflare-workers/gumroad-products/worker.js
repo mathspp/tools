@@ -26,6 +26,7 @@ export default {
 
         // Fetch the Gumroad page
         const upstreamResp = await fetch(gumroadUrl);
+        return new Response("done", { status: 200 });
 
         // Get raw HTML
         const html = await upstreamResp.text();
