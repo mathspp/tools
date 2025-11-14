@@ -10,10 +10,6 @@ Each worker lives in its own subdirectory with:
 
 ## Current Workers
 
-### gumroad-products
-- **Location**: `cloudflare-workers/gumroad-products/`
-- **Purpose**: Fetch products from a Gumroad user profile page
-
 ### social-link-preview
 - **Location**: `cloudflare-workers/social-link-preview/`
 - **Purpose**: Fetch a URL server-side, extract metadata, and return link preview reports for the frontend tool
@@ -66,7 +62,7 @@ Each worker is deployed independently - only workers with changed files are depl
 To deploy manually from your local machine:
 
 ```bash
-cd cloudflare-workers/github-auth
+cd cloudflare-workers/social-link-preview
 wrangler deploy --env production
 ```
 
@@ -81,7 +77,7 @@ To add a new worker to this monorepo:
 
 1. Create a new directory: `cloudflare-workers/your-worker-name/`
 2. Add your worker code as `worker.js`
-3. Create a `wrangler.toml` configuration (copy from github-auth as template)
+3. Create a `wrangler.toml` configuration (copy from social-link-preview as template)
 4. Add a new job to `.github/workflows/deploy-cloudflare-workers.yml` (see commented example)
 5. Push to main branch
 
