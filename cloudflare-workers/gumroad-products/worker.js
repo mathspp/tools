@@ -40,7 +40,7 @@ export default {
         };
 
         const upstreamResp = await fetch(gumroadUrl, { headers: browserHeaders });
-        return new Response(`done ${upstreamResp.status}`, { status: 200 });
+        return new Response(`done ${upstreamResp.headers.get("Retry-After")}`, { status: 200 });
 
         const html = await upstreamResp.text();
 
