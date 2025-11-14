@@ -1,179 +1,77 @@
-// worker.js
-const DEFAULT_ALLOWED_ORIGINS = [
-    "https://tools.mathspp.com",
-    "http://localhost:5173",
-    "http://localhost:3000",
-];
-
-const S_MAX_AGE = 3600;         // 1h fresh cache
-const STALE_WINDOW = 24 * 3600; // 24h serve-stale if upstream errors
-
-function buildAllowedOrigins(env) {
-    const allowList = (env?.ALLOWED_ORIGINS || DEFAULT_ALLOWED_ORIGINS.join(","))
-        .split(",").map(s => s.trim()).filter(Boolean);
-    return new Set(allowList);
-}
-function corsHeaders(origin, allowed) {
-    const allow = allowed.has(origin) ? origin : "";
-    return {
-        "Access-Control-Allow-Origin": allow,
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Vary": "Origin",
-    };
-}
-function respondJSON(origin, allowed, data, status = 200, extra = {}) {
-    return new Response(JSON.stringify(data), {
-        status,
-        headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            ...corsHeaders(origin, allowed),
-            ...extra,
-        },
-    });
-}
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-async function fetchWithBackoff(url, init, attempts = 3) {
-    for (let i = 0; i < attempts; i++) {
-        const res = await fetch(url, init);
-        if (res.ok) return res;
-
-        if (res.status === 429 || res.status === 503) {
-            const ra = res.headers.get("Retry-After");
-            if (ra) {
-                const secs = Number(ra);
-                if (!Number.isNaN(secs) && secs >= 0 && secs <= 120) {
-                    await sleep(secs * 1000);
-                    continue;
-                }
-            }
-            const delay = Math.min(1600, 400 * Math.pow(2, i)) + Math.floor(Math.random() * 150);
-            await sleep(delay);
-            continue;
-        }
-        return res; // don't retry other statuses
-    }
-    return fetch(url, init); // last shot
-}
-
 export default {
     async fetch(request, env, ctx) {
-        const origin = request.headers.get("Origin") || "";
-        const allowed = buildAllowedOrigins(env);
         const url = new URL(request.url);
 
+        // Only handle /api/gumroad-products
+        if (url.pathname !== "/api/gumroad-products") {
+            return new Response("Not found", { status: 404 });
+        }
+
+        // Handle CORS preflight
         if (request.method === "OPTIONS") {
-            return new Response(null, { headers: corsHeaders(origin, allowed) });
-        }
-        if (request.method !== "GET") {
-            return respondJSON(origin, allowed, { error: "Method Not Allowed" }, 405);
+            return handleOptions(request);
         }
 
-        const goodPath = url.pathname === "/api/gumroad-products" || url.pathname === "/api/gumroad-products/";
-        if (!goodPath) {
-            return respondJSON(origin, allowed, { error: "Not Found" }, 404);
+        const username = url.searchParams.get("u");
+        if (!username) {
+            return new Response("Missing 'u' query parameter", { status: 400 });
         }
 
-        const u = (url.searchParams.get("u") || "").trim();
-        if (!u || !/^[a-z0-9-]+$/i.test(u)) {
-            return respondJSON(origin, allowed, { error: "Invalid or missing Gumroad username." }, 400);
+        // (Optional) Very basic sanity-check for username
+        if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+            return new Response("Invalid username", { status: 400 });
         }
 
-        const cache = caches.default;
-        const dataKey = new Request(`https://gumroad-products.internal/cache?u=${encodeURIComponent(u)}`);
-        const metaKey = new Request(`https://gumroad-products.internal/meta?u=${encodeURIComponent(u)}`);
+        const gumroadUrl = `https://${username}.gumroad.com`;
 
-        let cachedBody = null, cachedTs = 0;
-        const c = await cache.match(dataKey);
-        if (c) cachedBody = await c.text();
-        const cm = await cache.match(metaKey);
-        if (cm) try { cachedTs = (await cm.json()).ts || 0; } catch { }
+        // Fetch the Gumroad page
+        const upstreamResp = await fetch(gumroadUrl);
 
-        // Serve fresh cache (<= 1h)
-        const age = Math.floor(Date.now() / 1000) - cachedTs;
-        if (cachedBody && age <= S_MAX_AGE) {
-            return new Response(cachedBody, {
-                headers: {
-                    "Content-Type": "text/html; charset=utf-8",
-                    "Cache-Control": `public, max-age=${S_MAX_AGE}`,
-                    "X-Cache": "HIT",
-                    "X-Upstream-Status": "none",
-                    ...corsHeaders(origin, allowed),
-                },
-            });
-        }
+        // Get raw HTML
+        const html = await upstreamResp.text();
 
-        // Try subdomain first, then path-based profile
-        const profileUrlA = `https://${u}.gumroad.com/`;
-        const profileUrlB = `https://gumroad.com/${encodeURIComponent(u)}`;
+        // Build response with CORS headers
+        const responseHeaders = new Headers(upstreamResp.headers);
+        responseHeaders.set("Content-Type", "text/html; charset=utf-8");
 
-        async function getProfileHTML(urlStr) {
-            const res = await fetchWithBackoff(urlStr, {
-                redirect: "follow",
-                headers: {
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-                    "Referer": "https://gumroad.com/",
-                    "Cache-Control": "no-cache",
-                    "Pragma": "no-cache",
-                },
-            });
-            return res;
-        }
-
-        // 1) Try subdomain and then path profile if it fails.
-        let upstream = await getProfileHTML(profileUrlA);
-        if (!upstream.ok && (upstream.status === 429 || upstream.status === 403)) {
-            upstream = await getProfileHTML(profileUrlB);
-        }
-
-        // If still not ok, serve stale or bubble error
-        if (!upstream.ok) {
-            // Serve stale (<= 25h old total) instead of failing
-            if (cachedBody && age <= (S_MAX_AGE + STALE_WINDOW)) {
-                return new Response(cachedBody, {
-                    headers: {
-                        "Content-Type": "text/html; charset=utf-8",
-                        "Cache-Control": `public, max-age=0, stale-while-revalidate=${STALE_WINDOW}`,
-                        "X-Cache": "STALE",
-                        "X-Upstream-Status": String(upstream.status),
-                        ...corsHeaders(origin, allowed),
-                    },
-                });
-            }
-            // No cache to fall back to
-            return respondJSON(origin, allowed, { error: "Upstream error", status: upstream.status }, upstream.status, {
-                "X-Cache": "MISS",
-                "X-Upstream-Status": String(upstream.status),
-            });
-        }
-
-        const html = await upstream.text();
-
-        // Update cache
-        const now = Math.floor(Date.now() / 1000);
-        const dataResp = new Response(html, {
-            headers: {
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": `public, max-age=${S_MAX_AGE}`,
-            },
-        });
-        const metaResp = new Response(JSON.stringify({ ts: now }), {
-            headers: { "Content-Type": "application/json" },
-        });
-        ctx.waitUntil(cache.put(dataKey, dataResp.clone()));
-        ctx.waitUntil(cache.put(metaKey, metaResp.clone()));
+        // Apply CORS policy
+        applyCors(request, responseHeaders);
 
         return new Response(html, {
-            headers: {
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": `public, max-age=${S_MAX_AGE}`,
-                "X-Cache": cachedBody ? "MISS-REVAL" : "MISS",
-                "X-Upstream-Status": "200",
-                ...corsHeaders(origin, allowed),
-            },
+            status: upstreamResp.status,
+            statusText: upstreamResp.statusText,
+            headers: responseHeaders,
         });
     },
 };
+
+function applyCors(request, headers) {
+    const origin = request.headers.get("Origin");
+    const allowedOrigins = new Set([
+        "https://mathspp.com",
+        "https://tools.mathspp.com",
+    ]);
+
+    if (origin && allowedOrigins.has(origin)) {
+        headers.set("Access-Control-Allow-Origin", origin);
+        headers.set("Vary", "Origin");
+        headers.set("Access-Control-Allow-Credentials", "true");
+    }
+}
+
+function handleOptions(request) {
+    const headers = new Headers();
+    applyCors(request, headers);
+
+    // If no allowed origin, just send generic response
+    headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    headers.set(
+        "Access-Control-Allow-Headers",
+        request.headers.get("Access-Control-Request-Headers") || ""
+    );
+
+    return new Response(null, {
+        status: 204,
+        headers,
+    });
+}
