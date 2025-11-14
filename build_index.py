@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 from datetime import datetime
 from pathlib import Path
@@ -93,6 +94,25 @@ def _select_recent(
     return selected
 
 
+def _replace_between_markers(body_html: str, start_marker: str, end_marker: str, replacement: str) -> str:
+    if start_marker not in body_html or end_marker not in body_html:
+        raise RuntimeError(f"Markers '{start_marker}' or '{end_marker}' not found.")
+
+    start_idx = body_html.find(start_marker)
+    end_idx = body_html.find(end_marker, start_idx)
+
+    if start_idx == -1 or end_idx == -1 or start_idx >= end_idx:
+        raise RuntimeError("Invalid marker positions.")
+
+    return (
+        body_html[: start_idx + len(start_marker)]
+        + "\n"
+        + replacement
+        + "\n"
+        + body_html[end_idx:]
+    )
+
+
 def _render_recent_section(recently_added: Sequence[dict], recently_updated: Sequence[dict]) -> str:
     def render_list(tools: Sequence[dict]) -> str:
         if not tools:
@@ -141,6 +161,36 @@ def _render_recent_section(recently_added: Sequence[dict], recently_updated: Seq
     return section_html
 
 
+def _render_tools_index(tools: Sequence[dict]) -> str:
+    filtered_tools = [tool for tool in tools if tool.get("slug") != "index"]
+    sorted_tools = sorted(
+        filtered_tools,
+        key=lambda tool: (tool.get("title") or tool.get("slug") or "").casefold(),
+    )
+
+    if sorted_tools:
+        items = []
+        for tool in sorted_tools:
+            title = tool.get("title") or tool.get("slug") or "Untitled tool"
+            url = tool.get("url") or f"/{tool.get('slug', '')}"
+            items.append(
+                f"      <li><a href=\"{html.escape(url)}\">{html.escape(title)}</a></li>"
+            )
+        list_content = "\n".join(items)
+    else:
+        list_content = "      <li class=\"tools-directory-empty\">No tools available.</li>"
+
+    section_html = f"""
+<section class=\"surface tools-directory content-flow\">
+  <h2>All tools</h2>
+  <ul class=\"tools-directory-list\">
+{list_content}
+  </ul>
+</section>
+"""
+    return section_html.strip()
+
+
 def build_index() -> None:
     if not README_PATH.exists():
         raise FileNotFoundError("README.md not found")
@@ -158,22 +208,20 @@ def build_index() -> None:
     )
 
     recent_section_html = _render_recent_section(recently_added, recently_updated)
+    body_html = _replace_between_markers(
+        body_html,
+        "<!-- recently starts -->",
+        "<!-- recently stops -->",
+        recent_section_html,
+    )
 
-    # Inject the recent section between the comment markers
-    start_marker = '<!-- recently starts -->'
-    end_marker = '<!-- recently stops -->'
-    if start_marker in body_html and end_marker in body_html:
-        # Replace content between markers
-        start_idx = body_html.find(start_marker)
-        end_idx = body_html.find(end_marker)
-        if start_idx < end_idx:
-            body_html = (
-                body_html[:start_idx + len(start_marker)] +
-                '\n' + recent_section_html +
-                body_html[end_idx:]
-            )
-    else:
-        raise RuntimeError("Markers not found.")
+    tools_directory_html = _render_tools_index(tools)
+    body_html = _replace_between_markers(
+        body_html,
+        "<!-- tools index starts -->",
+        "<!-- tools index stops -->",
+        tools_directory_html,
+    )
 
     wrapped_body = f"<article class=\"content-flow\">\n{body_html}\n</article>"
 
