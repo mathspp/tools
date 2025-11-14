@@ -303,6 +303,23 @@ legend {
     font-size: 0.95rem;
 }
 
+.tools-directory-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.tools-directory-list a {
+    font-weight: 600;
+}
+
+.tools-directory-empty {
+    color: var(--tx-2);
+    font-size: 0.95rem;
+}
+
 .tool-search {
     display: grid;
     gap: 0.75rem;

@@ -11,16 +11,7 @@ The [colophon](https://tools.mathspp.com/colophon) lists commit messages and tra
 
 ## Tools index
 
-### General tools
-
- - [QR code generator](./qr.html)
- - [What time is it for me?](./what-time-is-it-for-me.html)
- - [Gumroad link builder](./gumroad-links.html)
- - [Social link preview](./social-link-preview.html)
- - [DMARC analyser](./dmarc-analyser.html)
-
-### mathspp-specific tools
-
- - [Pre-fill testimonial form](./pre-fill-testimonial.html)
+<!-- tools index starts -->
+<!-- tools index stops -->
 
 <script type="module" src="homepage-search.js" data-tool-search></script>
