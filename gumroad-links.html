@@ -653,34 +653,49 @@
                 }
             }
 
-            function parseProductsFromProfile(html, profileUrl, username) {
+            function parseProductsFromHTML(html, username) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
-                const productCards = Array.from(doc.querySelectorAll('article.product-card'));
+                const anchors = Array.from(doc.querySelectorAll('a[href]'));
                 const products = new Map();
+                const baseUrl = `https://${username}.gumroad.com/`;
 
-                for (const card of productCards) {
-                    const link = card.querySelector('a[href]');
-                    if (!link) {
+                for (const anchor of anchors) {
+                    const rawHref = anchor.getAttribute('href');
+                    if (!rawHref) {
                         continue;
                     }
+
                     let resolvedUrl;
                     try {
-                        resolvedUrl = new URL(link.getAttribute('href'), profileUrl);
+                        resolvedUrl = new URL(rawHref, baseUrl);
                     } catch (error) {
                         continue;
                     }
+
+                    if (!resolvedUrl.hostname.endsWith('gumroad.com')) {
+                        continue;
+                    }
+
+                    const segments = resolvedUrl.pathname.split('/').filter(Boolean);
+                    if (segments.length < 2 || segments[0].toLowerCase() !== 'l') {
+                        continue;
+                    }
+
                     const slug = sanitiseSlug(resolvedUrl.pathname);
                     if (!slug || products.has(slug)) {
                         continue;
                     }
-                    const titleElement = card.querySelector('[itemprop="name"], h4, h3') || link;
-                    const name = (titleElement.textContent || '').trim();
-                    const productUrl = composeProductUrl(username, slug) || resolvedUrl.href;
+
+                    const textContent = (anchor.textContent || '').replace(/\s+/g, ' ').trim();
+                    const titleAttr = (anchor.getAttribute('title') || '').trim();
+                    const label = textContent || titleAttr || slug;
+                    const canonicalUrl = composeProductUrl(username, slug) || resolvedUrl.href;
+
                     products.set(slug, {
                         slug,
-                        name: name || slug,
-                        url: productUrl,
+                        name: label,
+                        url: canonicalUrl,
                     });
                 }
 
@@ -780,12 +795,8 @@
                             throw new Error(`Request failed: ${response.status} (X-Cache=${xCache}, Upstream=${xUp})`);
                         }
 
-                        const data = await response.json();
-                        const products = (data.products || []).map((p) => ({
-                            name: p.name || p.title || p.slug || '',
-                            slug: p.slug,
-                            url: p.url,
-                        })).filter((product) => Boolean(product.slug));
+                        const html = await response.text();
+                        const products = parseProductsFromHTML(html, cleanUsername);
 
                         if (products.length === 0) {
                             populateProductSelect([]);
