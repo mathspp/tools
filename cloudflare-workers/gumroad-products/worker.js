@@ -80,7 +80,6 @@ export default {
             return respondJSON(origin, allowed, { error: "Invalid or missing Gumroad username." }, 400);
         }
 
-        const profileUrl = `https://${u}.gumroad.com/`;
         const cache = caches.default;
         const dataKey = new Request(`https://gumroad-products.internal/cache?u=${encodeURIComponent(u)}`);
         const metaKey = new Request(`https://gumroad-products.internal/meta?u=${encodeURIComponent(u)}`);
@@ -96,7 +95,7 @@ export default {
         if (cachedBody && age <= S_MAX_AGE) {
             return new Response(cachedBody, {
                 headers: {
-                    "Content-Type": "application/json; charset=utf-8",
+                    "Content-Type": "text/html; charset=utf-8",
                     "Cache-Control": `public, max-age=${S_MAX_AGE}`,
                     "X-Cache": "HIT",
                     "X-Upstream-Status": "none",
@@ -136,7 +135,7 @@ export default {
             if (cachedBody && age <= (S_MAX_AGE + STALE_WINDOW)) {
                 return new Response(cachedBody, {
                     headers: {
-                        "Content-Type": "application/json; charset=utf-8",
+                        "Content-Type": "text/html; charset=utf-8",
                         "Cache-Control": `public, max-age=0, stale-while-revalidate=${STALE_WINDOW}`,
                         "X-Cache": "STALE",
                         "X-Upstream-Status": String(upstream.status),
@@ -153,22 +152,11 @@ export default {
 
         const html = await upstream.text();
 
-        const products = extractProducts(html);
-
-        const payload = {
-            username: u,
-            profile_url: profileUrl,
-            count: products.length,
-            products,
-            fetched_at: new Date().toISOString(),
-        };
-        const body = JSON.stringify(payload);
-
         // Update cache
         const now = Math.floor(Date.now() / 1000);
-        const dataResp = new Response(body, {
+        const dataResp = new Response(html, {
             headers: {
-                "Content-Type": "application/json; charset=utf-8",
+                "Content-Type": "text/html; charset=utf-8",
                 "Cache-Control": `public, max-age=${S_MAX_AGE}`,
             },
         });
@@ -178,9 +166,9 @@ export default {
         ctx.waitUntil(cache.put(dataKey, dataResp.clone()));
         ctx.waitUntil(cache.put(metaKey, metaResp.clone()));
 
-        return new Response(body, {
+        return new Response(html, {
             headers: {
-                "Content-Type": "application/json; charset=utf-8",
+                "Content-Type": "text/html; charset=utf-8",
                 "Cache-Control": `public, max-age=${S_MAX_AGE}`,
                 "X-Cache": cachedBody ? "MISS-REVAL" : "MISS",
                 "X-Upstream-Status": "200",
@@ -189,31 +177,3 @@ export default {
         });
     },
 };
-
-function extractProducts(html) {
-    // Lightweight HTML parsing without DOM: heuristic regex over links.
-    // For more robustness, you could use an HTML parser lib with Workers Bundler.
-    const linkRe = /<a\b[^>]*href=["']([^"']*\/l\/[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi;
-    const tagRe = /<\/?[^>]+>/g;
-    const nbspRe = /&nbsp;/g;
-
-    const seen = new Set();
-    const items = [];
-    let m;
-    while ((m = linkRe.exec(html)) !== null) {
-        const href = m[1];
-        let title = m[2].replace(tagRe, '').replace(nbspRe, ' ').trim();
-        if (!title) continue;
-
-        // Normalize absolute vs relative
-        const url = href.startsWith('http') ? href : new URL(href, 'https://example.com').href;
-        const slug = url.split('/').filter(Boolean).pop();
-
-        const key = url + '|' + title;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        items.push({ title, url, slug });
-    }
-    return items;
-}
