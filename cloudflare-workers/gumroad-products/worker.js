@@ -26,10 +26,10 @@ export default {
 
         // Fetch the Gumroad page
         const upstreamResp = await fetch(gumroadUrl);
-        return new Response("done", { status: 200 });
 
         // Get raw HTML
         const html = await upstreamResp.text();
+        return new Response(`done ${upstreamResp.status}`, { status: 200 });
 
         // Build response with CORS headers
         const responseHeaders = new Headers(upstreamResp.headers);
