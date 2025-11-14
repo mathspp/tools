@@ -422,11 +422,22 @@
                 const tbody = document.createElement('tbody');
                 results.forEach((result) => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${result.label}</td>
-                        <td><span class="status-pill ${result.pass ? 'pass' : 'fail'}">${result.pass ? 'Pass' : 'Fail'}</span></td>
-                        <td>${result.detail}</td>
-                    `;
+
+                    const labelCell = document.createElement('td');
+                    labelCell.textContent = result.label;
+                    row.appendChild(labelCell);
+
+                    const statusCell = document.createElement('td');
+                    const statusPill = document.createElement('span');
+                    statusPill.className = `status-pill ${result.pass ? 'pass' : 'fail'}`;
+                    statusPill.textContent = result.pass ? 'Pass' : 'Fail';
+                    statusCell.appendChild(statusPill);
+                    row.appendChild(statusCell);
+
+                    const detailCell = document.createElement('td');
+                    detailCell.textContent = result.detail || '';
+                    row.appendChild(detailCell);
+
                     tbody.appendChild(row);
                 });
                 table.appendChild(tbody);
@@ -453,11 +464,22 @@
                     const tbody = document.createElement('tbody');
                     (platform.results || []).forEach((result) => {
                         const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${result.label}</td>
-                            <td><span class="status-pill ${result.pass ? 'pass' : 'fail'}">${result.pass ? 'Pass' : 'Fail'}</span></td>
-                            <td>${result.detail}</td>
-                        `;
+
+                        const labelCell = document.createElement('td');
+                        labelCell.textContent = result.label;
+                        row.appendChild(labelCell);
+
+                        const statusCell = document.createElement('td');
+                        const statusPill = document.createElement('span');
+                        statusPill.className = `status-pill ${result.pass ? 'pass' : 'fail'}`;
+                        statusPill.textContent = result.pass ? 'Pass' : 'Fail';
+                        statusCell.appendChild(statusPill);
+                        row.appendChild(statusCell);
+
+                        const detailCell = document.createElement('td');
+                        detailCell.textContent = result.detail || '';
+                        row.appendChild(detailCell);
+
                         tbody.appendChild(row);
                     });
                     table.appendChild(tbody);
