@@ -61,7 +61,7 @@
 
         .field-row.split {
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            align-items: end;
+            align-items: start;
         }
 
         label {
@@ -217,12 +217,14 @@
                     <div class="field-group">
                         <label for="username">Gumroad username</label>
                         <input type="text" id="username" name="username" placeholder="username">
-                        <p class="helper-text">Updating the username and product ID updates the product link.</p>
                     </div>
                     <div class="field-group">
                         <label for="product-slug">Product ID</label>
                         <input type="text" id="product-slug" name="product-slug" placeholder="product">
                     </div>
+                    <p class="helper-text" style="grid-column: 1 / 3;">
+                        Updating the username and product ID updates the product link.
+                    </p>
                 </div>
 
                 <div class="field-group">
