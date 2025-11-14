@@ -216,33 +216,21 @@
                 <div class="field-row split">
                     <div class="field-group">
                         <label for="username">Gumroad username</label>
-                        <input type="text" id="username" name="username" placeholder="username" value="mathspp">
-                        <div class="actions">
-                            <button type="button" id="fetch-products">Fetch products</button>
-                        </div>
-                        <p class="helper-text" id="fetch-status" role="status" aria-live="polite" hidden></p>
+                        <input type="text" id="username" name="username" placeholder="username">
+                        <p class="helper-text">Updating the username and product ID updates the product link.</p>
                     </div>
                     <div class="field-group">
                         <label for="product-slug">Product ID</label>
-                        <input type="text" id="product-slug" name="product-slug" placeholder="product" value="">
+                        <input type="text" id="product-slug" name="product-slug" placeholder="product">
                     </div>
-                </div>
-
-                <div class="field-group" id="product-select-group" hidden>
-                    <label for="product-select">Products found</label>
-                    <select id="product-select" name="product-select">
-                        <option value="">Select a product</option>
-                    </select>
-                    <p class="helper-text">Selecting a product updates the Product ID field automatically.</p>
                 </div>
 
                 <div class="field-group">
                     <label for="product-url">Product URL</label>
                     <input type="url" id="product-url" name="product-url"
-                        placeholder="https://username.gumroad.com/l/product" value="https://mathspp.gumroad.com"
-                        readonly required>
-                    <p class="helper-text">Fill out the username and product fields below to compose it automatically.
-                    </p>
+                        placeholder="https://username.gumroad.com/l/product" required>
+                    <p class="helper-text">You can also paste a Gumroad product link to sync the username and product ID
+                        fields automatically.</p>
                 </div>
 
                 <div class="field-group">
@@ -381,12 +369,6 @@
             const productUrlInput = document.getElementById('product-url');
             const usernameInput = document.getElementById('username');
             const productSlugInput = document.getElementById('product-slug');
-            const fetchProductsButton = document.getElementById('fetch-products');
-            const productSelect = document.getElementById('product-select');
-            const productSelectGroup = document.getElementById('product-select-group');
-            const fetchStatus = document.getElementById('fetch-status');
-            const fetchButtonDefaultText = fetchProductsButton ? fetchProductsButton.textContent : '';
-
             let customFieldCount = 0;
             let syncingFromParts = false;
             let syncingFromUrl = false;
@@ -640,94 +622,6 @@
                 }
             }
 
-            function setFetchStatus(message) {
-                if (!fetchStatus) {
-                    return;
-                }
-                if (message) {
-                    fetchStatus.textContent = message;
-                    fetchStatus.hidden = false;
-                } else {
-                    fetchStatus.textContent = '';
-                    fetchStatus.hidden = true;
-                }
-            }
-
-            function parseProductsFromHTML(html, username) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const anchors = Array.from(doc.querySelectorAll('a[href]'));
-                const products = new Map();
-                const baseUrl = `https://${username}.gumroad.com/`;
-
-                for (const anchor of anchors) {
-                    const rawHref = anchor.getAttribute('href');
-                    if (!rawHref) {
-                        continue;
-                    }
-
-                    let resolvedUrl;
-                    try {
-                        resolvedUrl = new URL(rawHref, baseUrl);
-                    } catch (error) {
-                        continue;
-                    }
-
-                    if (!resolvedUrl.hostname.endsWith('gumroad.com')) {
-                        continue;
-                    }
-
-                    const segments = resolvedUrl.pathname.split('/').filter(Boolean);
-                    if (segments.length < 2 || segments[0].toLowerCase() !== 'l') {
-                        continue;
-                    }
-
-                    const slug = sanitiseSlug(resolvedUrl.pathname);
-                    if (!slug || products.has(slug)) {
-                        continue;
-                    }
-
-                    const textContent = (anchor.textContent || '').replace(/\s+/g, ' ').trim();
-                    const titleAttr = (anchor.getAttribute('title') || '').trim();
-                    const label = textContent || titleAttr || slug;
-                    const canonicalUrl = composeProductUrl(username, slug) || resolvedUrl.href;
-
-                    products.set(slug, {
-                        slug,
-                        name: label,
-                        url: canonicalUrl,
-                    });
-                }
-
-                return Array.from(products.values());
-            }
-
-            function populateProductSelect(products) {
-                if (!productSelectGroup || !productSelect) {
-                    return;
-                }
-
-                productSelect.innerHTML = '<option value="">Select a product</option>';
-
-                for (const product of products) {
-                    const option = document.createElement('option');
-                    option.value = product.slug;
-                    option.textContent = product.name;
-                    option.dataset.url = product.url;
-                    productSelect.appendChild(option);
-                }
-
-                productSelectGroup.hidden = products.length === 0;
-            }
-
-            function resetProductSelect() {
-                if (!productSelectGroup || !productSelect) {
-                    return;
-                }
-                productSelect.innerHTML = '<option value="">Select a product</option>';
-                productSelectGroup.hidden = true;
-            }
-
             form.addEventListener('input', buildLink);
             form.addEventListener('change', buildLink);
             form.addEventListener('reset', () => {
@@ -735,8 +629,7 @@
                     customFieldsContainer.innerHTML = '';
                     usernameInput.value = '';
                     productSlugInput.value = '';
-                    resetProductSelect();
-                    setFetchStatus('');
+                    productUrlInput.value = '';
                     buildLink();
                 }, 0);
             });
@@ -756,88 +649,6 @@
             productSlugInput.addEventListener('input', updateUrlFromParts);
             productUrlInput.addEventListener('input', updatePartsFromUrl);
             productUrlInput.addEventListener('change', updatePartsFromUrl);
-
-            let isFetching = false;
-
-            if (fetchProductsButton) {
-                fetchProductsButton.addEventListener('click', async () => {
-                    if (isFetching) return; // guard
-
-                    const rawUsername = usernameInput.value.trim();
-                    const cleanUsername = rawUsername.replace(/\s+/g, '');
-
-                    if (!cleanUsername) {
-                        setFetchStatus('Enter a Gumroad username first.');
-                        resetProductSelect();
-                        return;
-                    }
-                    if (cleanUsername !== rawUsername) {
-                        usernameInput.value = cleanUsername;
-                    }
-
-                    const apiUrl = `https://gumroad-products-production.rodrigogiraoserrao.workers.dev/api/gumroad-products?u=${encodeURIComponent(cleanUsername)}`;
-
-                    // disable immediately
-                    isFetching = true;
-                    fetchProductsButton.disabled = true;
-                    const oldText = fetchButtonDefaultText || fetchProductsButton.textContent || 'Fetch products';
-                    fetchProductsButton.textContent = 'Fetching…';
-                    setFetchStatus(`Fetching ${cleanUsername}…`);
-
-                    try {
-                        const response = await fetch(apiUrl, { credentials: 'omit' });
-                        // Peek diagnostics
-                        const xCache = response.headers.get('X-Cache');
-                        const xUp = response.headers.get('X-Upstream-Status');
-
-                        if (!response.ok) {
-                            // show more helpful status to you in the UI
-                            throw new Error(`Request failed: ${response.status} (X-Cache=${xCache}, Upstream=${xUp})`);
-                        }
-
-                        const html = await response.text();
-                        const products = parseProductsFromHTML(html, cleanUsername);
-
-                        if (products.length === 0) {
-                            populateProductSelect([]);
-                            setFetchStatus('No products were found on that profile.');
-                            return;
-                        }
-
-                        populateProductSelect(products);
-                        setFetchStatus(`Found ${products.length} product${products.length === 1 ? '' : 's'}. Select one below.`);
-
-                    } catch (err) {
-                        console.error('Unable to fetch products', err);
-                        resetProductSelect();
-                        setFetchStatus('Unable to fetch products.');
-                    } finally {
-                        isFetching = false;
-                        fetchProductsButton.disabled = false;
-                        fetchProductsButton.textContent = fetchButtonDefaultText || 'Fetch products';
-                    }
-                });
-            }
-
-            if (productSelect) {
-                productSelect.addEventListener('change', () => {
-                    const selectedOption = productSelect.selectedOptions[0];
-                    if (!selectedOption || !selectedOption.value) {
-                        return;
-                    }
-
-                    const selectedSlug = selectedOption.value;
-                    const selectedUrl = selectedOption.dataset.url || '';
-
-                    productSlugInput.value = selectedSlug;
-
-                    if (selectedUrl) {
-                        productUrlInput.value = selectedUrl;
-                    }
-
-                    updatePartsFromUrl();
-                });
-            }
 
             copyButton.addEventListener('click', async () => {
                 const text = output.value.trim();

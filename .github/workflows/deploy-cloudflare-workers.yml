@@ -15,7 +15,6 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      gumroad_products: ${{ steps.filter.outputs.gumroad-products }}
       social_link_preview: ${{ steps.filter.outputs.social-link-preview }}
       # If I add more filters below, I need to “export them” here.
     steps:
@@ -26,36 +25,9 @@ jobs:
       id: filter
       with:
         filters: |
-          gumroad-products:
-            - 'cloudflare-workers/gumroad-products/**'
           social-link-preview:
             - 'cloudflare-workers/social-link-preview/**'
         # I can add more filters here and access them separately.
-
-  deploy-gumroad-products:
-    name: Deploy Gumroad Products Worker
-    runs-on: ubuntu-latest
-    needs: changes
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.gumroad_products == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
-      - name: Deploy to Cloudflare Workers
-        working-directory: cloudflare-workers/gumroad-products
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          wrangler deploy --env production
 
   deploy-social-link-preview:
     name: Deploy Social Link Preview Worker
