@@ -250,6 +250,7 @@
                 <div class="tool-actions">
                     <button type="submit">Analyze page</button>
                     <button type="reset">Reset</button>
+                    <button type="button" id="share-button" disabled>Share</button>
                 </div>
             </form>
             <p id="status-message" class="status-message muted" aria-live="polite"></p>
@@ -277,9 +278,11 @@
             const statusMessage = document.getElementById('status-message');
             const generalReportContainer = document.getElementById('general-report');
             const platformReportsContainer = document.getElementById('platform-reports');
+            const shareButton = document.getElementById('share-button');
             const defaultInspectionOrigin = determineDefaultInspectionOrigin();
             const defaultOriginHint = document.getElementById('default-origin-hint');
             const workerEndpoint = determineWorkerEndpoint();
+            let lastAnalysedUrl = '';
 
             if (defaultOriginHint && defaultInspectionOrigin) {
                 try {
@@ -293,6 +296,11 @@
                 clearStatus();
                 generalReportContainer.innerHTML = '<p class="muted">Submit a URL to inspect its metadata.</p>';
                 platformReportsContainer.innerHTML = '<p class="muted">Run an analysis to see how popular social platforms will render your link previews.</p>';
+                lastAnalysedUrl = '';
+                if (shareButton) {
+                    shareButton.disabled = true;
+                }
+                removeUrlQueryParam();
             });
 
             form.addEventListener('submit', async (event) => {
@@ -305,26 +313,74 @@
                     return;
                 }
 
+                await runAnalysis(normalised);
+            });
+
+            if (shareButton) {
+                shareButton.addEventListener('click', async () => {
+                    if (!lastAnalysedUrl) {
+                        return;
+                    }
+
+                    const shareUrl = buildShareableUrl(lastAnalysedUrl);
+                    updateUrlInHistory(shareUrl);
+
+                    try {
+                        await copyToClipboard(shareUrl);
+                        showStatus('Shareable analysis link copied to your clipboard.', 'success');
+                    } catch (error) {
+                        showStatus('Unable to copy the shareable link to your clipboard.', 'error');
+                    }
+                });
+            }
+
+            const initialUrl = readUrlFromQuery();
+            if (initialUrl) {
+                const normalisedInitialUrl = normaliseUrl(initialUrl);
+                if (normalisedInitialUrl) {
+                    urlInput.value = normalisedInitialUrl;
+                    runAnalysis(normalisedInitialUrl);
+                } else {
+                    removeUrlQueryParam();
+                }
+            }
+
+            async function runAnalysis(normalisedUrl) {
                 setLoadingState(true);
                 showStatus('Requesting metadata from the analysis worker…', 'loading');
+                if (shareButton) {
+                    shareButton.disabled = true;
+                }
 
                 try {
-                    const payload = await analyseUrl(normalised);
-                    const analysedHostname = safeHostname(payload.finalUrl) || normalised;
+                    const payload = await analyseUrl(normalisedUrl);
+                    const analysedHostname = safeHostname(payload.finalUrl) || normalisedUrl;
                     showStatus(`Analysis complete for ${analysedHostname}.`, 'success');
 
                     const generalResults = payload.reports?.general ?? [];
                     const platformResults = payload.reports?.platforms ?? [];
                     renderGeneralReport(generalResults);
                     renderPlatformReports(platformResults);
+
+                    lastAnalysedUrl = payload.finalUrl || normalisedUrl;
+                    urlInput.value = lastAnalysedUrl;
+                    if (shareButton) {
+                        shareButton.disabled = false;
+                    }
+                    const shareUrl = buildShareableUrl(lastAnalysedUrl);
+                    updateUrlInHistory(shareUrl);
                 } catch (error) {
                     showStatus(error.message || 'Unable to analyse the requested URL.', 'error');
                     generalReportContainer.innerHTML = '<p class="muted">No analysis available.</p>';
                     platformReportsContainer.innerHTML = '<p class="muted">No platform previews available.</p>';
+                    lastAnalysedUrl = '';
+                    if (shareButton) {
+                        shareButton.disabled = true;
+                    }
                 } finally {
                     setLoadingState(false);
                 }
-            });
+            }
 
             function setLoadingState(isLoading) {
                 const submitButton = form.querySelector('button[type="submit"]');
@@ -603,6 +659,53 @@
                 const workerUrl = new URL(workerEndpoint);
                 workerUrl.searchParams.set('url', url);
                 return workerUrl.toString();
+            }
+
+            function buildShareableUrl(targetUrl) {
+                const shareUrl = new URL(window.location.href);
+                shareUrl.searchParams.set('url', targetUrl);
+                return shareUrl.toString();
+            }
+
+            function updateUrlInHistory(urlWithQuery) {
+                window.history.replaceState(null, '', urlWithQuery);
+            }
+
+            function readUrlFromQuery() {
+                try {
+                    const currentUrl = new URL(window.location.href);
+                    const urlParam = currentUrl.searchParams.get('url');
+                    return urlParam || '';
+                } catch (error) {
+                    return '';
+                }
+            }
+
+            function removeUrlQueryParam() {
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.delete('url');
+                updateUrlInHistory(currentUrl.toString());
+            }
+
+            async function copyToClipboard(value) {
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(value);
+                    return;
+                }
+
+                const textarea = document.createElement('textarea');
+                textarea.value = value;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'fixed';
+                textarea.style.top = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.select();
+
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (!successful) {
+                    throw new Error('Copy command failed');
+                }
             }
 
             function safeHostname(url) {
