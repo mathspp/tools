@@ -1,0 +1,1 @@
+Resize any PNG, JPEG, or WebP image directly in the browser. Drop or upload a picture, then pick from quick scale presets (0.5×, 1×, 2×) or enter exact width and height targets. The tool keeps the aspect ratio locked by default, pre-fills the inputs with the uploaded image's real dimensions, and lets you download the resized PNG instantly.
