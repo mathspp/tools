@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Resizer</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 56px;
+        }
+
+        header {
+            margin-bottom: 1.25rem;
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .panel {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--color-border, #d0d7de);
+            border-radius: 12px;
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .drop-zone input {
+            display: none;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--color-accent, #0070f3);
+            background-color: rgba(0, 112, 243, 0.08);
+        }
+
+        .drop-zone p {
+            margin: 0.35rem 0 0;
+            color: var(--color-muted, #57606a);
+        }
+
+        .resize-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .preset-buttons button {
+            flex: 1 1 auto;
+        }
+
+        .info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1.5rem;
+            color: var(--color-muted, #57606a);
+            font-size: 0.95rem;
+        }
+
+        .preview-wrapper {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .preview-wrapper img {
+            max-width: 100%;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+        }
+
+        .status-text {
+            min-height: 1.25rem;
+            color: var(--color-muted, #57606a);
+        }
+
+        .status-text.error {
+            color: #b42318;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 18px 16px 48px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Image Resizer</h1>
+        <p class="lead">Drop a PNG, JPEG, or WebP image and generate a resized copy using quick presets or exact dimensions.</p>
+    </header>
+
+    <main>
+        <section class="surface panel">
+            <div class="drop-zone" tabindex="0" role="button" aria-label="Upload image" id="drop-zone">
+                <strong>Drop your image here</strong>
+                <p>or click to choose a file</p>
+                <input type="file" accept="image/*" id="image-input" aria-label="Upload image">
+            </div>
+            <p class="status-text" id="status-text">No image loaded yet.</p>
+        </section>
+
+        <section class="surface panel" aria-live="polite">
+            <h2>Resize options</h2>
+            <div class="info-row" id="original-info" hidden>
+                <span id="file-name"></span>
+                <span id="original-dimensions"></span>
+                <span id="scale-info"></span>
+            </div>
+
+            <div class="resize-grid">
+                <div class="form-group">
+                    <label for="target-width">Width (px)</label>
+                    <input type="number" id="target-width" min="1" inputmode="numeric" placeholder="e.g. 1024" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="target-height">Height (px)</label>
+                    <input type="number" id="target-height" min="1" inputmode="numeric" placeholder="e.g. 768" disabled>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="lock-aspect" checked disabled>
+                        Lock aspect ratio
+                    </label>
+                    <div class="preset-buttons">
+                        <button type="button" data-scale="0.5" disabled>0.5×</button>
+                        <button type="button" data-scale="1" disabled>1×</button>
+                        <button type="button" data-scale="2" disabled>2×</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="surface panel">
+            <h2>Result</h2>
+            <div class="preview-wrapper">
+                <p class="status-text" id="result-status">Upload an image to see the resized preview.</p>
+                <img id="preview" alt="Resized preview" hidden>
+                <div class="tool-actions">
+                    <button type="button" id="download-btn" disabled>Download resized image</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('image-input');
+            const statusText = document.getElementById('status-text');
+            const resultStatus = document.getElementById('result-status');
+            const preview = document.getElementById('preview');
+            const downloadBtn = document.getElementById('download-btn');
+            const widthInput = document.getElementById('target-width');
+            const heightInput = document.getElementById('target-height');
+            const lockAspectCheckbox = document.getElementById('lock-aspect');
+            const presetButtons = document.querySelectorAll('[data-scale]');
+            const fileNameEl = document.getElementById('file-name');
+            const originalDimensionsEl = document.getElementById('original-dimensions');
+            const scaleInfoEl = document.getElementById('scale-info');
+            const originalInfo = document.getElementById('original-info');
+
+            let originalImage = null;
+            let originalWidth = 0;
+            let originalHeight = 0;
+            let suppressUpdate = false;
+            let lastDataURL = '';
+
+            function setControlsEnabled(enabled) {
+                widthInput.disabled = !enabled;
+                heightInput.disabled = !enabled;
+                lockAspectCheckbox.disabled = !enabled;
+                presetButtons.forEach(btn => {
+                    btn.disabled = !enabled;
+                });
+            }
+
+            function updateScaleInfo(targetWidth, targetHeight) {
+                if (!originalWidth || !originalHeight) {
+                    scaleInfoEl.textContent = '';
+                    return;
+                }
+                const widthScale = (targetWidth / originalWidth).toFixed(2);
+                const heightScale = (targetHeight / originalHeight).toFixed(2);
+                scaleInfoEl.textContent = `Scale: ${widthScale}× width, ${heightScale}× height`;
+            }
+
+            function updatePreview() {
+                if (!originalImage) {
+                    return;
+                }
+                const width = Number(widthInput.value);
+                const height = Number(heightInput.value);
+
+                if (!width || !height) {
+                    resultStatus.textContent = 'Enter both width and height to resize the image.';
+                    preview.hidden = true;
+                    downloadBtn.disabled = true;
+                    return;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(originalImage, 0, 0, width, height);
+                lastDataURL = canvas.toDataURL('image/png');
+                preview.src = lastDataURL;
+                preview.hidden = false;
+                resultStatus.textContent = `Resized image: ${width} × ${height} pixels`;
+                downloadBtn.disabled = false;
+                updateScaleInfo(width, height);
+            }
+
+            function handleDimensionInput(changedInput) {
+                if (!originalWidth || !originalHeight) return;
+                if (suppressUpdate) return;
+                const widthRatio = originalWidth / originalHeight;
+                if (lockAspectCheckbox.checked) {
+                    suppressUpdate = true;
+                    if (changedInput === widthInput) {
+                        const newWidth = Number(widthInput.value);
+                        if (newWidth) {
+                            heightInput.value = Math.max(1, Math.round(newWidth / widthRatio));
+                        }
+                    } else if (changedInput === heightInput) {
+                        const newHeight = Number(heightInput.value);
+                        if (newHeight) {
+                            widthInput.value = Math.max(1, Math.round(newHeight * widthRatio));
+                        }
+                    }
+                    suppressUpdate = false;
+                }
+                updatePreview();
+            }
+
+            function handleFiles(files) {
+                const file = files && files[0];
+                if (!file) return;
+                if (!file.type.startsWith('image/')) {
+                    statusText.textContent = 'Please choose an image file (PNG, JPEG, WebP, ...).';
+                    statusText.classList.add('error');
+                    return;
+                }
+
+                statusText.classList.remove('error');
+                statusText.textContent = 'Loading image…';
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        originalImage = img;
+                        originalWidth = img.naturalWidth;
+                        originalHeight = img.naturalHeight;
+                        widthInput.value = originalWidth;
+                        heightInput.value = originalHeight;
+                        originalInfo.hidden = false;
+                        fileNameEl.textContent = `File: ${file.name}`;
+                        originalDimensionsEl.textContent = `Original: ${originalWidth} × ${originalHeight}`;
+                        setControlsEnabled(true);
+                        statusText.textContent = 'Image loaded. Adjust the dimensions below to resize it.';
+                        updatePreview();
+                    };
+                    img.onerror = () => {
+                        statusText.textContent = 'Could not read this file as an image.';
+                        statusText.classList.add('error');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    fileInput.click();
+                }
+            });
+
+            dropZone.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (event) => {
+                event.preventDefault();
+                dropZone.classList.remove('dragover');
+                handleFiles(event.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+            widthInput.addEventListener('input', () => handleDimensionInput(widthInput));
+            heightInput.addEventListener('input', () => handleDimensionInput(heightInput));
+            lockAspectCheckbox.addEventListener('change', () => handleDimensionInput(widthInput));
+
+            presetButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    if (!originalWidth || !originalHeight) return;
+                    const scale = Number(button.dataset.scale);
+                    widthInput.value = Math.max(1, Math.round(originalWidth * scale));
+                    heightInput.value = Math.max(1, Math.round(originalHeight * scale));
+                    updatePreview();
+                });
+            });
+
+            downloadBtn.addEventListener('click', () => {
+                if (!lastDataURL) return;
+                const link = document.createElement('a');
+                link.href = lastDataURL;
+                link.download = 'resized-image.png';
+                link.click();
+            });
+        })();
+    </script>
+</body>
+
+</html>
