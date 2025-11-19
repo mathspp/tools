@@ -1,0 +1,1 @@
+Estimate your one-repetition maximum from any set by entering the weight lifted in kilograms and the reps completed. The tool applies seven popular strength formulas (Epley, Brzycki, Lander, Lombardi, Mayhew et al., O'Conner, and Wathan), then highlights the median estimate and interquartile range to give a stable suggested 1RM.

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifting Max Estimator</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem 1.5rem;
+            align-items: end;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .summary-card {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .summary-number {
+            font-size: clamp(2rem, 4vw, 2.5rem);
+            font-weight: 700;
+        }
+
+        .muted {
+            color: var(--text-muted);
+        }
+
+        .formula-list {
+            display: grid;
+            gap: 0.35rem;
+            margin-top: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .helper-text {
+            margin-top: 0.25rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Lifting Max Estimator</h1>
+        <p class="lead">Estimate your one-rep max (1RM) from any working weight and reps using multiple evidence-based formulas.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <form id="estimator-form" aria-label="Lifting max estimator">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="weight">Weight lifted (kg)</label>
+                        <input id="weight" name="weight" type="number" min="1" step="0.5" inputmode="decimal" placeholder="e.g. 100" required>
+                        <p class="helper-text">Enter the heaviest set you completed with solid form.</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="reps">Reps performed</label>
+                        <select id="reps" name="reps" required>
+                            <option value="" disabled selected>Select reps</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <div class="results-grid">
+                <div class="summary-card">
+                    <h2>Suggested 1RM</h2>
+                    <p class="summary-number" id="suggested">—</p>
+                    <p class="muted" id="suggested-note">Enter a weight and reps to calculate.</p>
+                </div>
+                <div class="summary-card">
+                    <h2>Range</h2>
+                    <p class="summary-number" id="range">—</p>
+                    <p class="muted">Median of the lower/upper quartile estimates.</p>
+                </div>
+            </div>
+
+            <div class="table-container" style="margin-top: 1rem;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Formula</th>
+                            <th>Estimated 1RM (kg)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <tr>
+                            <td colspan="2">Add a weight and reps to see estimates.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="formula-list" aria-label="Formulas used">
+                <strong>Formulas included:</strong>
+                <span>Epley, Brzycki, Lander, Lombardi, Mayhew et al., O'Conner, Wathan</span>
+                <span class="helper-text">Suggested 1RM uses the median of all formulas to reduce outliers.</span>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const repsSelect = document.getElementById('reps');
+            const weightInput = document.getElementById('weight');
+            const resultsBody = document.getElementById('results-body');
+            const suggestedEl = document.getElementById('suggested');
+            const suggestedNote = document.getElementById('suggested-note');
+            const rangeEl = document.getElementById('range');
+
+            const formulas = [
+                { name: 'Epley', calc: (w, r) => w * (1 + r / 30) },
+                { name: 'Brzycki', calc: (w, r) => w * 36 / (37 - r) },
+                { name: 'Lander', calc: (w, r) => w * 100 / (101.3 - 2.67123 * r) },
+                { name: 'Lombardi', calc: (w, r) => w * Math.pow(r, 0.1) },
+                { name: 'Mayhew et al.', calc: (w, r) => w * (100 / (52.2 + 41.9 * Math.exp(-0.055 * r))) },
+                { name: "O'Conner", calc: (w, r) => w * (1 + r / 40) },
+                { name: 'Wathan', calc: (w, r) => w * (100 / (48.8 + 53.8 * Math.exp(-0.075 * r))) }
+            ];
+
+            function populateRepsOptions() {
+                const fragment = document.createDocumentFragment();
+                for (let i = 1; i <= 24; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `${i} rep${i === 1 ? '' : 's'}`;
+                    fragment.appendChild(option);
+                }
+                repsSelect.appendChild(fragment);
+            }
+
+            function median(values) {
+                const sorted = [...values].sort((a, b) => a - b);
+                const mid = Math.floor(sorted.length / 2);
+                return sorted.length % 2 !== 0
+                    ? sorted[mid]
+                    : (sorted[mid - 1] + sorted[mid]) / 2;
+            }
+
+            function quartiles(values) {
+                const sorted = [...values].sort((a, b) => a - b);
+                const q1 = sorted[Math.floor((sorted.length - 1) * 0.25)];
+                const q3 = sorted[Math.floor((sorted.length - 1) * 0.75)];
+                return { q1, q3 };
+            }
+
+            function formatKg(value) {
+                return `${value.toFixed(1)} kg`;
+            }
+
+            function updateEstimates() {
+                const weight = parseFloat(weightInput.value);
+                const reps = parseInt(repsSelect.value, 10);
+
+                if (!weight || weight <= 0 || !reps) {
+                    suggestedEl.textContent = '—';
+                    suggestedNote.textContent = 'Enter a weight and reps to calculate.';
+                    rangeEl.textContent = '—';
+                    resultsBody.innerHTML = '<tr><td colspan="2">Add a weight and reps to see estimates.</td></tr>';
+                    return;
+                }
+
+                const estimates = formulas.map(({ name, calc }) => ({
+                    name,
+                    value: calc(weight, reps)
+                })).filter(entry => Number.isFinite(entry.value));
+
+                const values = estimates.map(entry => entry.value);
+                const suggested = median(values);
+                const { q1, q3 } = quartiles(values);
+
+                suggestedEl.textContent = formatKg(suggested);
+                suggestedNote.textContent = 'Median of all listed formulas.';
+                rangeEl.textContent = `${formatKg(q1)} – ${formatKg(q3)}`;
+
+                resultsBody.innerHTML = estimates.map(entry => `
+                    <tr>
+                        <td>${entry.name}</td>
+                        <td>${formatKg(entry.value)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            populateRepsOptions();
+            repsSelect.addEventListener('change', updateEstimates);
+            weightInput.addEventListener('input', updateEstimates);
+        })();
+    </script>
+</body>
+</html>
