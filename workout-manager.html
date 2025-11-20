@@ -137,27 +137,6 @@
     </header>
 
     <main>
-        <section class="surface tool-card stack" id="settings">
-            <h2>API settings</h2>
-            <p class="status">Provide your Worker base URL and bearer token. These are stored locally in your browser.</p>
-            <div class="split">
-                <div class="form-group">
-                    <label for="api-base">Worker base URL</label>
-                    <input id="api-base" type="url" name="api-base" placeholder="https://your-worker.workers.dev">
-                    <p class="form-hint">Requests are sent to <code>&lt;base&gt;/api/workouts</code>.</p>
-                </div>
-                <div class="form-group">
-                    <label for="api-token">Bearer token</label>
-                    <input id="api-token" type="password" name="api-token" autocomplete="off"
-                        placeholder="Paste WORKOUT_API_TOKEN">
-                </div>
-            </div>
-            <div class="tool-actions">
-                <button id="save-settings" type="button">Save settings</button>
-                <button id="clear-settings" type="button" class="secondary">Clear</button>
-            </div>
-        </section>
-
         <section class="surface tool-card stack" id="workouts">
             <div class="split" style="align-items: center;">
                 <div>
@@ -201,22 +180,46 @@
             </div>
             <div id="create-status" class="status" aria-live="polite"></div>
         </section>
+
+        <section class="surface tool-card stack" id="settings">
+            <details id="settings-panel" open>
+                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 style="margin: 0;">API settings</h2>
+                        <p class="status" style="margin: 4px 0 0;">Manage the bearer token stored in your browser.</p>
+                    </div>
+                    <span class="status">Base URL: https://workouts-production.rodrigogiraoserrao.workers.dev</span>
+                </summary>
+                <div class="stack" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label for="api-token">Bearer token</label>
+                        <input id="api-token" type="password" name="api-token" autocomplete="off"
+                            placeholder="Paste WORKOUT_API_TOKEN">
+                    </div>
+                    <div class="tool-actions">
+                        <button id="save-settings" type="button">Save settings</button>
+                        <button id="clear-settings" type="button" class="secondary">Clear</button>
+                    </div>
+                </div>
+            </details>
+        </section>
     </main>
 
     <script>
         (function () {
             const STORAGE_KEYS = {
-                apiBase: 'workouts_api_base',
                 token: 'workout_api_token',
             };
+
+            const WORKER_BASE = 'https://workouts-production.rodrigogiraoserrao.workers.dev';
 
             const DEFAULT_EXERCISE_COUNT = 3;
             const REST_BETWEEN_EXERCISES = 180; // seconds
             const SET_DURATION = 45; // seconds
             const REST_BETWEEN_SETS = 90; // seconds
 
-            const apiBaseInput = document.getElementById('api-base');
             const tokenInput = document.getElementById('api-token');
+            const settingsPanel = document.getElementById('settings-panel');
             const saveSettingsBtn = document.getElementById('save-settings');
             const clearSettingsBtn = document.getElementById('clear-settings');
             const refreshBtn = document.getElementById('refresh-workouts');
@@ -234,48 +237,40 @@
             let selectedWorkoutId = null;
 
             function loadSettings() {
-                const apiBase = localStorage.getItem(STORAGE_KEYS.apiBase) || '';
                 const token = localStorage.getItem(STORAGE_KEYS.token) || '';
-                apiBaseInput.value = apiBase;
                 tokenInput.value = token;
+                settingsPanel.open = !token;
             }
 
             function saveSettings() {
-                const base = (apiBaseInput.value || '').trim().replace(/\/$/, '');
                 const token = tokenInput.value.trim();
-                if (!base) {
-                    alert('Please provide a Worker base URL.');
-                    return;
-                }
                 if (!token) {
                     alert('Please provide the bearer token.');
                     return;
                 }
-                localStorage.setItem(STORAGE_KEYS.apiBase, base);
                 localStorage.setItem(STORAGE_KEYS.token, token);
                 detailStatus.textContent = 'Settings saved. You can now load workouts.';
+                settingsPanel.open = false;
             }
 
             function clearSettings() {
-                localStorage.removeItem(STORAGE_KEYS.apiBase);
                 localStorage.removeItem(STORAGE_KEYS.token);
-                apiBaseInput.value = '';
                 tokenInput.value = '';
                 detailStatus.textContent = 'Cleared saved settings.';
+                settingsPanel.open = true;
             }
 
             async function callApi(path, options = {}) {
-                const apiBase = localStorage.getItem(STORAGE_KEYS.apiBase) || '';
                 const token = localStorage.getItem(STORAGE_KEYS.token) || '';
-                if (!apiBase || !token) {
-                    throw new Error('Configure API base URL and token first.');
+                if (!token) {
+                    throw new Error('Configure the API token first.');
                 }
 
                 const headers = new Headers(options.headers || {});
                 headers.set('Content-Type', 'application/json');
                 headers.set('Authorization', `Bearer ${token}`);
 
-                const response = await fetch(`${apiBase}${path}`, {
+                const response = await fetch(`${WORKER_BASE}${path}`, {
                     ...options,
                     headers,
                 });
