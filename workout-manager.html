@@ -171,15 +171,15 @@
 
         <section class="surface tool-card stack" id="create-workout">
             <h2>Create a new workout template</h2>
-            <p class="status">Start with three empty exercises. Reorder them, add more, then create the template.</p>
+            <p class="status">Start with one exercise. Reorder, add more if needed, then create the template.</p>
             <div class="form-group">
                 <label for="workout-name">Workout name</label>
                 <input id="workout-name" name="workout-name" type="text" placeholder="e.g. Push A" required>
             </div>
-            <div class="tool-actions">
-                <button id="add-exercise" type="button" class="secondary">Add exercise block</button>
-            </div>
             <div class="stack" id="exercise-blocks"></div>
+            <div class="tool-actions">
+                <button id="add-exercise" type="button" class="secondary">Add exercise</button>
+            </div>
             <div class="tool-actions">
                 <button id="create-workout-btn" type="button">Create</button>
             </div>
@@ -218,7 +218,7 @@
 
             const WORKER_BASE = 'https://workouts-production.rodrigogiraoserrao.workers.dev';
 
-            const DEFAULT_EXERCISE_COUNT = 3;
+            const DEFAULT_EXERCISE_COUNT = 1;
             const REST_BETWEEN_EXERCISES = 180; // seconds
             const SET_DURATION = 45; // seconds
             const REST_BETWEEN_SETS = 90; // seconds
