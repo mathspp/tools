@@ -68,6 +68,11 @@
             gap: 0.75rem;
         }
 
+        .exercise-block.dragging {
+            opacity: 0.9;
+            border-style: dashed;
+        }
+
         .exercise-block header {
             display: flex;
             justify-content: space-between;
@@ -417,8 +422,10 @@
                     <header>
                         <strong class="exercise-label">Exercise</strong>
                         <div class="exercise-controls">
-                            <button type="button" class="secondary" data-action="move-up">Move up</button>
-                            <button type="button" class="secondary" data-action="move-down">Move down</button>
+                            <button type="button" class="secondary" data-action="move-up" aria-label="Move up"
+                                title="Move up">↑</button>
+                            <button type="button" class="secondary" data-action="move-down" aria-label="Move down"
+                                title="Move down">↓</button>
                             <button type="button" class="danger" data-action="remove">Delete</button>
                         </div>
                     </header>
@@ -450,6 +457,23 @@
                 const moveUpBtn = wrapper.querySelector('[data-action="move-up"]');
                 const moveDownBtn = wrapper.querySelector('[data-action="move-down"]');
 
+                wrapper.draggable = true;
+
+                wrapper.addEventListener('dragstart', (event) => {
+                    if (event.target.closest('input, textarea, button, select, option')) {
+                        event.preventDefault();
+                        return;
+                    }
+                    wrapper.classList.add('dragging');
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', wrapper.dataset.blockId);
+                });
+
+                wrapper.addEventListener('dragend', () => {
+                    wrapper.classList.remove('dragging');
+                    refreshExerciseLabels();
+                });
+
                 removeBtn.addEventListener('click', () => {
                     wrapper.remove();
                     refreshExerciseLabels();
@@ -472,6 +496,32 @@
                 });
 
                 return wrapper;
+            }
+
+            function handleDragOver(event) {
+                event.preventDefault();
+                const dragging = exerciseBlocksContainer.querySelector('.exercise-block.dragging');
+                if (!dragging) return;
+
+                const afterElement = getDragAfterElement(exerciseBlocksContainer, event.clientY);
+                if (!afterElement) {
+                    exerciseBlocksContainer.appendChild(dragging);
+                } else {
+                    exerciseBlocksContainer.insertBefore(dragging, afterElement);
+                }
+            }
+
+            function getDragAfterElement(container, y) {
+                const draggableElements = Array.from(container.querySelectorAll('.exercise-block:not(.dragging)'));
+
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset, element: child };
+                    }
+                    return closest;
+                }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
             }
 
             function refreshExerciseLabels() {
@@ -550,6 +600,7 @@
                 refreshExerciseLabels();
             });
             createBtn.addEventListener('click', createWorkout);
+            exerciseBlocksContainer.addEventListener('dragover', handleDragOver);
 
             loadSettings();
             seedInitialExercises();
