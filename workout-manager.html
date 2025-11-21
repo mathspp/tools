@@ -66,6 +66,7 @@
             background: var(--surface-2);
             display: grid;
             gap: 0.75rem;
+            cursor: grab;
         }
 
         .exercise-block.dragging {
@@ -78,6 +79,27 @@
             justify-content: space-between;
             align-items: center;
             gap: 0.75rem;
+        }
+
+        .exercise-heading {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .drag-handle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px dashed var(--border);
+            background: var(--surface-3);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            cursor: grab;
+            user-select: none;
         }
 
         .exercise-controls {
@@ -193,7 +215,6 @@
                         <h2 style="margin: 0;">API settings</h2>
                         <p class="status" style="margin: 4px 0 0;">Manage the bearer token stored in your browser.</p>
                     </div>
-                    <span class="status">Base URL: https://workouts-production.rodrigogiraoserrao.workers.dev</span>
                 </summary>
                 <div class="stack" style="margin-top: 1rem;">
                     <div class="form-group">
@@ -420,7 +441,10 @@
 
                 wrapper.innerHTML = `
                     <header>
-                        <strong class="exercise-label">Exercise</strong>
+                        <div class="exercise-heading">
+                            <strong class="exercise-label">Exercise</strong>
+                            <span class="drag-handle" aria-hidden="true">⇅ Drag to reorder</span>
+                        </div>
                         <div class="exercise-controls">
                             <button type="button" class="secondary" data-action="move-up" aria-label="Move up"
                                 title="Move up">↑</button>
