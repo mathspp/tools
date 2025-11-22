@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import json
-import re
 from datetime import datetime
 import html
 from pathlib import Path
@@ -14,11 +13,22 @@ except ModuleNotFoundError as exc:  # pragma: no cover - dependency should be in
 
 
 def format_commit_message(message):
-    """Format commit message with line breaks and linkified URLs."""
+    """Render commit message as HTML with Markdown support."""
+
     escaped = html.escape(message)
-    url_pattern = r"(https?://[^\s]+)"
-    linkified = re.sub(url_pattern, r'<a href="\1">\1</a>', escaped)
-    return linkified.replace("\n", "<br>")
+    extensions = ["extra", "sane_lists", "nl2br"]
+
+    try:
+        md = markdown.Markdown(
+            extensions=extensions + ["linkify"],
+            output_format="html5",
+        )
+    except ModuleNotFoundError:
+        md = markdown.Markdown(extensions=extensions, output_format="html5")
+
+    formatted = md.convert(escaped)
+    md.reset()
+    return formatted
 
 
 def build_colophon():
@@ -56,12 +66,12 @@ def build_colophon():
     <link rel=\"stylesheet\" href=\"styles.css\">
 </head>
 <body>
+    <header class=\"page-shell content-flow\">
+        <h1>tools.mathspp.com colophon</h1>
+        <p>The tools on <a href=\"https://tools.mathspp.com/\">tools.mathspp.com</a> were mostly built using AI-assisted programming. This page lists {tool_count} tools and their development history.</p>
+        <p>This page lists the commit messages for each tool.</p>
+    </header>
     <main class=\"page-shell content-flow\">
-        <header class=\"content-flow\">
-            <h1>tools.mathspp.com colophon</h1>
-            <p>The tools on <a href=\"https://tools.mathspp.com/\">tools.mathspp.com</a> were mostly built using AI-assisted programming. This page lists {tool_count} tools and their development history.</p>
-            <p>This page lists the commit messages for each tool.</p>
-        </header>
         <section class=\"tool-list\">
 """
 
