@@ -22,6 +22,38 @@
             padding: clamp(1.25rem, 3vw, 2rem);
         }
 
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .shared-label {
+            margin: 0 0 0.5rem;
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .shared-target {
+            margin: 0;
+            font-size: clamp(1.4rem, 4vw, 2.4rem);
+            font-weight: 700;
+        }
+
+        .zone-note {
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+            font-size: 0.95rem;
+        }
+
+        .inline-fields {
+            display: grid;
+            gap: 0.75rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
         .tool-actions {
             display: flex;
             flex-wrap: wrap;
@@ -105,6 +137,11 @@
             text-decoration: none;
         }
 
+        .comparison-empty {
+            margin: 0;
+            color: var(--text-muted);
+        }
+
         @media (max-width: 720px) {
             body {
                 padding: 20px 16px 40px;
@@ -121,20 +158,39 @@
     </header>
 
     <main>
-        <section class="surface tool-card" aria-live="polite" aria-label="Inferred timezone">
-            <p>Your inferred timezone: <span id="inferred-timezone-value">Detecting…</span></p>
+        <section id="shared-moment-card" class="surface tool-card" aria-live="polite" hidden>
+            <div class="card-header">
+                <h2>Shared moment</h2>
+                <span class="pill" id="shared-origin">From a shared link</span>
+            </div>
+            <p class="shared-label" id="shared-source"></p>
+            <p class="shared-target" id="shared-target"></p>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite" aria-label="Base timezone">
+            <div class="card-header">
+                <h2>Base timezone</h2>
+                <span class="zone-note" id="timezone-source-note"></span>
+            </div>
+            <p>Your detected time zone: <strong id="inferred-timezone-value">Detecting…</strong></p>
+            <div class="form-group">
+                <label for="base-timezone-select">Change base time zone</label>
+                <select id="base-timezone-select" name="base-timezone"></select>
+            </div>
         </section>
         <section class="surface tool-card" aria-labelledby="selection-heading">
             <h2 id="selection-heading">Pick a moment</h2>
             <form id="moment-form">
-                <div class="form-group">
-                    <label for="datetime-input">Date and time</label>
-                    <input id="datetime-input" name="datetime" type="datetime-local" required>
-                </div>
-                <div class="form-group">
-                    <label for="timezone-select">Timezone</label>
-                    <select id="timezone-select" name="timezone" required>
-                    </select>
+                <div class="inline-fields">
+                    <div class="form-group">
+                        <label for="datetime-input">Date and time</label>
+                        <input id="datetime-input" name="datetime" type="datetime-local" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="timezone-select">Timezone</label>
+                        <select id="timezone-select" name="timezone" required>
+                        </select>
+                    </div>
                 </div>
                 <div class="tool-actions">
                     <button type="button" id="copy-link-button">Copy link with this moment</button>
@@ -143,8 +199,21 @@
             </form>
         </section>
 
+        <section class="surface tool-card" aria-labelledby="share-heading">
+            <h2 id="share-heading">Shareable link</h2>
+            <p>Use the button above to copy a link that includes this moment as URL parameters. Anyone who opens the
+                link will see what that time looks like from their own timezone.</p>
+            <div class="form-group">
+                <label for="shareable-url">Preview of copied link</label>
+                <input id="shareable-url" type="url" readonly value="">
+            </div>
+        </section>
+
         <section class="surface tool-card" aria-live="polite" aria-labelledby="comparison-heading">
-            <h2 id="comparison-heading">Comparison</h2>
+            <div class="card-header">
+                <h2 id="comparison-heading">Preview across time zones</h2>
+                <p class="comparison-empty" id="comparison-hint">Add time zones to see how this moment appears elsewhere.</p>
+            </div>
             <p id="comparison-output" class="lead">Choose a date, time, and timezone to see how it translates to your
                 current timezone.</p>
             <div id="comparison-table" class="comparison-table" hidden>
@@ -161,16 +230,6 @@
                 <div class="comparison-controls">
                     <button type="button" id="add-comparison-row">Add timezone</button>
                 </div>
-            </div>
-        </section>
-
-        <section class="surface tool-card" aria-labelledby="share-heading">
-            <h2 id="share-heading">Shareable link</h2>
-            <p>Use the button above to copy a link that includes this moment as URL parameters. Anyone who opens the
-                link will see what that time looks like from their own timezone.</p>
-            <div class="form-group">
-                <label for="shareable-url">Preview of copied link</label>
-                <input id="shareable-url" type="url" readonly value="">
             </div>
         </section>
     </main>
@@ -190,13 +249,20 @@
             const copyStatus = document.getElementById('copy-status');
             const shareableUrlInput = document.getElementById('shareable-url');
             const inferredTimezoneValue = document.getElementById('inferred-timezone-value');
+            const baseTimezoneSelect = document.getElementById('base-timezone-select');
+            const timezoneSourceNote = document.getElementById('timezone-source-note');
+            const sharedMomentCard = document.getElementById('shared-moment-card');
+            const sharedSource = document.getElementById('shared-source');
+            const sharedTarget = document.getElementById('shared-target');
+            const sharedOrigin = document.getElementById('shared-origin');
+            const comparisonHint = document.getElementById('comparison-hint');
 
             const resolvedZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             const fallbackZone = resolvedZone || DateTime.local().zoneName || 'UTC';
-            let localZone = fallbackZone;
-            let localRowEntry = null;
+            let baseZone = fallbackZone;
             let timezoneManuallySet = false;
             const comparisonRows = [];
+            let sharedMoment = null;
 
             function ensureOptionForZone(zone) {
                 const exists = Array.from(timezoneSelect.options).some(option => option.value === zone);
@@ -204,7 +270,8 @@
                     const option = document.createElement('option');
                     option.value = zone;
                     option.textContent = zone;
-                    timezoneSelect.append(option);
+                    timezoneSelect.append(option.cloneNode(true));
+                    baseTimezoneSelect.append(option);
                 }
             }
 
@@ -230,10 +297,11 @@
                     const option = document.createElement('option');
                     option.value = zone;
                     option.textContent = zone;
-                    timezoneSelect.append(option);
+                    timezoneSelect.append(option.cloneNode(true));
+                    baseTimezoneSelect.append(option);
                 }
 
-                ensureOptionForZone(localZone);
+                ensureOptionForZone(baseZone);
             }
 
             function createTimezoneSelectElement() {
@@ -245,35 +313,6 @@
 
             function updateInferredTimezoneDisplay(zone) {
                 inferredTimezoneValue.textContent = zone || 'Unavailable';
-            }
-
-            function addLocalComparisonRow() {
-                const row = document.createElement('tr');
-                row.className = 'comparison-row comparison-row-fixed';
-                row.dataset.rowType = 'local';
-
-                const labelCell = document.createElement('th');
-                labelCell.scope = 'row';
-                labelCell.innerHTML = `<div class="comparison-label">Your timezone</div><div class="comparison-zone">${localZone}</div>`;
-
-                const timeCell = document.createElement('td');
-                timeCell.className = 'comparison-time';
-
-                const actionCell = document.createElement('td');
-                actionCell.className = 'comparison-actions-cell';
-
-                row.append(labelCell, timeCell, actionCell);
-                comparisonRowsContainer.append(row);
-
-                localRowEntry = {
-                    getZone: () => localZone,
-                    timeCell,
-                    updateLabel(zone) {
-                        labelCell.innerHTML = `<div class="comparison-label">Your timezone</div><div class="comparison-zone">${zone}</div>`;
-                    }
-                };
-
-                comparisonRows.push(localRowEntry);
             }
 
             function addCustomComparisonRow(initialZone) {
@@ -330,28 +369,32 @@
                 return row;
             }
 
-            function updateLocalZone(zone, { updateSelect = true, updateComparison = true } = {}) {
+            function updateBaseZone(zone, note = '', { updateSelect = true, updateComparison: shouldUpdateComparison = true } = {}) {
                 if (!zone) {
                     updateInferredTimezoneDisplay('Unavailable');
                     return;
                 }
 
-                const previousZone = localZone;
-                const zoneChanged = zone !== localZone;
-                localZone = zone;
-
-                if (localRowEntry) {
-                    localRowEntry.updateLabel(zone);
-                }
-
+                const previousZone = baseZone;
+                const zoneChanged = zone !== baseZone;
+                baseZone = zone;
                 updateInferredTimezoneDisplay(zone);
+                timezoneSourceNote.textContent = note || '';
                 ensureOptionForZone(zone);
+
+                if (updateSelect) {
+                    baseTimezoneSelect.value = zone;
+                }
 
                 if (updateSelect && !timezoneManuallySet && (timezoneSelect.value === previousZone || !timezoneSelect.value)) {
                     timezoneSelect.value = zone;
                 }
 
-                if (updateComparison && (zoneChanged || !comparisonTable.hidden)) {
+                if (zoneChanged) {
+                    updateSharedMomentCard();
+                }
+
+                if (shouldUpdateComparison && (zoneChanged || !comparisonTable.hidden)) {
                     updateComparison();
                 }
             }
@@ -401,7 +444,8 @@
 
                 if (!datetimeValue || !selectedZone) {
                     comparisonOutput.textContent = 'Choose a date, time, and timezone to see how it translates to your current timezone.';
-                    comparisonTable.hidden = true;
+                    comparisonTable.hidden = comparisonRows.length === 0;
+                    comparisonHint.hidden = comparisonRows.length > 0;
                     shareableUrlInput.value = location.href;
                     return;
                 }
@@ -410,7 +454,8 @@
 
                 if (!momentInSelectedZone.isValid) {
                     comparisonOutput.textContent = 'The selected date or timezone could not be parsed. Please check your inputs.';
-                    comparisonTable.hidden = true;
+                    comparisonTable.hidden = comparisonRows.length === 0;
+                    comparisonHint.hidden = comparisonRows.length > 0;
                     shareableUrlInput.value = location.href;
                     return;
                 }
@@ -419,7 +464,8 @@
 
                 const sourceText = `${formatDateTime(momentInSelectedZone)} in ${momentInSelectedZone.zoneName} (${selectedOffset})`;
                 comparisonOutput.textContent = `${sourceText}. Here's how that moment translates across the selected timezones:`;
-                comparisonTable.hidden = false;
+                comparisonTable.hidden = comparisonRows.length === 0;
+                comparisonHint.hidden = comparisonRows.length > 0;
 
                 for (const entry of comparisonRows) {
                     const zoneName = entry.getZone();
@@ -499,6 +545,14 @@
                     datetimeInput.value = combined;
                 }
 
+                if (dateParam && timeParam && timezoneParam) {
+                    sharedMoment = DateTime.fromISO(`${dateParam}T${timeParam}`, { zone: timezoneParam });
+                }
+
+                if (dateParam && timeParam) {
+                    sharedOrigin.textContent = 'Loaded from URL parameters';
+                }
+
                 if (timezoneParam) {
                     ensureOptionForZone(timezoneParam);
                     timezoneSelect.value = timezoneParam;
@@ -508,6 +562,8 @@
                 if (datetimeInput.value && timezoneSelect.value) {
                     updateComparison(true);
                 }
+
+                updateSharedMomentCard();
             }
 
             async function detectTimezoneFromIp() {
@@ -525,15 +581,28 @@
                 }
 
                 if (detectedZone) {
-                    updateLocalZone(detectedZone);
+                    updateBaseZone(detectedZone, 'Inferred from your IP address (worldtimeapi.org).');
                 } else {
-                    updateLocalZone(fallbackZone, { updateSelect: false, updateComparison: false });
+                    updateBaseZone(fallbackZone, 'Using your browser-reported time zone.', { updateSelect: false, updateComparison: false });
                 }
             }
 
+            function updateSharedMomentCard() {
+                if (!sharedMoment || !sharedMoment.isValid) {
+                    sharedMomentCard.hidden = true;
+                    return;
+                }
+
+                const baseZoneMoment = sharedMoment.setZone(baseZone);
+                const sourceLine = `${sharedMoment.toFormat('HH:mm')} on the ${sharedMoment.toFormat('dd')} of ${sharedMoment.toFormat('LL')}, ${sharedMoment.toFormat('yyyy')} ${sharedMoment.zoneName} is`;
+                sharedSource.textContent = sourceLine;
+                sharedTarget.textContent = baseZoneMoment.isValid ? `${baseZoneMoment.toFormat('HH:mm')} on ${baseZoneMoment.toFormat('dd LLL yyyy')} (${baseZoneMoment.offsetNameShort})` : 'Unable to convert to your base time zone.';
+                sharedMomentCard.hidden = false;
+            }
+
             populateTimezones();
-            addLocalComparisonRow();
-            timezoneSelect.value = localZone;
+            timezoneSelect.value = baseZone;
+            baseTimezoneSelect.value = baseZone;
             datetimeInput.value = DateTime.now().toISO({ suppressSeconds: true, suppressMilliseconds: true }).slice(0, 16);
             updateComparison(true);
 
@@ -546,9 +615,12 @@
                 timezoneManuallySet = true;
                 updateComparison();
             });
+            baseTimezoneSelect.addEventListener('change', () => {
+                updateBaseZone(baseTimezoneSelect.value, 'Manually selected base time zone.');
+            });
             copyButton.addEventListener('click', copyLink);
             addComparisonRowButton.addEventListener('click', () => {
-                const defaultZone = timezoneSelect.value || localZone;
+                const defaultZone = timezoneSelect.value || baseZone;
                 addCustomComparisonRow(defaultZone);
                 updateComparison();
             });
