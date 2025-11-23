@@ -1,9 +1,9 @@
 name = "workouts-production"
 main = "worker.js"
-compatibility_date = "2025-02-15"
+compatibility_date = "2025-11-23"
 
 kv_namespaces = [
-  { binding = "WORKOUTS", id = "replace-with-your-kv-id" }
+  { binding = "WORKOUTS", id = "workouts_kv" }
 ]
 
 [env.production]
