@@ -159,6 +159,22 @@
                 grid-template-columns: 1.1fr 1fr;
             }
         }
+
+        @media (max-width: 720px) {
+            .exercise-block header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .exercise-name-row,
+            .exercise-controls {
+                width: 100%;
+            }
+
+            .exercise-controls {
+                justify-content: flex-start;
+            }
+        }
     </style>
 </head>
 
