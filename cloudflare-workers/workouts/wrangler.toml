@@ -3,8 +3,13 @@ main = "worker.js"
 compatibility_date = "2025-11-23"
 
 kv_namespaces = [
+  # Development KV binding
   { binding = "WORKOUTS", id = "workouts_kv" }
 ]
 
 [env.production]
 name = "workouts-production"
+# Ensure production deployments keep the WORKOUTS KV binding intact.
+kv_namespaces = [
+  { binding = "WORKOUTS", id = "workouts_tv" }
+]
