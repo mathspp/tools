@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 Encoder</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2.5rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.5rem, 3vw, 2.25rem);
+        }
+
+        h1 {
+            font-size: clamp(1.9rem, 3.2vw, 2.6rem);
+            margin-bottom: 0.35rem;
+            color: var(--tx);
+        }
+
+        p.lead {
+            margin: 0;
+            color: var(--tx-2);
+            font-size: clamp(1rem, 2.3vw, 1.15rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 2.5vw, 1.75rem);
+        }
+
+        form {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            resize: vertical;
+        }
+
+        .tool-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .status {
+            font-size: 0.95rem;
+            color: var(--tx-3);
+        }
+
+        .output-card h2 {
+            margin-top: 0;
+            margin-bottom: 0.35rem;
+        }
+
+        .output-help {
+            margin: 0 0 0.5rem;
+            color: var(--tx-3);
+            font-size: 0.96rem;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+
+            textarea {
+                min-height: 140px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Base64 Encoder</h1>
+        <p class="lead">Paste any text, encode it to Base64, and quickly copy the result.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <form id="encode-form">
+                <label for="input-text">Text to encode</label>
+                <textarea id="input-text" name="input-text" placeholder="Paste or type content here"></textarea>
+
+                <div class="tool-actions">
+                    <button type="submit">Encode to Base64</button>
+                    <button type="button" id="clear-button" class="secondary">Clear</button>
+                </div>
+                <p class="status" id="status-message" aria-live="polite"></p>
+            </form>
+        </section>
+
+        <section class="surface tool-card output-card" aria-live="polite">
+            <h2>Base64 output</h2>
+            <p class="output-help">The encoded text appears below. Copy it to your clipboard.</p>
+            <textarea id="output-text" readonly placeholder="Your Base64 text will appear here"></textarea>
+            <div class="tool-actions">
+                <button type="button" id="copy-button" class="secondary">Copy to clipboard</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.getElementById('encode-form');
+            const inputText = document.getElementById('input-text');
+            const outputText = document.getElementById('output-text');
+            const copyButton = document.getElementById('copy-button');
+            const statusMessage = document.getElementById('status-message');
+            const clearButton = document.getElementById('clear-button');
+
+            function encodeBase64(text) {
+                const bytes = new TextEncoder().encode(text);
+                let binary = '';
+                const chunkSize = 0x8000;
+
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    const chunk = bytes.subarray(i, i + chunkSize);
+                    binary += String.fromCharCode(...chunk);
+                }
+
+                return btoa(binary);
+            }
+
+            function setStatus(message) {
+                statusMessage.textContent = message;
+            }
+
+            function handleEncode(event) {
+                event.preventDefault();
+                try {
+                    const value = inputText.value || '';
+                    const encoded = encodeBase64(value);
+                    outputText.value = encoded;
+                    setStatus('Encoded successfully.');
+                } catch (error) {
+                    outputText.value = '';
+                    setStatus('Unable to encode this content.');
+                    console.error(error);
+                }
+            }
+
+            function handleCopy() {
+                if (!outputText.value) {
+                    setStatus('Nothing to copy yet.');
+                    return;
+                }
+
+                navigator.clipboard.writeText(outputText.value).then(() => {
+                    const originalText = copyButton.textContent;
+                    copyButton.textContent = 'Copied!';
+                    copyButton.classList.add('copied');
+                    setStatus('Copied to clipboard.');
+
+                    setTimeout(() => {
+                        copyButton.textContent = originalText;
+                        copyButton.classList.remove('copied');
+                    }, 1500);
+                }).catch(() => {
+                    outputText.select();
+                    document.execCommand('copy');
+                    setStatus('Copied to clipboard.');
+                });
+            }
+
+            function handleClear() {
+                inputText.value = '';
+                outputText.value = '';
+                setStatus('');
+                inputText.focus();
+            }
+
+            form.addEventListener('submit', handleEncode);
+            copyButton.addEventListener('click', handleCopy);
+            clearButton.addEventListener('click', handleClear);
+        })();
+    </script>
+</body>
+
+</html>
