@@ -11,5 +11,5 @@ kv_namespaces = [
 name = "workouts-production"
 # Ensure production deployments keep the WORKOUTS KV binding intact.
 kv_namespaces = [
-  { binding = "WORKOUTS", id = "workouts_tv" }
+  { binding = "WORKOUTS", id = "workouts_kv" }
 ]
