@@ -81,11 +81,17 @@
             gap: 0.75rem;
         }
 
-        .exercise-heading {
+        .exercise-name-row {
+            flex: 1;
             display: flex;
             align-items: center;
             gap: 0.6rem;
-            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .exercise-name-row input {
+            flex: 1;
+            min-width: 0;
         }
 
         .drag-handle {
@@ -439,13 +445,16 @@
                 wrapper.className = 'exercise-block';
                 wrapper.dataset.blockId = prefill.id || crypto.randomUUID();
 
+                const nameId = `exercise-name-${wrapper.dataset.blockId}`;
+
                 wrapper.innerHTML = `
                     <header>
-                        <div class="exercise-heading">
-                            <strong class="exercise-label">Exercise</strong>
-                            <span class="drag-handle" aria-hidden="true">⇅ Drag to reorder</span>
+                        <div class="exercise-name-row">
+                            <label class="exercise-label" for="${nameId}">Exercise:</label>
+                            <input id="${nameId}" type="text" class="exercise-name" placeholder="e.g. Barbell Bench Press" value="${prefill.name || ''}">
                         </div>
                         <div class="exercise-controls">
+                            <span class="drag-handle" aria-hidden="true">⇅ Drag to reorder</span>
                             <button type="button" class="secondary" data-action="move-up" aria-label="Move up"
                                 title="Move up">↑</button>
                             <button type="button" class="secondary" data-action="move-down" aria-label="Move down"
@@ -454,10 +463,6 @@
                         </div>
                     </header>
                     <div class="exercise-grid">
-                        <div class="form-group">
-                            <label>Exercise name</label>
-                            <input type="text" class="exercise-name" placeholder="e.g. Barbell Bench Press" value="${prefill.name || ''}">
-                        </div>
                         <div class="form-group">
                             <label>Sets</label>
                             <input type="number" min="1" class="exercise-sets" value="${prefill.sets || ''}" placeholder="4">
@@ -549,10 +554,10 @@
             }
 
             function refreshExerciseLabels() {
-                Array.from(exerciseBlocksContainer.children).forEach((block, index) => {
+                Array.from(exerciseBlocksContainer.children).forEach((block) => {
                     const label = block.querySelector('.exercise-label');
                     if (label) {
-                        label.textContent = `Exercise ${index + 1}`;
+                        label.textContent = 'Exercise:';
                     }
                 });
             }
