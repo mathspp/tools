@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Encoder</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2.75rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .tool-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 180px;
+        }
+
+        .status {
+            margin: 0.25rem 0 0;
+            color: var(--tx-3);
+            min-height: 1.25rem;
+        }
+
+        .secondary {
+            background: var(--bg);
+            color: var(--tx);
+            border: 1px solid var(--ui-2);
+        }
+
+        .secondary:hover,
+        .secondary:focus-visible {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1.25rem 1rem 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>URL Encoder</h1>
+        <p class="lead">Convert text into a URL-safe encoded string and copy it with one click.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <form id="encode-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="input-text">Text to encode</label>
+                    <textarea id="input-text" name="input-text" placeholder="Paste any text to make it safe for a URL" spellcheck="false"></textarea>
+                </div>
+
+                <div class="tool-actions">
+                    <button type="submit">Encode for URL</button>
+                    <button type="button" class="secondary" id="clear-button">Clear</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <h2>Encoded content</h2>
+            <p class="lead">The encoded string appears here. Copy it to use in query strings or path segments.</p>
+
+            <div class="form-group">
+                <label for="encoded-text">URL encoded string</label>
+                <textarea id="encoded-text" readonly placeholder="Your encoded text will appear here"></textarea>
+            </div>
+
+            <div class="tool-actions">
+                <button type="button" id="copy-button" disabled>Copy encoded text</button>
+            </div>
+            <p class="status" id="copy-status" aria-live="polite"></p>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const form = document.getElementById('encode-form');
+            const input = document.getElementById('input-text');
+            const encodedOutput = document.getElementById('encoded-text');
+            const copyButton = document.getElementById('copy-button');
+            const clearButton = document.getElementById('clear-button');
+            const copyStatus = document.getElementById('copy-status');
+
+            function encodeInput() {
+                const rawText = input.value || '';
+                const encoded = encodeURIComponent(rawText);
+                encodedOutput.value = encoded;
+                copyButton.disabled = encoded.length === 0;
+                copyStatus.textContent = '';
+            }
+
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                encodeInput();
+            });
+
+            clearButton.addEventListener('click', () => {
+                input.value = '';
+                encodedOutput.value = '';
+                copyButton.disabled = true;
+                copyStatus.textContent = '';
+                input.focus();
+            });
+
+            copyButton.addEventListener('click', async () => {
+                const textToCopy = encodedOutput.value;
+                if (!textToCopy) {
+                    return;
+                }
+
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(textToCopy);
+                    } else {
+                        encodedOutput.select();
+                        document.execCommand('copy');
+                    }
+                    copyStatus.textContent = 'Copied to clipboard';
+                    copyStatus.style.color = 'var(--tx-2)';
+                } catch (error) {
+                    copyStatus.textContent = 'Copy failed. You can select the text and copy it manually.';
+                    copyStatus.style.color = 'var(--rd)';
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>
