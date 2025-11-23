@@ -1,5 +1,6 @@
 const FRONTEND_ORIGIN = "https://tools.mathspp.com";
 const WORKOUTS_KEY = "user:me:workouts";
+const WORKOUT_LOGS_PREFIX = "user:me:workoutLogs:";
 
 function corsHeaders() {
     return {
@@ -51,6 +52,17 @@ async function saveWorkouts(env, workouts) {
     await env.WORKOUTS.put(WORKOUTS_KEY, JSON.stringify(workouts));
 }
 
+async function getWorkoutLogs(env, workoutId) {
+    const logs = await env.WORKOUTS.get(`${WORKOUT_LOGS_PREFIX}${workoutId}`, "json");
+    const parsed = Array.isArray(logs) ? logs : [];
+    return parsed.sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
+}
+
+async function saveWorkoutLogs(env, workoutId, logs) {
+    const sorted = [...logs].sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
+    await env.WORKOUTS.put(`${WORKOUT_LOGS_PREFIX}${workoutId}`, JSON.stringify(sorted));
+}
+
 function normalizeExerciseBlock(block) {
     if (!block || typeof block !== "object") {
         return null;
@@ -92,9 +104,70 @@ function findWorkout(workouts, id) {
     return workouts.find((workout) => workout.id === id);
 }
 
+function normalizeSet(set, setIndex) {
+    const weight = Number.isFinite(Number(set?.weight)) ? Number(set.weight) : null;
+    const reps = Number.isFinite(Number(set?.reps)) ? Number(set.reps) : null;
+    const rir = Number.isFinite(Number(set?.rir)) ? Number(set.rir) : null;
+    const notes = typeof set?.notes === "string" ? set.notes.trim() : "";
+
+    return {
+        setIndex,
+        weight,
+        reps,
+        rir,
+        notes,
+    };
+}
+
+function normalizeExerciseLog(block, payloadExercise) {
+    const sets = [];
+    const providedSets = Array.isArray(payloadExercise?.sets) ? payloadExercise.sets : [];
+
+    for (let i = 0; i < block.sets; i += 1) {
+        sets.push(normalizeSet(providedSets[i] || {}, i));
+    }
+
+    const progressionNotes =
+        typeof payloadExercise?.progressionNotes === "string" ? payloadExercise.progressionNotes.trim() : "";
+
+    return {
+        blockId: block.id,
+        blockName: block.name,
+        sets,
+        progressionNotes,
+    };
+}
+
+function buildLogEntry(template, payload) {
+    const startedAt = typeof payload?.startedAt === "string" ? payload.startedAt : null;
+    const finishedAt = typeof payload?.finishedAt === "string" ? payload.finishedAt : null;
+    const overallNotes = typeof payload?.overallNotes === "string" ? payload.overallNotes.trim() : "";
+
+    const payloadExercises = Array.isArray(payload?.exercises) ? payload.exercises : [];
+    const exerciseMap = new Map(payloadExercises.map((ex) => [ex?.blockId, ex]));
+
+    const exercises = template.exerciseBlocks.map((block) => {
+        const payloadExercise = exerciseMap.get(block.id) || {};
+        return normalizeExerciseLog(block, payloadExercise);
+    });
+
+    const completedAt = finishedAt || new Date().toISOString();
+
+    return {
+        id: crypto.randomUUID(),
+        workoutTemplateId: template.id,
+        templateName: template.name,
+        startedAt: startedAt || completedAt,
+        finishedAt: completedAt,
+        overallNotes,
+        exercises,
+    };
+}
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
+        const pathParts = url.pathname.replace(/^\/+/, "").split("/");
 
         if (request.method === "OPTIONS") {
             return handleOptions();
@@ -145,18 +218,39 @@ export default {
             return jsonResponse(workout, 201);
         }
 
-        if (url.pathname.startsWith("/api/workouts/")) {
-            const id = decodeURIComponent(url.pathname.replace("/api/workouts/", ""));
-
-            if (!id) {
-                return jsonResponse({ error: "Workout id is required" }, 400);
-            }
-
+        if (pathParts[0] === "api" && pathParts[1] === "workouts" && pathParts[2]) {
+            const id = decodeURIComponent(pathParts[2]);
             const workouts = await getWorkouts(env);
             const existing = findWorkout(workouts, id);
 
             if (!existing) {
                 return jsonResponse({ error: "Workout not found" }, 404);
+            }
+
+            if (pathParts[3] === "logs") {
+                if (request.method === "GET" && pathParts[4] === "latest") {
+                    const logs = await getWorkoutLogs(env, id);
+                    const latest = logs[0] || null;
+                    return jsonResponse({ log: latest });
+                }
+
+                if (request.method === "GET") {
+                    const logs = await getWorkoutLogs(env, id);
+                    return jsonResponse({ logs });
+                }
+
+                if (request.method === "POST") {
+                    const body = await readJson(request);
+                    if (body.error) {
+                        return jsonResponse({ error: body.error }, 400);
+                    }
+
+                    const logEntry = buildLogEntry(existing, body);
+                    const logs = await getWorkoutLogs(env, id);
+                    logs.push(logEntry);
+                    await saveWorkoutLogs(env, id, logs);
+                    return jsonResponse(logEntry, 201);
+                }
             }
 
             if (request.method === "GET") {
