@@ -199,16 +199,6 @@
             </form>
         </section>
 
-        <section class="surface tool-card" aria-labelledby="share-heading">
-            <h2 id="share-heading">Shareable link</h2>
-            <p>Use the button above to copy a link that includes this moment as URL parameters. Anyone who opens the
-                link will see what that time looks like from their own timezone.</p>
-            <div class="form-group">
-                <label for="shareable-url">Preview of copied link</label>
-                <input id="shareable-url" type="url" readonly value="">
-            </div>
-        </section>
-
         <section class="surface tool-card" aria-live="polite" aria-labelledby="comparison-heading">
             <div class="card-header">
                 <h2 id="comparison-heading">Preview across time zones</h2>
@@ -216,6 +206,9 @@
             </div>
             <p id="comparison-output" class="lead">Choose a date, time, and timezone to see how it translates to your
                 current timezone.</p>
+            <div class="comparison-controls">
+                <button type="button" id="add-comparison-row">Add timezone to preview</button>
+            </div>
             <div id="comparison-table" class="comparison-table" hidden>
                 <table>
                     <thead>
@@ -227,9 +220,6 @@
                     </thead>
                     <tbody id="comparison-rows"></tbody>
                 </table>
-                <div class="comparison-controls">
-                    <button type="button" id="add-comparison-row">Add timezone</button>
-                </div>
             </div>
         </section>
     </main>
@@ -247,7 +237,6 @@
             const addComparisonRowButton = document.getElementById('add-comparison-row');
             const copyButton = document.getElementById('copy-link-button');
             const copyStatus = document.getElementById('copy-status');
-            const shareableUrlInput = document.getElementById('shareable-url');
             const inferredTimezoneValue = document.getElementById('inferred-timezone-value');
             const baseTimezoneSelect = document.getElementById('base-timezone-select');
             const timezoneSourceNote = document.getElementById('timezone-source-note');
@@ -446,7 +435,6 @@
                     comparisonOutput.textContent = 'Choose a date, time, and timezone to see how it translates to your current timezone.';
                     comparisonTable.hidden = comparisonRows.length === 0;
                     comparisonHint.hidden = comparisonRows.length > 0;
-                    shareableUrlInput.value = location.href;
                     return;
                 }
 
@@ -456,7 +444,6 @@
                     comparisonOutput.textContent = 'The selected date or timezone could not be parsed. Please check your inputs.';
                     comparisonTable.hidden = comparisonRows.length === 0;
                     comparisonHint.hidden = comparisonRows.length > 0;
-                    shareableUrlInput.value = location.href;
                     return;
                 }
 
@@ -483,8 +470,6 @@
                     entry.timeCell.textContent = `${formatDateTime(zoned)} (${formatOffset(zoned.offset)})`;
                 }
 
-                const shareUrl = buildShareableUrl(momentInSelectedZone);
-                shareableUrlInput.value = shareUrl;
                 copyStatus.textContent = '';
 
                 if (!fromUrl) {
@@ -512,7 +497,6 @@
                 }
 
                 const shareUrl = buildShareableUrl(momentInSelectedZone);
-                shareableUrlInput.value = shareUrl;
 
                 try {
                     if (navigator.clipboard && navigator.clipboard.writeText) {
