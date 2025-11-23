@@ -5,9 +5,3 @@ compatibility_date = "2025-11-23"
 kv_namespaces = [
     {"binding": "WORKOUTS", "id": "87410bddd9f346f393f03545c79cf00c"}
 ]
-
-[env.production]
-name = "workouts-production"
-kv_namespaces = [
-    {"binding": "WORKOUTS", "id": "87410bddd9f346f393f03545c79cf00c"}
-]
