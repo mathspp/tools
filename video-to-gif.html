@@ -167,7 +167,7 @@
         </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js" integrity="sha512-6q5trJIob1waudLGNd6mA2PS6wNO75CbA40OHJYE2NXVLWVLgEQ0UpngXWRKYyC4HjpewC9E5qnmIqBjcAUYag==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         (function () {
             const dropZone = document.getElementById('drop-zone');
@@ -246,7 +246,7 @@
                     throw new Error('FFmpeg library failed to load.');
                 }
                 ffmpeg = FFmpeg.createFFmpeg({
-                    corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/ffmpeg-core.js',
+                    corePath: 'https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/ffmpeg-core.js',
                     log: true
                 });
                 setConversionStatus('Loading FFmpeg core (~25 MB)…');
