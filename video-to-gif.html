@@ -167,9 +167,10 @@
         </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.10/dist/umd/util.js"></script>
-    <script>
+    <script type="module">
+        import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm';
+        import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.10/+esm';
+
         (function () {
             const dropZone = document.getElementById('drop-zone');
             const fileInput = document.getElementById('video-input');
@@ -256,17 +257,8 @@
 
             async function ensureFFmpeg() {
                 if (ffmpegReady) return;
-                if (!window.FFmpeg || !window.FFmpegUtil) {
-                    throw new Error('FFmpeg library failed to load.');
-                }
-
-                const { FFmpeg } = window.FFmpeg;
-                ffmpegUtils = window.FFmpegUtil || window.FFmpeg;
-                if (!ffmpegUtils?.fetchFile || !ffmpegUtils?.toBlobURL) {
-                    throw new Error('FFmpeg utilities failed to load.');
-                }
-
                 ffmpeg = new FFmpeg();
+                ffmpegUtils = { fetchFile, toBlobURL };
 
                 ffmpeg.on('log', ({ message }) => {
                     console.log(message);
