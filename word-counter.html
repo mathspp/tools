@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Counter</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2.75rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.25rem, 2.5vw, 2rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .counts-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            align-items: stretch;
+        }
+
+        .count-tile {
+            flex: 1 1 160px;
+            background: var(--bg-2);
+            border: 1px solid var(--ui-2);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            display: grid;
+            gap: 0.25rem;
+        }
+
+        .count-label {
+            color: var(--tx-3);
+            letter-spacing: 0.1px;
+        }
+
+        .count-number {
+            font-size: clamp(1.4rem, 3vw, 1.9rem);
+            font-variant-numeric: tabular-nums;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 220px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1.25rem 1rem 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Word Counter</h1>
+        <p class="lead">Paste any text to see live counts for paragraphs, lines, words, and characters.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="counts-row" id="counts-row" aria-live="polite">
+                <div class="count-tile" id="paragraphs-tile">
+                    <div class="count-number" id="paragraph-count">0</div>
+                    <div class="count-label">paragraphs</div>
+                </div>
+                <div class="count-tile" id="lines-tile">
+                    <div class="count-number" id="line-count">0</div>
+                    <div class="count-label">lines</div>
+                </div>
+                <div class="count-tile">
+                    <div class="count-number" id="word-count">0</div>
+                    <div class="count-label">words</div>
+                </div>
+                <div class="count-tile">
+                    <div class="count-number" id="character-count">0</div>
+                    <div class="count-label">characters</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="text-input">Text</label>
+                <textarea id="text-input" name="text-input" placeholder="Paste or type any text" spellcheck="false"></textarea>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const textInput = document.getElementById('text-input');
+            const paragraphTile = document.getElementById('paragraphs-tile');
+            const lineTile = document.getElementById('lines-tile');
+            const paragraphCount = document.getElementById('paragraph-count');
+            const lineCount = document.getElementById('line-count');
+            const wordCount = document.getElementById('word-count');
+            const characterCount = document.getElementById('character-count');
+
+            function countParagraphs(text) {
+                if (!text.trim()) {
+                    return 0;
+                }
+                const paragraphs = text.split(/(?:\r?\n){2,}/).filter(block => block.trim().length > 0);
+                return paragraphs.length;
+            }
+
+            function countLines(text) {
+                if (text === '') {
+                    return 0;
+                }
+                return text.split(/\r?\n/).length;
+            }
+
+            function countWords(text) {
+                if (!text.trim()) {
+                    return 0;
+                }
+                return text.trim().split(/\s+/).length;
+            }
+
+            function updateCounts() {
+                const text = textInput.value;
+                const paragraphs = countParagraphs(text);
+                const lines = countLines(text);
+                const words = countWords(text);
+                const characters = text.length;
+
+                paragraphCount.textContent = paragraphs.toLocaleString();
+                lineCount.textContent = lines.toLocaleString();
+                wordCount.textContent = words.toLocaleString();
+                characterCount.textContent = characters.toLocaleString();
+
+                paragraphTile.classList.toggle('hidden', paragraphs < 2);
+                lineTile.classList.toggle('hidden', lines < 2);
+            }
+
+            textInput.addEventListener('input', updateCounts);
+            updateCounts();
+        })();
+    </script>
+</body>
+
+</html>
