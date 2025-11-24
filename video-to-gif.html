@@ -192,6 +192,7 @@
             let gifBlob = null;
             let ffmpeg = null;
             let ffmpegReady = false;
+            let previewUrl = null;
 
             function safeUnlink(path) {
                 if (!ffmpegReady) return;
@@ -225,6 +226,11 @@
             }
 
             function reset() {
+                if (previewUrl) {
+                    URL.revokeObjectURL(previewUrl);
+                    previewUrl = null;
+                }
+
                 loadedFile = null;
                 gifBlob = null;
                 fileInput.value = '';
@@ -246,7 +252,7 @@
                     throw new Error('FFmpeg library failed to load.');
                 }
                 ffmpeg = FFmpeg.createFFmpeg({
-                    corePath: 'https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/ffmpeg-core.js',
+                    corePath: 'https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.js',
                     log: true
                 });
                 setConversionStatus('Loading FFmpeg core (~25 MB)…');
@@ -339,8 +345,12 @@
                 const file = files[0];
                 if (!file) return;
 
-                const url = URL.createObjectURL(file);
-                previewVideo.src = url;
+                if (previewUrl) {
+                    URL.revokeObjectURL(previewUrl);
+                }
+
+                previewUrl = URL.createObjectURL(file);
+                previewVideo.src = previewUrl;
                 previewVideo.load();
                 previewWrapper.hidden = false;
 
@@ -355,7 +365,6 @@
 
                 previewVideo.onloadedmetadata = () => {
                     updateFileInfo(file, previewVideo.duration);
-                    URL.revokeObjectURL(url);
                 };
             }
 
