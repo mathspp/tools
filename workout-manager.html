@@ -120,6 +120,28 @@
             gap: 0.75rem 1rem;
         }
 
+        .rep-range-row {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: nowrap;
+        }
+
+        .rep-range-row input[type='number'] {
+            width: 78px;
+        }
+
+        .rep-range-row .checkbox-label {
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 640px) {
+            .rep-range-row {
+                flex-wrap: wrap;
+            }
+        }
+
         .notes-input {
             width: 100%;
             min-height: 60px;
@@ -231,8 +253,8 @@
         </section>
 
         <section class="surface tool-card stack" id="settings">
-            <details id="settings-panel" open>
-                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+            <details id="settings-panel">
+                <summary style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
                     <div>
                         <h2 style="margin: 0;">API settings</h2>
                         <p class="status" style="margin: 4px 0 0;">Manage the bearer token stored in your browser.</p>
@@ -484,20 +506,17 @@
                             <label>Sets</label>
                             <input type="number" min="1" class="exercise-sets" value="${prefill.sets || ''}" placeholder="4">
                         </div>
-                        <div class="form-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" class="exercise-amrap" ${prefill.amrap ? 'checked' : ''}>
-                                AMRAP (as many reps as possible)
-                            </label>
-                            <p class="status">Enable when reps are performed to failure.</p>
-                        </div>
-                        <div class="form-group">
-                            <label>Rep range min</label>
-                            <input type="number" min="1" class="exercise-rep-min" value="${prefill.repRange?.min ?? ''}" placeholder="8">
-                        </div>
-                        <div class="form-group">
-                            <label>Rep range max</label>
-                            <input type="number" min="1" class="exercise-rep-max" value="${prefill.repRange?.max ?? ''}" placeholder="10">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>Rep range</label>
+                            <div class="rep-range-row">
+                                <input type="number" min="1" class="exercise-rep-min" value="${prefill.repRange?.min ?? ''}" placeholder="8" aria-label="Rep range minimum">
+                                <span aria-hidden="true">–</span>
+                                <input type="number" min="1" class="exercise-rep-max" value="${prefill.repRange?.max ?? ''}" placeholder="10" aria-label="Rep range maximum">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="exercise-amrap" ${prefill.amrap ? 'checked' : ''}>
+                                    AMRAP
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
