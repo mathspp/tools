@@ -396,6 +396,7 @@
                 const exerciseList = exercises.map((block, index) => {
                     const perExercise = estimateExerciseSeconds(Number(block.sets));
                     const restAfter = index < exercises.length - 1 ? REST_BETWEEN_EXERCISES : 0;
+                    const repLabel = block.amrap ? 'AMRAP' : `${block.repRange?.min ?? 0}–${block.repRange?.max ?? 0} reps`;
                     return `
                         <div class="exercise-block">
                             <header>
@@ -405,7 +406,7 @@
                                 </div>
                                 <div class="pill-group">
                                     <span class="badge">${block.sets || 0} sets</span>
-                                    <span class="badge">${block.repRange?.min ?? 0}–${block.repRange?.max ?? 0} reps</span>
+                                    <span class="badge">${repLabel}</span>
                                     <span class="badge">${formatSeconds(perExercise)} per exercise</span>
                                     ${restAfter ? `<span class="badge">${formatSeconds(restAfter)} rest before next</span>` : ''}
                                 </div>
@@ -484,6 +485,13 @@
                             <input type="number" min="1" class="exercise-sets" value="${prefill.sets || ''}" placeholder="4">
                         </div>
                         <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" class="exercise-amrap" ${prefill.amrap ? 'checked' : ''}>
+                                AMRAP (as many reps as possible)
+                            </label>
+                            <p class="status">Enable when reps are performed to failure.</p>
+                        </div>
+                        <div class="form-group">
                             <label>Rep range min</label>
                             <input type="number" min="1" class="exercise-rep-min" value="${prefill.repRange?.min ?? ''}" placeholder="8">
                         </div>
@@ -501,8 +509,26 @@
                 const removeBtn = wrapper.querySelector('[data-action="remove"]');
                 const moveUpBtn = wrapper.querySelector('[data-action="move-up"]');
                 const moveDownBtn = wrapper.querySelector('[data-action="move-down"]');
+                const amrapCheckbox = wrapper.querySelector('.exercise-amrap');
+                const repMinInput = wrapper.querySelector('.exercise-rep-min');
+                const repMaxInput = wrapper.querySelector('.exercise-rep-max');
 
                 wrapper.draggable = true;
+
+                function toggleRepRangeDisabled(checked) {
+                    repMinInput.disabled = checked;
+                    repMaxInput.disabled = checked;
+                    if (checked) {
+                        repMinInput.value = '';
+                        repMaxInput.value = '';
+                    }
+                }
+
+                amrapCheckbox.addEventListener('change', () => {
+                    toggleRepRangeDisabled(amrapCheckbox.checked);
+                });
+
+                toggleRepRangeDisabled(amrapCheckbox.checked);
 
                 wrapper.addEventListener('dragstart', (event) => {
                     if (event.target.closest('input, textarea, button, select, option')) {
@@ -591,15 +617,17 @@
                 return Array.from(exerciseBlocksContainer.children).map((block) => {
                     const name = block.querySelector('.exercise-name').value.trim();
                     const sets = Number(block.querySelector('.exercise-sets').value) || 0;
-                    const repMin = Number(block.querySelector('.exercise-rep-min').value) || 0;
-                    const repMax = Number(block.querySelector('.exercise-rep-max').value) || 0;
+                    const amrap = block.querySelector('.exercise-amrap').checked;
+                    const repMin = amrap ? null : Number(block.querySelector('.exercise-rep-min').value) || 0;
+                    const repMax = amrap ? null : Number(block.querySelector('.exercise-rep-max').value) || 0;
                     const notes = block.querySelector('.notes-input').value.trim();
 
                     return {
                         id: block.dataset.blockId,
                         name,
                         sets,
-                        repRange: { min: repMin, max: repMax },
+                        amrap,
+                        repRange: amrap ? null : { min: repMin, max: repMax },
                         notes,
                     };
                 }).filter(block => block.name);

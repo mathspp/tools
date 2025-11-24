@@ -98,6 +98,7 @@ function normalizeExerciseBlock(block) {
 
     const name = typeof block.name === "string" ? block.name.trim() : "";
     const sets = Number.isFinite(Number(block.sets)) ? Number(block.sets) : 0;
+    const amrap = Boolean(block.amrap);
     const repRange = block.repRange || {};
     const min = Number.isFinite(Number(repRange.min)) ? Number(repRange.min) : 0;
     const max = Number.isFinite(Number(repRange.max)) ? Number(repRange.max) : 0;
@@ -111,10 +112,13 @@ function normalizeExerciseBlock(block) {
         id: block.id || crypto.randomUUID(),
         name,
         sets: sets < 0 ? 0 : Math.round(sets),
-        repRange: {
-            min,
-            max,
-        },
+        amrap,
+        repRange: amrap
+            ? null
+            : {
+                  min,
+                  max,
+              },
         notes,
     };
 }
