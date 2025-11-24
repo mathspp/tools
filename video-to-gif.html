@@ -168,8 +168,12 @@
     </main>
 
     <script type="module">
-        import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm';
-        import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.10/+esm';
+        const ffmpegVersion = '0.12.10';
+        const ffmpegModuleURL = `https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/${ffmpegVersion}/esm/index.min.js`;
+        const ffmpegUtilURL = `https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/${ffmpegVersion}/esm/utils.min.js`;
+
+        const { FFmpeg } = await import(ffmpegModuleURL);
+        const { fetchFile, toBlobURL } = await import(ffmpegUtilURL);
 
         (function () {
             const dropZone = document.getElementById('drop-zone');
@@ -190,7 +194,7 @@
             const progressInner = document.getElementById('progress-inner');
             const conversionStatus = document.getElementById('conversion-status');
 
-            const ffmpegBaseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+            const ffmpegBaseURL = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${ffmpegVersion}/dist/umd`;
 
             let loadedFile = null;
             let gifBlob = null;
