@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video to GIF</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 56px;
+        }
+
+        header {
+            margin-bottom: 1.25rem;
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .panel {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--color-border, #d0d7de);
+            border-radius: 12px;
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .drop-zone input {
+            display: none;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--color-accent, #0070f3);
+            background-color: rgba(0, 112, 243, 0.08);
+        }
+
+        .drop-zone p {
+            margin: 0.35rem 0 0;
+            color: var(--color-muted, #57606a);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .status-text {
+            min-height: 1.25rem;
+            color: var(--color-muted, #57606a);
+        }
+
+        .status-text.error {
+            color: #b42318;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background: #f4f6f8;
+            border-radius: 8px;
+            height: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar span {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #0070f3, #5b8def);
+            transition: width 0.2s ease;
+        }
+
+        .file-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1.5rem;
+            color: var(--color-muted, #57606a);
+        }
+
+        .preview {
+            width: 100%;
+            max-height: 320px;
+            border-radius: 10px;
+            background: #0f172a08;
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+        }
+
+        video {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 18px 16px 48px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Video to GIF</h1>
+        <p class="lead">Drop a video and convert it to a GIF directly in your browser. Nothing is uploaded to a server.</p>
+    </header>
+
+    <main>
+        <section class="surface panel">
+            <div class="drop-zone" tabindex="0" role="button" aria-label="Upload video" id="drop-zone">
+                <strong>Drop your video here</strong>
+                <p>or click to choose a file</p>
+                <input type="file" accept="video/*" id="video-input" aria-label="Upload video">
+            </div>
+            <p class="status-text" id="status-text">No video loaded yet.</p>
+            <div class="preview" aria-live="polite" id="preview" hidden>
+                <video controls muted></video>
+            </div>
+        </section>
+
+        <section class="surface panel" aria-live="polite">
+            <h2>Conversion</h2>
+            <div class="file-info" id="file-info" hidden>
+                <span id="file-name"></span>
+                <span id="file-size"></span>
+                <span id="file-duration"></span>
+            </div>
+            <div class="controls-grid">
+                <div class="form-group">
+                    <label for="fps">Frame rate (FPS)</label>
+                    <input type="number" id="fps" min="1" max="30" value="10" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label for="max-width">Max width (px)</label>
+                    <input type="number" id="max-width" min="64" max="1280" value="640" inputmode="numeric">
+                </div>
+            </div>
+            <div class="tool-actions" style="margin-top: 1rem;">
+                <button type="button" id="convert-btn" disabled>Convert to GIF</button>
+                <button type="button" id="reset-btn">Reset</button>
+            </div>
+            <div class="progress-bar" aria-hidden="true" hidden id="progress-bar">
+                <span id="progress-inner"></span>
+            </div>
+            <p class="status-text" id="conversion-status"></p>
+            <div class="tool-actions">
+                <button type="button" id="download-btn" disabled>Download GIF</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js" integrity="sha512-6q5trJIob1waudLGNd6mA2PS6wNO75CbA40OHJYE2NXVLWVLgEQ0UpngXWRKYyC4HjpewC9E5qnmIqBjcAUYag==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        (function () {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('video-input');
+            const statusText = document.getElementById('status-text');
+            const previewWrapper = document.getElementById('preview');
+            const previewVideo = previewWrapper.querySelector('video');
+            const convertBtn = document.getElementById('convert-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const fpsInput = document.getElementById('fps');
+            const maxWidthInput = document.getElementById('max-width');
+            const fileInfo = document.getElementById('file-info');
+            const fileNameEl = document.getElementById('file-name');
+            const fileSizeEl = document.getElementById('file-size');
+            const fileDurationEl = document.getElementById('file-duration');
+            const progressBar = document.getElementById('progress-bar');
+            const progressInner = document.getElementById('progress-inner');
+            const conversionStatus = document.getElementById('conversion-status');
+
+            let loadedFile = null;
+            let gifBlob = null;
+            let ffmpeg = null;
+            let ffmpegReady = false;
+
+            function safeUnlink(path) {
+                if (!ffmpegReady) return;
+                try {
+                    ffmpeg.FS('unlink', path);
+                } catch (error) {
+                    // Ignore missing files
+                }
+            }
+
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+            }
+
+            function setStatus(message, isError = false) {
+                statusText.textContent = message;
+                statusText.classList.toggle('error', isError);
+            }
+
+            function setConversionStatus(message, isError = false) {
+                conversionStatus.textContent = message;
+                conversionStatus.classList.toggle('error', isError);
+            }
+
+            function toggleDropZoneHighlight(active) {
+                dropZone.classList.toggle('dragover', active);
+            }
+
+            function reset() {
+                loadedFile = null;
+                gifBlob = null;
+                fileInput.value = '';
+                convertBtn.disabled = true;
+                downloadBtn.disabled = true;
+                previewWrapper.hidden = true;
+                previewVideo.removeAttribute('src');
+                previewVideo.load();
+                fileInfo.hidden = true;
+                progressBar.hidden = true;
+                progressInner.style.width = '0%';
+                setStatus('No video loaded yet.');
+                setConversionStatus('');
+            }
+
+            async function ensureFFmpeg() {
+                if (ffmpegReady) return;
+                if (!window.FFmpeg) {
+                    throw new Error('FFmpeg library failed to load.');
+                }
+                ffmpeg = FFmpeg.createFFmpeg({
+                    corePath: 'https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/ffmpeg-core.js',
+                    log: true
+                });
+                setConversionStatus('Loading FFmpeg core (~25 MB)…');
+                await ffmpeg.load();
+                ffmpegReady = true;
+            }
+
+            function updateFileInfo(file, durationSeconds) {
+                fileNameEl.textContent = `Name: ${file.name}`;
+                fileSizeEl.textContent = `Size: ${formatBytes(file.size)}`;
+                fileDurationEl.textContent = durationSeconds ? `Duration: ${durationSeconds.toFixed(1)}s` : '';
+                fileInfo.hidden = false;
+            }
+
+            function updateProgress(ratio) {
+                const percent = Math.min(100, Math.round(ratio * 100));
+                progressInner.style.width = `${percent}%`;
+                progressBar.hidden = false;
+                setConversionStatus(`Processing… ${percent}%`);
+            }
+
+            function deriveOutputName(inputName) {
+                const withoutExt = inputName.replace(/\.[^.]+$/, '');
+                return `${withoutExt}.gif`;
+            }
+
+            async function convertToGif() {
+                if (!loadedFile) return;
+                convertBtn.disabled = true;
+                downloadBtn.disabled = true;
+                progressInner.style.width = '0%';
+                progressBar.hidden = false;
+                setConversionStatus('Preparing conversion…');
+
+                try {
+                    await ensureFFmpeg();
+
+                    ffmpeg.setProgress(({ ratio }) => {
+                        updateProgress(ratio);
+                    });
+
+                    const inputName = loadedFile.name;
+                    const outputName = deriveOutputName(inputName);
+                    const data = await FFmpeg.fetchFile(loadedFile);
+
+                    // Clean previous files if any
+                    safeUnlink(inputName);
+                    safeUnlink(outputName);
+
+                    ffmpeg.FS('writeFile', inputName, data);
+
+                    const fps = Math.max(1, Math.min(Number(fpsInput.value) || 10, 30));
+                    const maxWidth = Math.max(64, Math.min(Number(maxWidthInput.value) || 640, 1280));
+
+                    const vf = `fps=${fps},scale=${maxWidth}:-1:flags=lanczos`;
+                    await ffmpeg.run('-i', inputName, '-vf', vf, '-loop', '0', outputName);
+
+                    const outputData = ffmpeg.FS('readFile', outputName);
+                    gifBlob = new Blob([outputData.buffer], { type: 'image/gif' });
+
+                    const downloadName = outputName;
+                    downloadBtn.dataset.filename = downloadName;
+                    setConversionStatus('GIF ready!');
+                    downloadBtn.disabled = false;
+
+                    safeUnlink(inputName);
+                    safeUnlink(outputName);
+                } catch (error) {
+                    console.error(error);
+                    setConversionStatus(error.message || 'Conversion failed.', true);
+                } finally {
+                    convertBtn.disabled = !loadedFile;
+                    progressBar.hidden = false;
+                }
+            }
+
+            function handleDownload() {
+                if (!gifBlob) return;
+                const url = URL.createObjectURL(gifBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = downloadBtn.dataset.filename || 'output.gif';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 0);
+            }
+
+            function handleFiles(files) {
+                const file = files[0];
+                if (!file) return;
+
+                const url = URL.createObjectURL(file);
+                previewVideo.src = url;
+                previewVideo.load();
+                previewWrapper.hidden = false;
+
+                setStatus('Video ready. Click convert to create a GIF.');
+                loadedFile = file;
+                gifBlob = null;
+                convertBtn.disabled = false;
+                downloadBtn.disabled = true;
+                setConversionStatus('');
+                progressBar.hidden = true;
+                progressInner.style.width = '0%';
+
+                previewVideo.onloadedmetadata = () => {
+                    updateFileInfo(file, previewVideo.duration);
+                    URL.revokeObjectURL(url);
+                };
+            }
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    fileInput.click();
+                }
+            });
+
+            dropZone.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                toggleDropZoneHighlight(true);
+            });
+
+            dropZone.addEventListener('dragleave', () => toggleDropZoneHighlight(false));
+            dropZone.addEventListener('drop', (event) => {
+                event.preventDefault();
+                toggleDropZoneHighlight(false);
+                handleFiles(event.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', (event) => {
+                handleFiles(event.target.files);
+            });
+
+            convertBtn.addEventListener('click', convertToGif);
+            downloadBtn.addEventListener('click', handleDownload);
+            resetBtn.addEventListener('click', reset);
+
+            reset();
+        })();
+    </script>
+</body>
+
+</html>
