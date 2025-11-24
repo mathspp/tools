@@ -1,0 +1,1 @@
+Convert uploaded or dropped video files to GIFs entirely in your browser using FFmpeg.wasm. The resulting GIF keeps the original filename (with a .gif extension) and can be downloaded instantly without any server-side processing.
