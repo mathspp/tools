@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Colour Translator</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 24px 20px 56px;
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .surface {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .preview-card {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .color-preview {
+            border-radius: 14px;
+            padding: 24px;
+            min-height: 160px;
+            display: grid;
+            place-content: center;
+            text-align: center;
+            box-shadow: 0 6px 24px rgba(15, 23, 42, 0.14);
+            transition: transform 0.15s ease;
+        }
+
+        .color-preview strong {
+            font-size: 1.25rem;
+            letter-spacing: 0.3px;
+        }
+
+        .color-preview span {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        .color-preview:hover {
+            transform: translateY(-2px);
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            align-items: start;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .input-row input,
+        .input-row select {
+            flex: 1 1 auto;
+        }
+
+        .status {
+            margin-top: 0.35rem;
+            min-height: 1.25rem;
+            color: var(--color-muted, #57606a);
+        }
+
+        .status.error {
+            color: #b42318;
+        }
+
+        .tiny-text {
+            font-size: 0.9rem;
+            color: var(--color-muted, #57606a);
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 18px 16px 48px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Universal Colour Translator</h1>
+        <p class="lead">Pick or paste any colour and instantly see it synchronised across hex, RGB, HSL, CMYK, and ANSI colour
+            names.</p>
+    </header>
+
+    <main>
+        <section class="surface preview-card">
+            <div class="preview-grid">
+                <div class="form-group">
+                    <label for="picker">Mouse-based colour picker</label>
+                    <div class="input-row">
+                        <input type="color" id="picker" aria-label="Colour picker" value="#4f46e5">
+                        <input type="text" id="picker-hex" aria-label="Picked colour hex" value="#4f46e5" readonly>
+                    </div>
+                    <p class="tiny-text">Use the colour picker or enter a value in any field below to update everything at once.</p>
+                </div>
+                <div class="color-preview" id="color-preview">
+                    <div>
+                        <strong id="preview-hex">#4F46E5</strong>
+                        <div><span id="preview-rgb">79, 70, 229</span></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="surface" aria-live="polite">
+            <h2>Synchronised inputs</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="hex-input">Hex value</label>
+                    <input type="text" id="hex-input" placeholder="#3498db">
+                </div>
+                <div class="form-group">
+                    <label for="rgb-input">RGB</label>
+                    <input type="text" id="rgb-input" placeholder="52, 152, 219">
+                </div>
+                <div class="form-group">
+                    <label for="hsl-input">HSL</label>
+                    <input type="text" id="hsl-input" placeholder="204, 70%, 53%">
+                </div>
+                <div class="form-group">
+                    <label for="hsv-input">HSV / HSB</label>
+                    <input type="text" id="hsv-input" placeholder="204, 76%, 86%">
+                </div>
+                <div class="form-group">
+                    <label for="cmyk-input">CMYK</label>
+                    <input type="text" id="cmyk-input" placeholder="76, 31, 0, 14">
+                </div>
+                <div class="form-group">
+                    <label for="ansi-input">ANSI colour name</label>
+                    <input type="text" id="ansi-input" list="ansi-list" placeholder="bright magenta">
+                    <datalist id="ansi-list"></datalist>
+                </div>
+                <div class="form-group">
+                    <label for="css-name-input">CSS / X11 colour name</label>
+                    <input type="text" id="css-name-input" list="css-name-list" placeholder="salmon">
+                    <datalist id="css-name-list"></datalist>
+                </div>
+            </div>
+            <p class="status" id="status-text">Enter a value in any format to translate it everywhere else.</p>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const picker = document.getElementById('picker');
+            const pickerHex = document.getElementById('picker-hex');
+            const preview = document.getElementById('color-preview');
+            const previewHex = document.getElementById('preview-hex');
+            const previewRgb = document.getElementById('preview-rgb');
+            const hexInput = document.getElementById('hex-input');
+            const rgbInput = document.getElementById('rgb-input');
+            const hslInput = document.getElementById('hsl-input');
+            const cmykInput = document.getElementById('cmyk-input');
+            const ansiInput = document.getElementById('ansi-input');
+            const ansiList = document.getElementById('ansi-list');
+            const hsvInput = document.getElementById('hsv-input');
+            const cssNameInput = document.getElementById('css-name-input');
+            const cssNameList = document.getElementById('css-name-list');
+            const statusText = document.getElementById('status-text');
+
+            const ansiColours = [
+                { name: 'black', hex: '#000000' },
+                { name: 'red', hex: '#800000' },
+                { name: 'green', hex: '#008000' },
+                { name: 'yellow', hex: '#808000' },
+                { name: 'blue', hex: '#000080' },
+                { name: 'magenta', hex: '#800080' },
+                { name: 'cyan', hex: '#008080' },
+                { name: 'white', hex: '#c0c0c0' },
+                { name: 'bright black', hex: '#808080' },
+                { name: 'bright red', hex: '#ff0000' },
+                { name: 'bright green', hex: '#00ff00' },
+                { name: 'bright yellow', hex: '#ffff00' },
+                { name: 'bright blue', hex: '#0000ff' },
+                { name: 'bright magenta', hex: '#ff00ff' },
+                { name: 'bright cyan', hex: '#00ffff' },
+                { name: 'bright white', hex: '#ffffff' },
+            ];
+
+            ansiColours.forEach(({ name, hex }) => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.label = name;
+                option.dataset.hex = hex;
+                ansiList.appendChild(option);
+            });
+
+            let isUpdating = false;
+
+            const cssKeywords = [
+                'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black', 'blanchedalmond',
+                'blue', 'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral',
+                'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray',
+                'darkgreen', 'darkgrey', 'darkkhaki', 'darkmagenta', 'darkolivegreen', 'darkorange', 'darkorchid',
+                'darkred', 'darksalmon', 'darkseagreen', 'darkslateblue', 'darkslategray', 'darkslategrey',
+                'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 'dodgerblue',
+                'firebrick', 'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod',
+                'gray', 'green', 'greenyellow', 'grey', 'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki',
+                'lavender', 'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
+                'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon',
+                'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue', 'lightyellow',
+                'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine', 'mediumblue', 'mediumorchid',
+                'mediumpurple', 'mediumseagreen', 'mediumslateblue', 'mediumspringgreen', 'mediumturquoise',
+                'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 'navy',
+                'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 'orchid', 'palegoldenrod', 'palegreen',
+                'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 'plum', 'powderblue',
+                'purple', 'rebeccapurple', 'red', 'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown',
+                'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 'snow',
+                'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white',
+                'whitesmoke', 'yellow', 'yellowgreen',
+            ];
+
+            cssKeywords.forEach((name) => {
+                const option = document.createElement('option');
+                option.value = name;
+                cssNameList.appendChild(option);
+            });
+
+            function setStatus(message, isError = false) {
+                statusText.textContent = message;
+                statusText.classList.toggle('error', isError);
+            }
+
+            function componentToHex(c) {
+                return c.toString(16).padStart(2, '0');
+            }
+
+            function rgbToHex({ r, g, b }) {
+                return `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`;
+            }
+
+            function parseHex(value) {
+                if (!value) return null;
+                const cleaned = value.trim().replace(/^#|0x/gi, '');
+                if (!/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(cleaned)) return null;
+                const hex = cleaned.length === 3
+                    ? cleaned.split('').map(ch => ch + ch).join('')
+                    : cleaned;
+                return {
+                    r: parseInt(hex.slice(0, 2), 16),
+                    g: parseInt(hex.slice(2, 4), 16),
+                    b: parseInt(hex.slice(4, 6), 16),
+                };
+            }
+
+            function parseRgb(value) {
+                const match = /^\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*$/.exec(value || '');
+                if (!match) return null;
+                const [r, g, b] = match.slice(1).map(Number);
+                if ([r, g, b].some(n => n < 0 || n > 255)) return null;
+                return { r, g, b };
+            }
+
+            function parseHsl(value) {
+                const match = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)%\s*,\s*(-?\d+(?:\.\d+)?)%\s*$/.exec(value || '');
+                if (!match) return null;
+                let [h, s, l] = match.slice(1).map(Number);
+                if (!isFinite(h) || !isFinite(s) || !isFinite(l)) return null;
+                h = ((h % 360) + 360) % 360;
+                s = Math.min(Math.max(s, 0), 100);
+                l = Math.min(Math.max(l, 0), 100);
+                return hslToRgb({ h, s, l });
+            }
+
+            function parseHsv(value) {
+                const match = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)%\s*,\s*(-?\d+(?:\.\d+)?)%\s*$/.exec(value || '');
+                if (!match) return null;
+                let [h, s, v] = match.slice(1).map(Number);
+                if (!isFinite(h) || !isFinite(s) || !isFinite(v)) return null;
+                h = ((h % 360) + 360) % 360;
+                s = Math.min(Math.max(s, 0), 100);
+                v = Math.min(Math.max(v, 0), 100);
+                return hsvToRgb({ h, s, v });
+            }
+
+            function parseCmyk(value) {
+                const match = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(value || '');
+                if (!match) return null;
+                const [c, m, y, k] = match.slice(1).map(Number);
+                if ([c, m, y, k].some(v => v < 0 || v > 100)) return null;
+                return cmykToRgb({ c, m, y, k });
+            }
+
+            function parseRgbString(value) {
+                const match = /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/.exec(value || '');
+                if (!match) return null;
+                const [r, g, b] = match.slice(1).map(Number);
+                if ([r, g, b].some(n => n < 0 || n > 255)) return null;
+                return { r, g, b };
+            }
+
+            const colorResolver = document.createElement('div');
+            colorResolver.style.position = 'absolute';
+            colorResolver.style.visibility = 'hidden';
+            colorResolver.style.pointerEvents = 'none';
+            document.body.appendChild(colorResolver);
+
+            function parseCssName(value) {
+                if (!value) return null;
+                colorResolver.style.color = '';
+                colorResolver.style.color = value.trim();
+                if (!colorResolver.style.color) return null;
+                const computed = getComputedStyle(colorResolver).color;
+                return parseRgbString(computed);
+            }
+
+            const cssHexToName = new Map();
+            cssKeywords.forEach((name) => {
+                const rgb = parseCssName(name);
+                if (!rgb) return;
+                const hex = rgbToHex(rgb).toUpperCase();
+                if (!cssHexToName.has(hex)) {
+                    cssHexToName.set(hex, name);
+                }
+            });
+
+            function rgbToHsl({ r, g, b }) {
+                const rNorm = r / 255;
+                const gNorm = g / 255;
+                const bNorm = b / 255;
+                const max = Math.max(rNorm, gNorm, bNorm);
+                const min = Math.min(rNorm, gNorm, bNorm);
+                let h;
+                const l = (max + min) / 2;
+                const d = max - min;
+                if (d === 0) {
+                    h = 0;
+                } else if (max === rNorm) {
+                    h = ((gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0));
+                } else if (max === gNorm) {
+                    h = ((bNorm - rNorm) / d + 2);
+                } else {
+                    h = ((rNorm - gNorm) / d + 4);
+                }
+                h = Math.round(h * 60);
+                const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+                return { h, s: Math.round(s * 100), l: Math.round(l * 100) };
+            }
+
+            function hslToRgb({ h, s, l }) {
+                const sNorm = s / 100;
+                const lNorm = l / 100;
+                const c = (1 - Math.abs(2 * lNorm - 1)) * sNorm;
+                const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+                const m = lNorm - c / 2;
+                let r = 0, g = 0, b = 0;
+
+                if (h < 60) { r = c; g = x; b = 0; }
+                else if (h < 120) { r = x; g = c; b = 0; }
+                else if (h < 180) { r = 0; g = c; b = x; }
+                else if (h < 240) { r = 0; g = x; b = c; }
+                else if (h < 300) { r = x; g = 0; b = c; }
+                else { r = c; g = 0; b = x; }
+
+                return {
+                    r: Math.round((r + m) * 255),
+                    g: Math.round((g + m) * 255),
+                    b: Math.round((b + m) * 255),
+                };
+            }
+
+            function rgbToHsv({ r, g, b }) {
+                const rNorm = r / 255;
+                const gNorm = g / 255;
+                const bNorm = b / 255;
+                const max = Math.max(rNorm, gNorm, bNorm);
+                const min = Math.min(rNorm, gNorm, bNorm);
+                const d = max - min;
+                let h;
+                if (d === 0) h = 0;
+                else if (max === rNorm) h = ((gNorm - bNorm) / d) % 6;
+                else if (max === gNorm) h = (bNorm - rNorm) / d + 2;
+                else h = (rNorm - gNorm) / d + 4;
+                h = Math.round((h * 60 + 360) % 360);
+                const s = max === 0 ? 0 : d / max;
+                const v = max;
+                return { h, s: Math.round(s * 100), v: Math.round(v * 100) };
+            }
+
+            function hsvToRgb({ h, s, v }) {
+                const sNorm = s / 100;
+                const vNorm = v / 100;
+                const c = vNorm * sNorm;
+                const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+                const m = vNorm - c;
+                let r = 0, g = 0, b = 0;
+
+                if (h < 60) { r = c; g = x; b = 0; }
+                else if (h < 120) { r = x; g = c; b = 0; }
+                else if (h < 180) { r = 0; g = c; b = x; }
+                else if (h < 240) { r = 0; g = x; b = c; }
+                else if (h < 300) { r = x; g = 0; b = c; }
+                else { r = c; g = 0; b = x; }
+
+                return {
+                    r: Math.round((r + m) * 255),
+                    g: Math.round((g + m) * 255),
+                    b: Math.round((b + m) * 255),
+                };
+            }
+
+            function rgbToCmyk({ r, g, b }) {
+                const rNorm = r / 255;
+                const gNorm = g / 255;
+                const bNorm = b / 255;
+                const k = 1 - Math.max(rNorm, gNorm, bNorm);
+                if (k === 1) {
+                    return { c: 0, m: 0, y: 0, k: 100 };
+                }
+                const c = (1 - rNorm - k) / (1 - k);
+                const m = (1 - gNorm - k) / (1 - k);
+                const y = (1 - bNorm - k) / (1 - k);
+                return {
+                    c: Math.round(c * 100),
+                    m: Math.round(m * 100),
+                    y: Math.round(y * 100),
+                    k: Math.round(k * 100),
+                };
+            }
+
+            function cmykToRgb({ c, m, y, k }) {
+                const cNorm = c / 100;
+                const mNorm = m / 100;
+                const yNorm = y / 100;
+                const kNorm = k / 100;
+                return {
+                    r: Math.round(255 * (1 - cNorm) * (1 - kNorm)),
+                    g: Math.round(255 * (1 - mNorm) * (1 - kNorm)),
+                    b: Math.round(255 * (1 - yNorm) * (1 - kNorm)),
+                };
+            }
+
+            function findAnsiName(hex) {
+                const match = ansiColours.find(({ hex: ansiHex }) => ansiHex.toLowerCase() === hex.toLowerCase());
+                return match ? match.name : '';
+            }
+
+            function findAnsiByName(value) {
+                if (!value) return null;
+                const normalized = value.trim().toLowerCase();
+                if (!normalized) return null;
+                return ansiColours.find(({ name }) => name.toLowerCase() === normalized)
+                    || ansiColours.find(({ name }) => name.toLowerCase().startsWith(normalized));
+            }
+
+            function findCssName(hex) {
+                return cssHexToName.get(hex.toUpperCase()) || '';
+            }
+
+            function bestTextColor({ r, g, b }) {
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                return luminance > 0.6 ? '#111827' : '#f9fafb';
+            }
+
+            function formatHsl({ h, s, l }) {
+                return `${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%`;
+            }
+
+            function formatCmyk({ c, m, y, k }) {
+                return `${c}, ${m}, ${y}, ${k}`;
+            }
+
+            function formatHsv({ h, s, v }) {
+                return `${Math.round(h)}, ${Math.round(s)}%, ${Math.round(v)}%`;
+            }
+
+            function updateUI(rgb) {
+                if (!rgb) return;
+                isUpdating = true;
+
+                const hex = rgbToHex(rgb).toUpperCase();
+                const hsl = rgbToHsl(rgb);
+                const cmyk = rgbToCmyk(rgb);
+                const hsv = rgbToHsv(rgb);
+                const ansiName = findAnsiName(hex) || '';
+
+                picker.value = hex;
+                pickerHex.value = hex;
+                preview.style.backgroundColor = hex;
+                preview.style.color = bestTextColor(rgb);
+                previewHex.textContent = hex;
+                previewRgb.textContent = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+
+                hexInput.value = hex;
+                rgbInput.value = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+                hslInput.value = formatHsl(hsl);
+                hsvInput.value = formatHsv(hsv);
+                cmykInput.value = formatCmyk(cmyk);
+
+                ansiInput.value = ansiName || '';
+                ansiInput.title = ansiName || 'No ANSI match';
+
+                const cssNameMatch = findCssName(hex);
+                cssNameInput.value = cssNameMatch;
+                cssNameInput.title = cssNameMatch ? 'CSS keyword match' : 'No CSS keyword match';
+
+                setStatus('');
+                isUpdating = false;
+            }
+
+            function handleInput(value, parser) {
+                if (isUpdating) return;
+                const rgb = parser(value);
+                if (!rgb) {
+                    setStatus('Invalid input. Please check the format and try again.', true);
+                    return;
+                }
+                setStatus('');
+                updateUI(rgb);
+            }
+
+            picker.addEventListener('input', () => {
+                handleInput(picker.value, parseHex);
+            });
+
+            hexInput.addEventListener('input', (event) => {
+                handleInput(event.target.value, parseHex);
+            });
+
+            rgbInput.addEventListener('input', (event) => {
+                handleInput(event.target.value, parseRgb);
+            });
+
+            hslInput.addEventListener('input', (event) => {
+                handleInput(event.target.value, parseHsl);
+            });
+
+            hsvInput.addEventListener('input', (event) => {
+                handleInput(event.target.value, parseHsv);
+            });
+
+            cmykInput.addEventListener('input', (event) => {
+                handleInput(event.target.value, parseCmyk);
+            });
+
+            cssNameInput.addEventListener('input', (event) => {
+                if (!event.target.value.trim()) {
+                    setStatus('');
+                    return;
+                }
+                handleInput(event.target.value, parseCssName);
+            });
+
+            ansiInput.addEventListener('input', (event) => {
+                if (!event.target.value.trim()) {
+                    setStatus('');
+                    return;
+                }
+                const match = findAnsiByName(event.target.value);
+                if (!match) {
+                    setStatus('No ANSI match. Try another name or use another format.', true);
+                    return;
+                }
+                event.target.value = match.name;
+                handleInput(match.hex, parseHex);
+            });
+
+            updateUI(parseHex(picker.value));
+        })();
+    </script>
+</body>
+
+</html>
