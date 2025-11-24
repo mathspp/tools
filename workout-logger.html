@@ -386,6 +386,7 @@
             }
 
             function repOptions(block) {
+                if (block.amrap) return [];
                 const options = [];
                 const min = Number(block.repRange?.min) || 1;
                 const max = Number(block.repRange?.max) || min;
@@ -413,6 +414,39 @@
                 return chip;
             }
 
+            function createAmrapInput(blockId, setIndex, initialValue) {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.inputMode = 'numeric';
+                input.min = '1';
+                input.step = '1';
+                input.placeholder = 'Reps (AMRAP)';
+                input.dataset.blockId = blockId;
+                input.dataset.setIndex = setIndex;
+                input.dataset.field = 'reps';
+
+                if (Number.isInteger(initialValue)) {
+                    input.value = initialValue;
+                }
+
+                input.addEventListener('input', () => {
+                    if (input.value === '') {
+                        input.setCustomValidity('');
+                        return;
+                    }
+
+                    const parsed = Number.parseInt(input.value, 10);
+                    if (Number.isNaN(parsed)) {
+                        input.setCustomValidity('Enter a whole number');
+                    } else {
+                        input.value = parsed;
+                        input.setCustomValidity('');
+                    }
+                });
+
+                return input;
+            }
+
             function createSetRow(blockId, setIndex, block, draft) {
                 const row = document.createElement('div');
                 row.className = 'set-row';
@@ -425,21 +459,6 @@
                 weightInput.dataset.blockId = blockId;
                 weightInput.dataset.setIndex = setIndex;
                 weightInput.dataset.field = 'weight';
-
-                const repsSelect = document.createElement('select');
-                repsSelect.dataset.blockId = blockId;
-                repsSelect.dataset.setIndex = setIndex;
-                repsSelect.dataset.field = 'reps';
-                const placeholder = document.createElement('option');
-                placeholder.value = '';
-                placeholder.textContent = 'Reps';
-                repsSelect.appendChild(placeholder);
-                repOptions(block).forEach((rep) => {
-                    const option = document.createElement('option');
-                    option.value = rep;
-                    option.textContent = rep;
-                    repsSelect.appendChild(option);
-                });
 
                 const rirSelect = document.createElement('select');
                 rirSelect.dataset.blockId = blockId;
@@ -461,18 +480,48 @@
                 const draftExercise = draft?.exercises?.find((ex) => ex.blockId === blockId);
                 const draftSet = draftExercise?.sets?.[setIndex];
 
+                let repsField = null;
+                if (block.amrap) {
+                    const initial = draftSet?.reps ?? prevSet?.reps;
+                    repsField = createAmrapInput(blockId, setIndex, initial);
+                } else {
+                    const repsSelect = document.createElement('select');
+                    repsSelect.dataset.blockId = blockId;
+                    repsSelect.dataset.setIndex = setIndex;
+                    repsSelect.dataset.field = 'reps';
+                    const placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = 'Reps';
+                    repsSelect.appendChild(placeholder);
+                    repOptions(block).forEach((rep) => {
+                        const option = document.createElement('option');
+                        option.value = rep;
+                        option.textContent = rep;
+                        repsSelect.appendChild(option);
+                    });
+                    repsField = repsSelect;
+                }
+
                 if (draftSet) {
                     weightInput.value = draftSet.weight ?? '';
-                    repsSelect.value = draftSet.reps ?? '';
+                    if (!block.amrap) {
+                        repsField.value = draftSet.reps ?? '';
+                    } else if (Number.isInteger(draftSet.reps)) {
+                        repsField.value = draftSet.reps;
+                    }
                     rirSelect.value = draftSet.rir ?? '';
                 } else if (prevSet) {
                     weightInput.value = prevSet.weight ?? '';
-                    repsSelect.value = prevSet.reps ?? '';
+                    if (!block.amrap) {
+                        repsField.value = prevSet.reps ?? '';
+                    } else if (Number.isInteger(prevSet.reps)) {
+                        repsField.value = prevSet.reps;
+                    }
                     rirSelect.value = prevSet.rir ?? '';
                 }
 
                 row.appendChild(weightInput);
-                row.appendChild(repsSelect);
+                row.appendChild(repsField);
                 row.appendChild(rirSelect);
                 return row;
             }
@@ -483,7 +532,8 @@
                 details.open = true;
 
                 const summary = document.createElement('summary');
-                summary.innerHTML = `<span>${block.name}</span><span class="exercise-meta">${block.sets} sets · ${block.repRange.min}-${block.repRange.max} reps</span>`;
+                const repLabel = block.amrap ? 'AMRAP' : `${block.repRange?.min ?? '—'}-${block.repRange?.max ?? '—'} reps`;
+                summary.innerHTML = `<span>${block.name}</span><span class="exercise-meta">${block.sets} sets · ${repLabel}</span>`;
 
                 const body = document.createElement('div');
                 body.className = 'exercise-body';
@@ -560,11 +610,11 @@
                     const sets = [];
                     for (let i = 0; i < block.sets; i += 1) {
                         const weight = document.querySelector(`input[data-block-id="${block.id}"][data-set-index="${i}"][data-field="weight"]`);
-                        const reps = document.querySelector(`select[data-block-id="${block.id}"][data-set-index="${i}"][data-field="reps"]`);
+                        const reps = document.querySelector(`[data-block-id="${block.id}"][data-set-index="${i}"][data-field="reps"]`);
                         const rir = document.querySelector(`select[data-block-id="${block.id}"][data-set-index="${i}"][data-field="rir"]`);
                         sets.push({
                             weight: weight?.value ? Number(weight.value) : null,
-                            reps: reps?.value ? Number(reps.value) : null,
+                            reps: reps?.value ? Number.parseInt(reps.value, 10) : null,
                             rir: rir?.value ? Number(rir.value) : null,
                         });
                     }
