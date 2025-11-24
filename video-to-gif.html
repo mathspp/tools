@@ -167,8 +167,10 @@
         </section>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg.min.js" integrity="sha512-6q5trJIob1waudLGNd6mA2PS6wNO75CbA40OHJYE2NXVLWVLgEQ0UpngXWRKYyC4HjpewC9E5qnmIqBjcAUYag==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script>
+    <script type="module">
+        import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm';
+        import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.10/+esm';
+
         (function () {
             const dropZone = document.getElementById('drop-zone');
             const fileInput = document.getElementById('video-input');
@@ -188,16 +190,23 @@
             const progressInner = document.getElementById('progress-inner');
             const conversionStatus = document.getElementById('conversion-status');
 
+            const ffmpegBaseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+
             let loadedFile = null;
             let gifBlob = null;
             let ffmpeg = null;
             let ffmpegReady = false;
             let previewUrl = null;
+            let ffmpegUtils = null;
 
-            function safeUnlink(path) {
+            async function safeUnlink(path) {
                 if (!ffmpegReady) return;
                 try {
-                    ffmpeg.FS('unlink', path);
+                    if (typeof ffmpeg.deleteFile === 'function') {
+                        await ffmpeg.deleteFile(path);
+                    } else if (ffmpeg.FS) {
+                        ffmpeg.FS('unlink', path);
+                    }
                 } catch (error) {
                     // Ignore missing files
                 }
@@ -248,15 +257,25 @@
 
             async function ensureFFmpeg() {
                 if (ffmpegReady) return;
-                if (!window.FFmpeg) {
-                    throw new Error('FFmpeg library failed to load.');
-                }
-                ffmpeg = FFmpeg.createFFmpeg({
-                    corePath: 'https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.15/umd/ffmpeg-core.js',
-                    log: true
+                ffmpeg = new FFmpeg();
+                ffmpegUtils = { fetchFile, toBlobURL };
+
+                ffmpeg.on('log', ({ message }) => {
+                    console.log(message);
                 });
-                setConversionStatus('Loading FFmpeg core (~25 MB)…');
-                await ffmpeg.load();
+
+                ffmpeg.on('progress', ({ progress, ratio }) => {
+                    const value = Number.isFinite(progress) ? progress : (Number.isFinite(ratio) ? ratio : 0);
+                    updateProgress(value);
+                });
+
+                setConversionStatus('Loading FFmpeg core (~31 MB)…');
+
+                await ffmpeg.load({
+                    coreURL: await ffmpegUtils.toBlobURL(`${ffmpegBaseURL}/ffmpeg-core.js`, 'text/javascript'),
+                    wasmURL: await ffmpegUtils.toBlobURL(`${ffmpegBaseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                });
+
                 ffmpegReady = true;
             }
 
@@ -290,27 +309,23 @@
                 try {
                     await ensureFFmpeg();
 
-                    ffmpeg.setProgress(({ ratio }) => {
-                        updateProgress(ratio);
-                    });
-
                     const inputName = loadedFile.name;
                     const outputName = deriveOutputName(inputName);
-                    const data = await FFmpeg.fetchFile(loadedFile);
+                    const data = await ffmpegUtils.fetchFile(loadedFile);
 
                     // Clean previous files if any
-                    safeUnlink(inputName);
-                    safeUnlink(outputName);
+                    await safeUnlink(inputName);
+                    await safeUnlink(outputName);
 
-                    ffmpeg.FS('writeFile', inputName, data);
+                    await ffmpeg.writeFile(inputName, data);
 
                     const fps = Math.max(1, Math.min(Number(fpsInput.value) || 10, 30));
                     const maxWidth = Math.max(64, Math.min(Number(maxWidthInput.value) || 640, 1280));
 
                     const vf = `fps=${fps},scale=${maxWidth}:-1:flags=lanczos`;
-                    await ffmpeg.run('-i', inputName, '-vf', vf, '-loop', '0', outputName);
+                    await ffmpeg.exec(['-i', inputName, '-vf', vf, '-loop', '0', outputName]);
 
-                    const outputData = ffmpeg.FS('readFile', outputName);
+                    const outputData = await ffmpeg.readFile(outputName);
                     gifBlob = new Blob([outputData.buffer], { type: 'image/gif' });
 
                     const downloadName = outputName;
@@ -318,8 +333,8 @@
                     setConversionStatus('GIF ready!');
                     downloadBtn.disabled = false;
 
-                    safeUnlink(inputName);
-                    safeUnlink(outputName);
+                    await safeUnlink(inputName);
+                    await safeUnlink(outputName);
                 } catch (error) {
                     console.error(error);
                     setConversionStatus(error.message || 'Conversion failed.', true);
