@@ -203,9 +203,12 @@
 </head>
 
 <body>
-    <h1>DMARC Report Analyser</h1>
-    <p class="description">Drop a DMARC aggregate report (.xml, .gz or .zip) to see summary insights and examine failed
-        authentication attempts.</p>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>DMARC Report Analyser</h1>
+        <p class="description">Drop a DMARC aggregate report (.xml, .gz or .zip) to see summary insights and examine failed
+            authentication attempts.</p>
+    </header>
 
     <div id="dropzone" class="surface">
         <strong>Drop your DMARC report here</strong>
@@ -563,6 +566,10 @@
         showFailuresOnlyCheckbox.addEventListener('change', () => renderTable(currentRecords));
         highlightFailuresCheckbox.addEventListener('change', () => renderTable(currentRecords));
     </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 
 </html>

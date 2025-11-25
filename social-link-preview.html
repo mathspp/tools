@@ -230,7 +230,8 @@
     </style>
 </head>
 <body data-default-origin="https://mathspp.com" data-worker-endpoint="https://social-link-preview-production.rodrigogiraoserrao.workers.dev/api/social-link-preview">
-    <header>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
         <h1>Social Link Preview Inspector</h1>
         <p class="lead">Fetch a web page and audit its metadata for rich link previews. The tool checks general SEO
             metadata and validates the Open Graph and Twitter tags needed for sharing on LinkedIn, X (Twitter), Facebook,
@@ -708,14 +709,18 @@
                 }
             }
 
-            function safeHostname(url) {
-                try {
-                    return new URL(url).hostname;
-                } catch (error) {
-                    return '';
-                }
+        function safeHostname(url) {
+            try {
+                return new URL(url).hostname;
+            } catch (error) {
+                return '';
             }
-        })();
+        }
+    })();
     </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 </html>

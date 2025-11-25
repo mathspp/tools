@@ -180,7 +180,8 @@
 </head>
 
 <body>
-    <header>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
         <h1>Custom QR Code Builder</h1>
         <p class="lead">Generate downloadable QR codes with custom colours and preset styles. Paste your link, pick your
             palette, and export the code in SVG or PNG.</p>
@@ -640,6 +641,10 @@
         state.data = urlInput.value;
         refreshQr();
     </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 
 </html>
