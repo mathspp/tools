@@ -13,6 +13,23 @@
             padding: 24px 20px 48px;
         }
 
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .site-link {
+            font-weight: 600;
+            color: var(--foreground-subtle);
+            text-decoration: none;
+        }
+
+        .site-link:hover,
+        .site-link:focus-visible {
+            color: var(--foreground);
+        }
+
         main {
             display: grid;
             gap: 1.5rem;
@@ -28,6 +45,11 @@
             gap: 0.75rem;
         }
 
+        .page-footer {
+            text-align: center;
+            margin-top: 3rem;
+        }
+
         @media (max-width: 720px) {
             body {
                 padding: 20px 16px 40px;
@@ -37,7 +59,8 @@
 </head>
 
 <body>
-    <header>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
         <h1><!-- Tool name --></h1>
         <p class="lead"><!-- Short description of what the tool does. --></p>
     </header>
@@ -106,6 +129,10 @@
             });
         })();
     </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 
 </html>
