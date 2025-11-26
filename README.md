@@ -9,8 +9,6 @@ The [colophon](https://tools.mathspp.com/colophon) lists commit messages and tra
 <!-- recently starts -->
 <!-- recently stops -->
 
-## Tools index
-
 <!-- tools index starts -->
 <!-- tools index stops -->
 

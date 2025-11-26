@@ -9,13 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
-try:
-    import markdown
-except ModuleNotFoundError as exc:  # pragma: no cover - dependency should be installed
-    raise SystemExit(
-        "The 'markdown' package is required to build index.html. "
-        "Install it with 'pip install markdown'."
-    ) from exc
+import markdown
 
 README_PATH = Path("README.md")
 TOOLS_JSON_PATH = Path("tools.json")
@@ -182,7 +176,7 @@ def _render_tools_index(tools: Sequence[dict]) -> str:
 
     section_html = f"""
 <section class=\"surface tools-directory content-flow\">
-  <h2>All tools</h2>
+  <h2>Tool Index</h2>
   <ul class=\"tools-directory-list\">
 {list_content}
   </ul>
@@ -237,6 +231,9 @@ def build_index() -> None:
     <main class="page-shell content-flow">
 {wrapped_body}
     </main>
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 </html>
 """
