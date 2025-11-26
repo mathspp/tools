@@ -9,7 +9,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, List, Sequence
 
-import markdown
+try:
+    import markdown
+except ModuleNotFoundError as exc:  # pragma: no cover - dependency should be installed
+    raise SystemExit(
+        "The 'markdown' package is required to build index.html. "
+        "Install it with 'pip install markdown'."
+    ) from exc
 
 README_PATH = Path("README.md")
 TOOLS_JSON_PATH = Path("tools.json")
