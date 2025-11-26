@@ -182,7 +182,7 @@ def _render_tools_index(tools: Sequence[dict]) -> str:
 
     section_html = f"""
 <section class=\"surface tools-directory content-flow\">
-  <h2>All tools</h2>
+  <h2>Tool Index</h2>
   <ul class=\"tools-directory-list\">
 {list_content}
   </ul>
@@ -237,6 +237,9 @@ def build_index() -> None:
     <main class="page-shell content-flow">
 {wrapped_body}
     </main>
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 </html>
 """
