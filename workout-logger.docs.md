@@ -1,1 +1,0 @@
-Log workouts from existing templates served by the Cloudflare Worker. Choose a template, load the previous session for guidance, auto-save your sets and notes locally while you lift, and submit the finished workout back to the API when you are done.

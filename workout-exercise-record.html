@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Exercise Records</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { max-width: 900px; margin: 0 auto; padding: 24px 20px 64px; }
+        main { display: grid; gap: 1rem; }
+        .card { padding: 1rem; }
+        .status { min-height: 1.2rem; color: var(--text-muted); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
+        form { display: grid; gap: 0.75rem; }
+        .grid { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+
+        .workout-links {
+            border: 1px solid var(--border);
+            background: var(--surface-1);
+        }
+
+        .link-grid {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .link-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            padding: 0.65rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-card:hover { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+    <main>
+        <header class="card grid">
+            <h1>Workout Exercise Records</h1>
+            <p>View and update personal bests for any exercise.</p>
+            <p class="status">Configure the API base URL and bearer token in <a href="workout-settings.html">Workout settings</a>. Stored values are reused automatically.</p>
+        </header>
+
+        <section class="card grid">
+            <div class="flex between center">
+                <h2>Exercises</h2>
+                <button id="refresh-exercises">Refresh list</button>
+            </div>
+            <select id="exercise-select"></select>
+            <div id="load-status" class="status"></div>
+            <table>
+                <thead><tr><th>Weight</th><th>Reps</th></tr></thead>
+                <tbody id="record-rows"></tbody>
+            </table>
+        </section>
+
+        <section class="card grid">
+            <h2>Add record</h2>
+            <form id="record-form">
+                <div class="grid">
+                    <label>Weight (number)<input type="number" step="0.1" id="record-weight" required></label>
+                    <label>Reps (integer)<input type="number" id="record-reps" required></label>
+                </div>
+                <button type="submit">Save records</button>
+            </form>
+            <div id="record-status" class="status"></div>
+        </section>
+        <section class="surface stack workout-links" aria-label="Workout tools navigation">
+            <h2 style="margin: 0;">Workout tools</h2>
+            <p class="status-text">Quick links to the rest of the workout suite.</p>
+            <div class="link-grid">
+                <a class="link-card" href="workout-settings.html">Workout settings<span>→</span></a>
+                <a class="link-card" href="workout-template-manager.html">Workout template manager<span>→</span></a>
+                <a class="link-card" href="workout-session-logger.html">Workout session logger<span>→</span></a>
+                <a class="link-card" href="workout-session-viewer.html">Workout session viewer<span>→</span></a>
+                <a class="link-card" href="workout-exercise-manager.html">Workout exercise manager<span>→</span></a>
+                <a class="link-card" href="workout-exercise-record.html">Workout exercise records<span>→</span></a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const exerciseSelect = document.getElementById('exercise-select');
+        const loadStatus = document.getElementById('load-status');
+        const recordRows = document.getElementById('record-rows');
+        const recordStatus = document.getElementById('record-status');
+
+        const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
+
+        function readStored(primaryKey, legacyKey) {
+            return (localStorage.getItem(primaryKey) || localStorage.getItem(legacyKey) || '').trim();
+        }
+
+        function getConfig() {
+            const base = readStored(STORAGE_KEYS.base, 'workout_api_base');
+            const token = readStored(STORAGE_KEYS.token, 'workout_api_token');
+            if (!base || !token) {
+                throw new Error('Set the API base URL and bearer token in Workout settings first.');
+            }
+            return { base, token };
+        }
+
+        async function apiFetch(path, options = {}) {
+            const { base, token } = getConfig();
+            const response = await fetch(`${base.replace(/\/$/, '')}${path}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    ...(options.headers || {}),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data?.error?.message || response.statusText);
+            return data;
+        }
+
+        async function loadExercises() {
+            loadStatus.textContent = 'Loading exercises...';
+            exerciseSelect.innerHTML = '';
+            try {
+                const data = await apiFetch('/exercises');
+                if (!data.exercises.length) {
+                    loadStatus.textContent = 'No exercises found.';
+                    return;
+                }
+                data.exercises.forEach((ex) => {
+                    const option = document.createElement('option');
+                    option.value = ex.name;
+                    option.textContent = `${ex.display_name} (${ex.name})`;
+                    exerciseSelect.appendChild(option);
+                });
+                loadStatus.textContent = '';
+                loadRecords();
+            } catch (error) {
+                loadStatus.textContent = error.message;
+            }
+        }
+
+        async function loadRecords() {
+            const name = exerciseSelect.value;
+            if (!name) return;
+            loadStatus.textContent = `Loading records for ${name}...`;
+            recordRows.innerHTML = '';
+            try {
+                const data = await apiFetch(`/exercises/${encodeURIComponent(name)}/records`);
+                (data.records || []).forEach((rec) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${rec.weight}</td><td>${rec.reps}</td>`;
+                    recordRows.appendChild(row);
+                });
+                if (!data.records || data.records.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td colspan="2">No personal bests yet.</td>';
+                    recordRows.appendChild(row);
+                }
+                loadStatus.textContent = '';
+            } catch (error) {
+                loadStatus.textContent = error.message;
+            }
+        }
+
+        document.getElementById('refresh-exercises').addEventListener('click', loadExercises);
+        exerciseSelect.addEventListener('change', loadRecords);
+
+        document.getElementById('record-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const name = exerciseSelect.value;
+            if (!name) return;
+            recordStatus.textContent = 'Saving records...';
+            try {
+                const current = await apiFetch(`/exercises/${encodeURIComponent(name)}/records`);
+                const records = current.records || [];
+                records.push({
+                    weight: Number(document.getElementById('record-weight').value),
+                    reps: Number(document.getElementById('record-reps').value),
+                });
+                await apiFetch(`/exercises/${encodeURIComponent(name)}/records`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ records }),
+                });
+                recordStatus.textContent = 'Records updated.';
+                loadRecords();
+            } catch (error) {
+                recordStatus.textContent = error.message;
+            }
+        });
+
+        loadExercises();
+    </script>
+</body>
+</html>

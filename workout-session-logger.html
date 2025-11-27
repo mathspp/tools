@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workout Logger</title>
+    <title>Workout Session Logger</title>
     <link rel="stylesheet" href="styles.css">
     <style>
         :root {
@@ -12,17 +12,9 @@
         }
 
         body {
-            max-width: 960px;
+            max-width: 1024px;
             margin: 0 auto;
-            padding: 20px 16px 56px;
-        }
-
-        header h1 {
-            margin-bottom: 0.25rem;
-        }
-
-        header .lead {
-            margin-top: 0;
+            padding: 20px 16px 64px;
         }
 
         main {
@@ -92,18 +84,9 @@
 
         .set-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 0.5rem;
             align-items: center;
-        }
-
-        .set-row label {
-            font-weight: 600;
-        }
-
-        .set-grid {
-            display: grid;
-            gap: 0.5rem;
         }
 
         .chip-row {
@@ -124,7 +107,8 @@
             font-size: 0.9rem;
         }
 
-        .exercise-meta {
+        .exercise-meta,
+        .inline-note {
             color: var(--text-muted);
             font-size: 0.95rem;
         }
@@ -142,10 +126,31 @@
             border-top: 1px solid var(--border);
         }
 
-        .inline-note {
-            font-size: 0.92rem;
-            color: var(--text-muted);
+        .workout-links {
+            border: 1px solid var(--border);
+            background: var(--surface-1);
         }
+
+        .link-grid {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .link-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            padding: 0.65rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-card:hover { border-color: var(--accent); }
 
         @media (max-width: 640px) {
             .exercise-card summary {
@@ -164,31 +169,14 @@
 <body>
     <header class="page-header">
         <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
-        <h1>Workout Logger</h1>
-        <p class="lead">Fill out a workout template from the Cloudflare Worker, with autosave and last-session
-            references.</p>
+        <h1>Workout Session Logger</h1>
+        <p class="lead">Fill a workout template from the Cloudflare Worker, with autosave and last-session guidance.</p>
     </header>
 
     <main>
         <section class="surface stack">
-            <details open>
-                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h2 style="margin: 0;">API settings</h2>
-                        <p class="status-text" style="margin: 4px 0 0;">Store the WORKOUT_API_TOKEN used for all
-                            requests.</p>
-                    </div>
-                </summary>
-                <div class="stack" style="margin-top: 0.75rem;">
-                    <label for="api-token">Bearer token</label>
-                    <input id="api-token" type="password" autocomplete="off" placeholder="Paste WORKOUT_API_TOKEN">
-                    <div class="controls">
-                        <button type="button" id="save-token">Save</button>
-                        <button type="button" id="clear-token" class="secondary">Clear</button>
-                        <span class="status-text" id="settings-status" aria-live="polite"></span>
-                    </div>
-                </div>
-            </details>
+            <h2 style="margin: 0;">API configuration</h2>
+            <p class="status-text">Set the API base URL and bearer token once in <a href="workout-settings.html">Workout settings</a>. Stored values are reused automatically.</p>
         </section>
 
         <section class="surface stack">
@@ -221,12 +209,14 @@
                     <p class="status-text" id="last-session-status"></p>
                 </div>
 
-                <div id="exercise-list" class="stack"></div>
-
-                <div class="stack">
+                <div class="stack" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); display: grid; gap: 0.75rem;">
+                    <label for="session-date">Session date</label>
+                    <input id="session-date" type="date">
                     <label for="overall-notes">Overall notes</label>
                     <textarea id="overall-notes" placeholder="Fatigue, sleep, aches…"></textarea>
                 </div>
+
+                <div id="exercise-list" class="stack"></div>
             </div>
 
             <div class="sticky-footer">
@@ -236,30 +226,30 @@
                 </div>
             </div>
         </section>
+
+        <section class="surface stack workout-links" aria-label="Workout tools navigation">
+            <h2 style="margin: 0;">Workout tools</h2>
+            <p class="status-text">Quick links to the rest of the workout suite.</p>
+            <div class="link-grid">
+                <a class="link-card" href="workout-settings.html">Workout settings<span>→</span></a>
+                <a class="link-card" href="workout-template-manager.html">Workout template manager<span>→</span></a>
+                <a class="link-card" href="workout-session-logger.html">Workout session logger<span>→</span></a>
+                <a class="link-card" href="workout-session-viewer.html">Workout session viewer<span>→</span></a>
+                <a class="link-card" href="workout-exercise-manager.html">Workout exercise manager<span>→</span></a>
+                <a class="link-card" href="workout-exercise-record.html">Workout exercise records<span>→</span></a>
+            </div>
+        </section>
     </main>
 
     <script>
         (() => {
             const STORAGE_KEYS = {
-                token: 'workout_api_token',
-                draftPrefix: 'workout_draft_',
-            };
-
-            const WORKER_BASE = 'https://workouts-production.rodrigogiraoserrao.workers.dev';
-
-            const state = {
-                templates: [],
-                selectedTemplate: null,
-                latestLog: null,
-                autosaveTimer: null,
-                workoutStartedAt: null,
+                token: 'workout-api-token',
+                base: 'workout-api-base',
+                draftPrefix: 'workout_session_draft_',
             };
 
             const elements = {
-                tokenInput: document.getElementById('api-token'),
-                saveToken: document.getElementById('save-token'),
-                clearToken: document.getElementById('clear-token'),
-                settingsStatus: document.getElementById('settings-status'),
                 refreshTemplates: document.getElementById('refresh-templates'),
                 templateSelect: document.getElementById('template-select'),
                 templateStatus: document.getElementById('template-status'),
@@ -270,86 +260,73 @@
                 workoutHint: document.getElementById('workout-hint'),
                 lastSessionStatus: document.getElementById('last-session-status'),
                 overallNotes: document.getElementById('overall-notes'),
+                sessionDate: document.getElementById('session-date'),
                 submitWorkout: document.getElementById('submit-workout'),
                 saveStatus: document.getElementById('save-status'),
                 storageIndicator: document.getElementById('storage-indicator'),
             };
 
-            function loadToken() {
-                const token = localStorage.getItem(STORAGE_KEYS.token) || '';
-                elements.tokenInput.value = token;
-                return token;
+            const state = {
+                templates: [],
+                selectedTemplate: null,
+                latestSession: null,
+                autosaveTimer: null,
+            };
+
+            function draftKey(name) {
+                return `${STORAGE_KEYS.draftPrefix}${name}`;
             }
 
-            function saveToken() {
-                const token = elements.tokenInput.value.trim();
-                if (!token) {
-                    elements.settingsStatus.textContent = 'Provide the bearer token first.';
-                    return;
+            function readStored(primaryKey, legacyKey) {
+                return (localStorage.getItem(primaryKey) || localStorage.getItem(legacyKey) || '').trim();
+            }
+
+            function getConfig() {
+                const token = readStored(STORAGE_KEYS.token, 'workout_api_token');
+                const base = readStored(STORAGE_KEYS.base, 'workout_api_base').replace(/\/$/, '');
+                if (!token || !base) {
+                    throw new Error('Set the API base URL and bearer token in Workout settings first.');
                 }
-                localStorage.setItem(STORAGE_KEYS.token, token);
-                elements.settingsStatus.textContent = 'Token saved locally.';
-                refreshTemplates();
-            }
-
-            function clearToken() {
-                localStorage.removeItem(STORAGE_KEYS.token);
-                elements.tokenInput.value = '';
-                elements.settingsStatus.textContent = 'Token cleared.';
-            }
-
-            function draftKey(id) {
-                return `${STORAGE_KEYS.draftPrefix}${id}`;
-            }
-
-            function setSaveStatus(message) {
-                elements.saveStatus.textContent = message;
+                return { token, base };
             }
 
             async function callApi(path, options = {}) {
-                const token = localStorage.getItem(STORAGE_KEYS.token) || '';
-                if (!token) {
-                    throw new Error('Configure the API token first.');
-                }
+                const { token, base } = getConfig();
 
                 const headers = new Headers(options.headers || {});
                 headers.set('Content-Type', 'application/json');
                 headers.set('Authorization', `Bearer ${token}`);
 
-                const res = await fetch(`${WORKER_BASE}${path}`, {
-                    ...options,
-                    headers,
-                });
-
+                const response = await fetch(`${base}${path}`, { ...options, headers });
                 let data = null;
                 try {
-                    data = await res.json();
+                    data = await response.json();
                 } catch (error) {
-                    // Ignore JSON parsing errors; handled below.
+                    // ignore
                 }
 
-                if (res.status === 401) {
+                if (response.status === 401) {
                     throw new Error('Unauthorized – check the token.');
                 }
 
-                if (!res.ok) {
-                    throw new Error((data && data.error) || 'Request failed');
+                if (!response.ok) {
+                    throw new Error((data && data.error && data.error.message) || 'Request failed');
                 }
 
                 return data;
             }
 
             function templateDescription(template) {
-                const setCount = template.exerciseBlocks.reduce((acc, block) => acc + block.sets, 0);
-                return `${template.exerciseBlocks.length} exercises · ${setCount} total sets`;
+                const setCount = template.exercise_blocks.reduce((acc, block) => acc + block.sets, 0);
+                return `${template.exercise_blocks.length} exercises · ${setCount} total sets`;
             }
 
             function populateTemplateSelect(templates) {
                 elements.templateSelect.innerHTML = '<option value="">Choose a template…</option>';
-                templates.forEach((template) => {
+                templates.forEach((name) => {
                     const option = document.createElement('option');
-                    option.value = template.id;
-                    option.textContent = template.name;
+                    option.value = name;
+                    option.textContent = name;
                     elements.templateSelect.appendChild(option);
                 });
             }
@@ -357,18 +334,18 @@
             async function refreshTemplates() {
                 elements.templateStatus.textContent = 'Loading templates…';
                 try {
-                    const data = await callApi('/api/workouts');
-                    state.templates = data;
-                    populateTemplateSelect(data);
-                    elements.templateStatus.textContent = `${data.length} template${data.length === 1 ? '' : 's'} loaded.`;
+                    const data = await callApi('/templates');
+                    state.templates = data.templates || [];
+                    populateTemplateSelect(state.templates);
+                    elements.templateStatus.textContent = `${state.templates.length} template${state.templates.length === 1 ? '' : 's'} loaded.`;
                     elements.workoutHint.textContent = 'Choose a template to start logging.';
                 } catch (error) {
                     elements.templateStatus.textContent = error.message;
                 }
             }
 
-            function getDraft(templateId) {
-                const raw = localStorage.getItem(draftKey(templateId));
+            function getDraft(templateName) {
+                const raw = localStorage.getItem(draftKey(templateName));
                 if (!raw) return null;
                 try {
                     return JSON.parse(raw);
@@ -377,52 +354,50 @@
                 }
             }
 
-            function persistDraft(templateId, payload) {
-                localStorage.setItem(draftKey(templateId), JSON.stringify(payload));
+            function persistDraft(templateName, payload) {
+                localStorage.setItem(draftKey(templateName), JSON.stringify(payload));
                 elements.storageIndicator.textContent = 'Draft saved locally';
             }
 
-            function clearDraft(templateId) {
-                localStorage.removeItem(draftKey(templateId));
+            function clearDraft(templateName) {
+                localStorage.removeItem(draftKey(templateName));
             }
 
             function repOptions(block) {
                 if (block.amrap) return [];
                 const options = [];
-                const min = Number(block.repRange?.min) || 1;
-                const max = Number(block.repRange?.max) || min;
+                const min = Number(block.min_reps) || 1;
+                const max = Number(block.max_reps) || min;
                 for (let i = min; i <= max; i += 1) {
                     options.push(i);
                 }
                 return options;
             }
 
-            function findPreviousExercise(blockId) {
-                if (!state.latestLog) return null;
-                return state.latestLog.exercises.find((ex) => ex.blockId === blockId) || null;
+            function findPreviousExercise(exerciseName) {
+                if (!state.latestSession) return null;
+                return state.latestSession.exercise_blocks.find((ex) => ex.exercise_name === exerciseName) || null;
             }
 
             function renderPreviousChip(block) {
-                const prev = findPreviousExercise(block.id);
+                const prev = findPreviousExercise(block.exercise_name);
                 if (!prev) return null;
-
-                const firstCompleted = prev.sets.find((set) => set.weight !== null || set.reps !== null);
+                const firstCompleted = prev.sets.find((set) => Number.isFinite(set.weight) || Number.isFinite(set.reps));
                 if (!firstCompleted) return null;
-
                 const chip = document.createElement('span');
                 chip.className = 'chip';
-                chip.textContent = `Last: ${firstCompleted.weight ?? '—'} kg · ${firstCompleted.reps ?? '—'} reps (RIR ${firstCompleted.rir ?? '—'})`;
+                chip.textContent = `Last: ${firstCompleted.weight ?? '—'} kg · ${firstCompleted.reps ?? '—'} reps`;
                 return chip;
             }
 
-            function createAmrapInput(blockId, setIndex, initialValue) {
+            function createAmrapInput(exerciseName, setIndex, initialValue) {
                 const input = document.createElement('input');
                 input.type = 'number';
                 input.inputMode = 'numeric';
                 input.min = '1';
                 input.step = '1';
                 input.placeholder = 'Reps (AMRAP)';
-                input.dataset.blockId = blockId;
+                input.dataset.exerciseName = exerciseName;
                 input.dataset.setIndex = setIndex;
                 input.dataset.field = 'reps';
 
@@ -448,7 +423,7 @@
                 return input;
             }
 
-            function createSetRow(blockId, setIndex, block, draft) {
+            function createSetRow(exerciseName, setIndex, block, draft) {
                 const row = document.createElement('div');
                 row.className = 'set-row';
 
@@ -457,37 +432,22 @@
                 weightInput.inputMode = 'decimal';
                 weightInput.step = '0.5';
                 weightInput.placeholder = 'Weight';
-                weightInput.dataset.blockId = blockId;
+                weightInput.dataset.exerciseName = exerciseName;
                 weightInput.dataset.setIndex = setIndex;
                 weightInput.dataset.field = 'weight';
 
-                const rirSelect = document.createElement('select');
-                rirSelect.dataset.blockId = blockId;
-                rirSelect.dataset.setIndex = setIndex;
-                rirSelect.dataset.field = 'rir';
-                const rirPlaceholder = document.createElement('option');
-                rirPlaceholder.value = '';
-                rirPlaceholder.textContent = 'RIR';
-                rirSelect.appendChild(rirPlaceholder);
-                for (let i = 0; i <= 5; i += 1) {
-                    const option = document.createElement('option');
-                    option.value = i;
-                    option.textContent = i;
-                    rirSelect.appendChild(option);
-                }
-
-                const prev = findPreviousExercise(blockId);
+                const prev = findPreviousExercise(exerciseName);
                 const prevSet = prev && prev.sets[setIndex];
-                const draftExercise = draft?.exercises?.find((ex) => ex.blockId === blockId);
+                const draftExercise = draft?.exercise_blocks?.find((ex) => ex.exercise_name === exerciseName);
                 const draftSet = draftExercise?.sets?.[setIndex];
 
                 let repsField = null;
                 if (block.amrap) {
                     const initial = draftSet?.reps ?? prevSet?.reps;
-                    repsField = createAmrapInput(blockId, setIndex, initial);
+                    repsField = createAmrapInput(exerciseName, setIndex, initial);
                 } else {
                     const repsSelect = document.createElement('select');
-                    repsSelect.dataset.blockId = blockId;
+                    repsSelect.dataset.exerciseName = exerciseName;
                     repsSelect.dataset.setIndex = setIndex;
                     repsSelect.dataset.field = 'reps';
                     const placeholder = document.createElement('option');
@@ -510,7 +470,6 @@
                     } else if (Number.isInteger(draftSet.reps)) {
                         repsField.value = draftSet.reps;
                     }
-                    rirSelect.value = draftSet.rir ?? '';
                 } else if (prevSet) {
                     weightInput.value = prevSet.weight ?? '';
                     if (!block.amrap) {
@@ -518,120 +477,167 @@
                     } else if (Number.isInteger(prevSet.reps)) {
                         repsField.value = prevSet.reps;
                     }
-                    rirSelect.value = prevSet.rir ?? '';
                 }
 
-                row.appendChild(weightInput);
-                row.appendChild(repsField);
-                row.appendChild(rirSelect);
+                const repsLabel = document.createElement('label');
+                repsLabel.textContent = `Set ${setIndex + 1} reps`;
+                repsLabel.appendChild(repsField);
+
+                const weightLabel = document.createElement('label');
+                weightLabel.textContent = `Set ${setIndex + 1} weight`;
+                weightLabel.appendChild(weightInput);
+
+                row.appendChild(weightLabel);
+                row.appendChild(repsLabel);
                 return row;
             }
 
-            function createExerciseBlock(block, draft) {
+            function renderExercise(block, draft) {
                 const details = document.createElement('details');
                 details.className = 'exercise-card';
                 details.open = true;
 
                 const summary = document.createElement('summary');
-                const repLabel = block.amrap ? 'AMRAP' : `${block.repRange?.min ?? '—'}-${block.repRange?.max ?? '—'} reps`;
-                summary.innerHTML = `<span>${block.name}</span><span class="exercise-meta">${block.sets} sets · ${repLabel}</span>`;
+                summary.innerHTML = `
+                    <div>
+                        <div>${block.exercise_name}</div>
+                        <div class="exercise-meta">${block.sets} sets${block.amrap ? ' · AMRAP' : ''}${block.notes ? ` · ${block.notes}` : ''}</div>
+                    </div>
+                `;
+
+                const previousChip = renderPreviousChip(block);
+                if (previousChip) {
+                    const chipRow = document.createElement('div');
+                    chipRow.className = 'chip-row';
+                    chipRow.appendChild(previousChip);
+                    summary.appendChild(chipRow);
+                }
 
                 const body = document.createElement('div');
                 body.className = 'exercise-body';
-
-                const notes = document.createElement('p');
-                notes.className = 'exercise-meta';
-                notes.textContent = block.notes || 'No template notes.';
-                body.appendChild(notes);
-
-                const chip = renderPreviousChip(block);
-                if (chip) {
-                    const chipRow = document.createElement('div');
-                    chipRow.className = 'chip-row';
-                    chipRow.appendChild(chip);
-                    body.appendChild(chipRow);
-                }
-
-                const setGrid = document.createElement('div');
-                setGrid.className = 'set-grid';
+                const setsGrid = document.createElement('div');
+                setsGrid.className = 'stack';
 
                 for (let i = 0; i < block.sets; i += 1) {
-                    const label = document.createElement('label');
-                    label.textContent = `Set ${i + 1}`;
-                    const row = createSetRow(block.id, i, block, draft);
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'stack';
-                    wrapper.appendChild(label);
-                    wrapper.appendChild(row);
-                    setGrid.appendChild(wrapper);
+                    setsGrid.appendChild(createSetRow(block.exercise_name, i, block, draft));
                 }
 
-                const progressionWrapper = document.createElement('div');
-                progressionWrapper.className = 'stack';
                 const progressionLabel = document.createElement('label');
                 progressionLabel.textContent = 'Progression notes';
-                progressionLabel.setAttribute('for', `progression-${block.id}`);
-                const progressionInput = document.createElement('textarea');
-                progressionInput.id = `progression-${block.id}`;
-                progressionInput.dataset.blockId = block.id;
-                progressionInput.dataset.field = 'progression';
-                progressionInput.placeholder = 'E.g. add 2.5 kg next week, or push for top-end reps.';
+                const progressionNotes = document.createElement('textarea');
+                progressionNotes.placeholder = 'Cues, tempo, next time…';
+                progressionNotes.dataset.exerciseName = block.exercise_name;
+                progressionNotes.dataset.field = 'notes';
 
-                const draftExercise = draft?.exercises?.find((ex) => ex.blockId === block.id);
-                const prev = findPreviousExercise(block.id);
-                if (draftExercise?.progressionNotes) {
-                    progressionInput.value = draftExercise.progressionNotes;
-                } else if (prev?.progressionNotes) {
-                    progressionInput.value = prev.progressionNotes;
+                const draftExercise = draft?.exercise_blocks?.find((ex) => ex.exercise_name === block.exercise_name);
+                if (draftExercise) {
+                    progressionNotes.value = draftExercise.notes || '';
                 }
 
-                progressionWrapper.appendChild(progressionLabel);
-                progressionWrapper.appendChild(progressionInput);
+                const rpeLabel = document.createElement('label');
+                rpeLabel.textContent = 'RIR (reps in reserve, optional)';
+                const rpeInput = document.createElement('input');
+                rpeInput.type = 'number';
+                rpeInput.step = '1';
+                rpeInput.min = '0';
+                rpeInput.placeholder = 'e.g. 2';
+                rpeInput.dataset.exerciseName = block.exercise_name;
+                rpeInput.dataset.field = 'rpe';
+                if (draftExercise && draftExercise.rpe_reserve !== undefined) {
+                    rpeInput.value = draftExercise.rpe_reserve;
+                }
 
-                body.appendChild(setGrid);
-                body.appendChild(progressionWrapper);
+                progressionLabel.appendChild(progressionNotes);
+                rpeLabel.appendChild(rpeInput);
+
+                body.appendChild(setsGrid);
+                body.appendChild(progressionLabel);
+                body.appendChild(rpeLabel);
 
                 details.appendChild(summary);
                 details.appendChild(body);
                 return details;
             }
 
-            function loadDraftIntoUI(template, draft) {
-                elements.overallNotes.value = draft?.overallNotes || '';
+            function loadDraftIntoUI(template, draft, previousSession) {
+                const prefill = draft || previousSession || null;
                 elements.exerciseList.innerHTML = '';
-                template.exerciseBlocks.forEach((block) => {
-                    const blockEl = createExerciseBlock(block, draft);
-                    elements.exerciseList.appendChild(blockEl);
+                template.exercise_blocks.forEach((block) => {
+                    elements.exerciseList.appendChild(renderExercise(block, prefill));
                 });
+
+                elements.workoutTitle.textContent = template.name;
+                elements.workoutSummary.textContent = templateDescription(template);
+                elements.workoutPanel.hidden = false;
+                elements.saveStatus.textContent = '';
+                elements.storageIndicator.textContent = 'Draft saved locally';
+
+                const date = draft?.date || new Date().toISOString().slice(0, 10);
+                elements.sessionDate.value = date;
+                elements.overallNotes.value = draft?.notes || '';
+            }
+
+            async function loadTemplateDetails(name) {
+                elements.templateStatus.textContent = 'Loading template…';
+                elements.exerciseList.innerHTML = '';
+                elements.workoutPanel.hidden = true;
+                state.latestSession = null;
+
+                try {
+                    const template = await callApi(`/templates/${encodeURIComponent(name)}`);
+                    state.selectedTemplate = template;
+                    elements.workoutHint.textContent = 'Fill the sets and submit when done.';
+                    const draft = getDraft(name);
+                    let lastSession = null;
+
+                    try {
+                        const latest = await callApi(`/templates/${encodeURIComponent(name)}/sessions?limit=1`);
+                        lastSession = latest.sessions?.[0] || null;
+                        state.latestSession = lastSession;
+                        if (lastSession) {
+                            elements.lastSessionStatus.textContent = `Last session on ${lastSession.date}. Prefilled with previous numbers.`;
+                        } else {
+                            elements.lastSessionStatus.textContent = 'No previous sessions logged yet.';
+                        }
+                    } catch (error) {
+                        elements.lastSessionStatus.textContent = `Could not load last session: ${error.message}`;
+                    }
+
+                    loadDraftIntoUI(template, draft, lastSession);
+                    elements.templateStatus.textContent = '';
+                    scheduleDraftSave();
+                } catch (error) {
+                    elements.templateStatus.textContent = error.message;
+                }
             }
 
             function buildCurrentPayload() {
                 if (!state.selectedTemplate) return null;
-                const exercises = state.selectedTemplate.exerciseBlocks.map((block) => {
+                const exercise_blocks = state.selectedTemplate.exercise_blocks.map((block) => {
                     const sets = [];
                     for (let i = 0; i < block.sets; i += 1) {
-                        const weight = document.querySelector(`input[data-block-id="${block.id}"][data-set-index="${i}"][data-field="weight"]`);
-                        const reps = document.querySelector(`[data-block-id="${block.id}"][data-set-index="${i}"][data-field="reps"]`);
-                        const rir = document.querySelector(`select[data-block-id="${block.id}"][data-set-index="${i}"][data-field="rir"]`);
+                        const weight = document.querySelector(`input[data-exercise-name="${block.exercise_name}"][data-set-index="${i}"][data-field="weight"]`);
+                        const reps = document.querySelector(`[data-exercise-name="${block.exercise_name}"][data-set-index="${i}"][data-field="reps"]`);
                         sets.push({
-                            weight: weight?.value ? Number(weight.value) : null,
-                            reps: reps?.value ? Number.parseInt(reps.value, 10) : null,
-                            rir: rir?.value ? Number(rir.value) : null,
+                            weight: weight?.value ? Number(weight.value) : 0,
+                            reps: reps?.value ? Number.parseInt(reps.value, 10) : 0,
                         });
                     }
-                    const progressionNotes = document.querySelector(`textarea[data-block-id="${block.id}"][data-field="progression"]`)?.value || '';
+                    const notes = document.querySelector(`textarea[data-exercise-name="${block.exercise_name}"][data-field="notes"]`)?.value || '';
+                    const rpeValue = document.querySelector(`input[data-exercise-name="${block.exercise_name}"][data-field="rpe"]`)?.value;
                     return {
-                        blockId: block.id,
+                        exercise_name: block.exercise_name,
+                        notes,
+                        rpe_reserve: rpeValue !== '' && rpeValue !== undefined ? Number(rpeValue) : undefined,
                         sets,
-                        progressionNotes,
                     };
                 });
 
                 return {
-                    startedAt: state.workoutStartedAt,
-                    finishedAt: new Date().toISOString(),
-                    exercises,
-                    overallNotes: elements.overallNotes.value || '',
+                    template_name: state.selectedTemplate.name,
+                    date: elements.sessionDate.value || new Date().toISOString().slice(0, 10),
+                    notes: elements.overallNotes.value || '',
+                    exercise_blocks,
                 };
             }
 
@@ -641,70 +647,42 @@
                 state.autosaveTimer = window.setTimeout(() => {
                     const payload = buildCurrentPayload();
                     if (payload) {
-                        persistDraft(state.selectedTemplate.id, payload);
-                        setSaveStatus('Saved locally.');
+                        persistDraft(state.selectedTemplate.name, payload);
+                        elements.saveStatus.textContent = 'Saved locally.';
                     }
                 }, 350);
             }
 
             async function handleTemplateChange() {
-                const id = elements.templateSelect.value;
-                state.latestLog = null;
-                if (!id) {
+                const name = elements.templateSelect.value;
+                state.latestSession = null;
+                if (!name) {
                     state.selectedTemplate = null;
                     elements.workoutPanel.hidden = true;
                     return;
                 }
-
-                const template = state.templates.find((t) => t.id === id);
-                state.selectedTemplate = template;
-                state.workoutStartedAt = new Date().toISOString();
-                elements.workoutTitle.textContent = template.name;
-                elements.workoutSummary.textContent = templateDescription(template);
-                elements.workoutPanel.hidden = false;
-                elements.saveStatus.textContent = '';
-                elements.storageIndicator.textContent = 'Draft saved locally';
-                elements.lastSessionStatus.textContent = 'Fetching last session…';
-
-                try {
-                    const latest = await callApi(`/api/workouts/${encodeURIComponent(id)}/logs/latest`);
-                    state.latestLog = latest?.log || null;
-                    if (state.latestLog) {
-                        const finished = new Date(state.latestLog.finishedAt).toLocaleString();
-                        elements.lastSessionStatus.textContent = `Last session: ${finished}. Prefilled with previous numbers.`;
-                    } else {
-                        elements.lastSessionStatus.textContent = 'No previous sessions logged yet.';
-                    }
-                } catch (error) {
-                    elements.lastSessionStatus.textContent = `Could not load last session: ${error.message}`;
-                }
-
-                const draft = getDraft(id);
-                loadDraftIntoUI(template, draft || state.latestLog);
-                scheduleDraftSave();
+                await loadTemplateDetails(name);
             }
 
             async function submitWorkout() {
                 if (!state.selectedTemplate) return;
-                setSaveStatus('Submitting…');
+                elements.saveStatus.textContent = 'Submitting…';
                 const payload = buildCurrentPayload();
                 if (!payload) return;
 
                 try {
-                    await callApi(`/api/workouts/${encodeURIComponent(state.selectedTemplate.id)}/logs`, {
+                    await callApi('/sessions', {
                         method: 'POST',
                         body: JSON.stringify(payload),
                     });
-                    clearDraft(state.selectedTemplate.id);
-                    setSaveStatus('Workout submitted and stored. Draft cleared.');
+                    clearDraft(state.selectedTemplate.name);
+                    elements.saveStatus.textContent = 'Workout submitted and stored. Draft cleared.';
                 } catch (error) {
-                    setSaveStatus(`Submit failed: ${error.message}`);
+                    elements.saveStatus.textContent = `Submit failed: ${error.message}`;
                 }
             }
 
             function bindEvents() {
-                elements.saveToken.addEventListener('click', saveToken);
-                elements.clearToken.addEventListener('click', clearToken);
                 elements.refreshTemplates.addEventListener('click', refreshTemplates);
                 elements.templateSelect.addEventListener('change', handleTemplateChange);
                 elements.submitWorkout.addEventListener('click', submitWorkout);
@@ -713,7 +691,6 @@
             }
 
             function init() {
-                loadToken();
                 bindEvents();
                 refreshTemplates();
             }

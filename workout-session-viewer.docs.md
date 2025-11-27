@@ -1,0 +1,1 @@
+Browse and compare logged workout sessions for any template using the Cloudflare Worker API. Store your API base URL and token, pick a template, move through sessions with previous/next controls, and optionally overlay set-by-set differences against another date to track progress. This replaces the old Workout History tool while using the new API endpoints.

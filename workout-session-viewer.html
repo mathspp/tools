@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workout History</title>
+    <title>Workout Session Viewer</title>
     <link rel="stylesheet" href="styles.css">
     <style>
         :root {
@@ -166,6 +166,32 @@
             align-items: center;
         }
 
+        .workout-links {
+            border: 1px solid var(--border);
+            background: var(--surface-1);
+        }
+
+        .link-grid {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .link-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            padding: 0.65rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-card:hover { border-color: var(--accent); }
+
         @media (max-width: 720px) {
             .panel-header {
                 flex-direction: column;
@@ -183,30 +209,14 @@
 <body>
     <header class="page-header">
         <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
-        <h1>Workout History</h1>
-        <p class="lead">Browse past logs from your Cloudflare Worker workouts, one session at a time, and compare them side by
-            side.</p>
+        <h1>Workout Session Viewer</h1>
+        <p class="lead">Browse past sessions for a template, move through them one by one, and compare sets side by side.</p>
     </header>
 
     <main>
         <section class="surface stack">
-            <details open>
-                <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h2 style="margin: 0;">API settings</h2>
-                        <p class="status-text" style="margin: 4px 0 0;">Store the WORKOUT_API_TOKEN used for all requests.</p>
-                    </div>
-                </summary>
-                <div class="stack" style="margin-top: 0.75rem;">
-                    <label for="api-token">Bearer token</label>
-                    <input id="api-token" type="password" autocomplete="off" placeholder="Paste WORKOUT_API_TOKEN">
-                    <div class="controls">
-                        <button type="button" id="save-token">Save</button>
-                        <button type="button" id="clear-token" class="secondary">Clear</button>
-                        <span class="status-text" id="settings-status" aria-live="polite"></span>
-                    </div>
-                </div>
-            </details>
+            <h2 style="margin: 0;">API configuration</h2>
+            <p class="status-text">Set the API base URL and bearer token once in <a href="workout-settings.html">Workout settings</a>. Stored values are reused automatically.</p>
         </section>
 
         <section class="surface stack">
@@ -247,28 +257,36 @@
 
             <div id="record-container" class="stack"></div>
         </section>
+
+        <section class="surface stack workout-links" aria-label="Workout tools navigation">
+            <h2 style="margin: 0;">Workout tools</h2>
+            <p class="status-text">Quick links to the rest of the workout suite.</p>
+            <div class="link-grid">
+                <a class="link-card" href="workout-settings.html">Workout settings<span>→</span></a>
+                <a class="link-card" href="workout-template-manager.html">Workout template manager<span>→</span></a>
+                <a class="link-card" href="workout-session-logger.html">Workout session logger<span>→</span></a>
+                <a class="link-card" href="workout-session-viewer.html">Workout session viewer<span>→</span></a>
+                <a class="link-card" href="workout-exercise-manager.html">Workout exercise manager<span>→</span></a>
+                <a class="link-card" href="workout-exercise-record.html">Workout exercise records<span>→</span></a>
+            </div>
+        </section>
     </main>
 
     <script>
         (() => {
             const STORAGE_KEYS = {
-                token: 'workout_api_token',
+                token: 'workout-api-token',
+                base: 'workout-api-base',
             };
-
-            const WORKER_BASE = 'https://workouts-production.rodrigogiraoserrao.workers.dev';
 
             const state = {
                 templates: [],
-                logs: [],
+                sessions: [],
                 currentIndex: 0,
                 comparisonId: '',
             };
 
             const elements = {
-                tokenInput: document.getElementById('api-token'),
-                saveToken: document.getElementById('save-token'),
-                clearToken: document.getElementById('clear-token'),
-                settingsStatus: document.getElementById('settings-status'),
                 refreshTemplates: document.getElementById('refresh-templates'),
                 templateSelect: document.getElementById('template-select'),
                 templateStatus: document.getElementById('template-status'),
@@ -281,41 +299,28 @@
                 comparisonHint: document.getElementById('comparison-hint'),
             };
 
-            function loadToken() {
-                const token = localStorage.getItem(STORAGE_KEYS.token) || '';
-                elements.tokenInput.value = token;
-                return token;
+            function readStored(primaryKey, legacyKey) {
+                return (localStorage.getItem(primaryKey) || localStorage.getItem(legacyKey) || '').trim();
             }
 
-            function saveToken() {
-                const token = elements.tokenInput.value.trim();
-                if (!token) {
-                    elements.settingsStatus.textContent = 'Provide the bearer token first.';
-                    return;
+            function getConfig() {
+                const base = readStored(STORAGE_KEYS.base, 'workout_api_base');
+                const token = readStored(STORAGE_KEYS.token, 'workout_api_token');
+                if (!base || !token) {
+                    throw new Error('Set the API base URL and bearer token in Workout settings first.');
                 }
-
-                localStorage.setItem(STORAGE_KEYS.token, token);
-                elements.settingsStatus.textContent = 'Token saved locally.';
-                refreshTemplates();
-            }
-
-            function clearToken() {
-                localStorage.removeItem(STORAGE_KEYS.token);
-                elements.tokenInput.value = '';
-                elements.settingsStatus.textContent = 'Token cleared.';
+                return { base, token };
             }
 
             async function callApi(path, options = {}) {
-                const token = localStorage.getItem(STORAGE_KEYS.token) || '';
-                if (!token) {
-                    throw new Error('Configure the API token first.');
-                }
+                const { base, token } = getConfig();
 
                 const headers = new Headers(options.headers || {});
                 headers.set('Content-Type', 'application/json');
                 headers.set('Authorization', `Bearer ${token}`);
 
-                const res = await fetch(`${WORKER_BASE}${path}`, {
+                const url = `${base.replace(/\/$/, '')}${path}`;
+                const res = await fetch(url, {
                     ...options,
                     headers,
                 });
@@ -332,32 +337,27 @@
                 }
 
                 if (!res.ok) {
-                    throw new Error((data && data.error) || 'Request failed');
+                    const message = data?.error?.message || data?.error || data?.message || 'Request failed';
+                    throw new Error(message);
                 }
 
                 return data;
             }
 
-            function formatDateTime(value) {
-                if (!value) return 'Unknown time';
+            function formatDate(value) {
+                if (!value) return 'Unknown date';
                 const date = new Date(value);
-                return date.toLocaleString(undefined, {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                });
+                if (Number.isNaN(date.getTime())) {
+                    return value;
+                }
+                return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
             }
 
-            function formatDuration(startedAt, finishedAt) {
-                if (!startedAt || !finishedAt) return null;
-                const diffMs = new Date(finishedAt) - new Date(startedAt);
-                if (!Number.isFinite(diffMs) || diffMs < 0) return null;
-                const minutes = Math.round(diffMs / 60000);
-                if (minutes < 1) return '<1 min';
-                if (minutes < 90) return `${minutes} min`;
-                return `${(minutes / 60).toFixed(1)} h`;
+            function formatTimestamp(value) {
+                if (!value) return 'Unknown time';
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) return value;
+                return date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             }
 
             function formatWeight(value) {
@@ -368,8 +368,14 @@
                 return Number.isFinite(value) ? `${value} reps` : '—';
             }
 
-            function formatRir(value) {
-                return Number.isFinite(value) ? `${value} RIR` : '—';
+            function formatReserve(value) {
+                if (!Number.isFinite(value)) return '';
+                return `${value} RIR`;
+            }
+
+            function prettifyName(name) {
+                if (!name) return 'Exercise';
+                return name.replace(/[_-]+/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
             }
 
             function diffDisplay(current, previous, unit) {
@@ -400,17 +406,18 @@
                 return wrapper;
             }
 
-            function buildComparisonMap(log) {
+            function buildComparisonMap(session) {
                 const map = new Map();
-                if (!log) return map;
+                if (!session) return map;
 
-                for (const exercise of log.exercises || []) {
-                    map.set(exercise.blockId, exercise.sets || []);
-                }
+                (session.exercise_blocks || []).forEach((block, index) => {
+                    const key = `${block.exercise_name || 'exercise'}:${index}`;
+                    map.set(key, block.sets || []);
+                });
                 return map;
             }
 
-            function renderExercise(exercise, comparisonMap) {
+            function renderExercise(block, index, comparisonMap) {
                 const card = document.createElement('article');
                 card.className = 'exercise-card';
 
@@ -419,28 +426,36 @@
 
                 const name = document.createElement('p');
                 name.className = 'exercise-name';
-                name.textContent = exercise.blockName || 'Exercise';
+                name.textContent = prettifyName(block.exercise_name) || 'Exercise';
 
                 header.appendChild(name);
+
+                if (Number.isFinite(block.rpe_reserve)) {
+                    const reserve = document.createElement('span');
+                    reserve.className = 'chip';
+                    reserve.textContent = `Reserve: ${formatReserve(block.rpe_reserve)}`;
+                    header.appendChild(reserve);
+                }
+
                 card.appendChild(header);
 
                 const setGrid = document.createElement('div');
                 setGrid.className = 'set-grid';
 
-                const comparisonSets = comparisonMap.get(exercise.blockId) || [];
+                const comparisonSets = comparisonMap.get(`${block.exercise_name || 'exercise'}:${index}`) || [];
 
-                (exercise.sets || []).forEach((set, index) => {
+                (block.sets || []).forEach((set, setIndex) => {
                     const row = document.createElement('div');
                     row.className = 'set-row';
 
                     const label = document.createElement('div');
                     label.className = 'set-label';
-                    label.textContent = `Set ${index + 1}`;
+                    label.textContent = `Set ${setIndex + 1}`;
                     row.appendChild(label);
 
                     const weightCell = document.createElement('div');
                     weightCell.innerHTML = `<strong>Weight:</strong> ${formatWeight(set.weight)}`;
-                    const weightComparison = diffDisplay(set.weight, comparisonSets[index]?.weight, 'kg');
+                    const weightComparison = diffDisplay(set.weight, comparisonSets[setIndex]?.weight, 'kg');
                     weightComparison.setAttribute('aria-label', 'Weight difference');
                     weightCell.appendChild(document.createTextNode(' '));
                     weightCell.appendChild(weightComparison);
@@ -448,15 +463,11 @@
 
                     const repsCell = document.createElement('div');
                     repsCell.innerHTML = `<strong>Reps:</strong> ${formatReps(set.reps)}`;
-                    const repsComparison = diffDisplay(set.reps, comparisonSets[index]?.reps, '');
+                    const repsComparison = diffDisplay(set.reps, comparisonSets[setIndex]?.reps, '');
                     repsComparison.setAttribute('aria-label', 'Reps difference');
                     repsCell.appendChild(document.createTextNode(' '));
                     repsCell.appendChild(repsComparison);
                     row.appendChild(repsCell);
-
-                    const rirCell = document.createElement('div');
-                    rirCell.innerHTML = `<strong>RIR:</strong> ${formatRir(set.rir)}`;
-                    row.appendChild(rirCell);
 
                     if (set.notes) {
                         const notes = document.createElement('div');
@@ -468,10 +479,10 @@
                     setGrid.appendChild(row);
                 });
 
-                if (exercise.progressionNotes) {
+                if (block.notes) {
                     const notes = document.createElement('p');
                     notes.className = 'notes';
-                    notes.textContent = `Progression notes: ${exercise.progressionNotes}`;
+                    notes.textContent = block.notes;
                     card.appendChild(notes);
                 }
 
@@ -479,96 +490,77 @@
                 return card;
             }
 
-            function renderLog(log) {
+            function renderSession(session) {
                 elements.recordContainer.innerHTML = '';
 
-                if (!log) {
-                    elements.recordContainer.innerHTML = '<div class="empty-state">No records to show yet.</div>';
+                if (!session) {
+                    elements.recordContainer.innerHTML = '<div class="empty-state">No sessions to show yet.</div>';
                     return;
                 }
 
-                const comparisonLog = state.logs.find((entry) => entry.id === state.comparisonId) || null;
-                const comparisonMap = buildComparisonMap(comparisonLog);
+                const comparisonSession = state.sessions.find((entry) => entry.id === state.comparisonId) || null;
+                const comparisonMap = buildComparisonMap(comparisonSession);
 
                 const meta = document.createElement('div');
                 meta.className = 'record-meta';
 
-                const finished = document.createElement('span');
-                finished.className = 'chip';
-                finished.textContent = `Finished: ${formatDateTime(log.finishedAt)}`;
-                meta.appendChild(finished);
+                const sessionDate = document.createElement('span');
+                sessionDate.className = 'chip';
+                sessionDate.textContent = `Date: ${formatDate(session.date)}`;
+                meta.appendChild(sessionDate);
 
-                const duration = formatDuration(log.startedAt, log.finishedAt);
-                if (duration) {
-                    const durationChip = document.createElement('span');
-                    durationChip.className = 'chip';
-                    durationChip.textContent = `Duration: ${duration}`;
-                    meta.appendChild(durationChip);
-                }
+                const createdChip = document.createElement('span');
+                createdChip.className = 'chip';
+                createdChip.textContent = `Logged: ${formatTimestamp(session.created_at)}`;
+                meta.appendChild(createdChip);
 
                 const countChip = document.createElement('span');
                 countChip.className = 'chip';
-                countChip.textContent = `Record ${state.currentIndex + 1} of ${state.logs.length}`;
+                countChip.textContent = `Record ${state.currentIndex + 1} of ${state.sessions.length}`;
                 meta.appendChild(countChip);
 
                 elements.recordContainer.appendChild(meta);
 
-                if (log.overallNotes) {
+                if (session.notes) {
                     const notes = document.createElement('p');
                     notes.className = 'notes';
-                    notes.textContent = `Session notes: ${log.overallNotes}`;
+                    notes.textContent = `Session notes: ${session.notes}`;
                     elements.recordContainer.appendChild(notes);
                 }
 
-                (log.exercises || []).forEach((exercise) => {
-                    const card = renderExercise(exercise, comparisonMap);
-                    elements.recordContainer.appendChild(card);
+                (session.exercise_blocks || []).forEach((block, index) => {
+                    elements.recordContainer.appendChild(renderExercise(block, index, comparisonMap));
                 });
-            }
-
-            function updateComparisonOptions() {
-                const currentLog = state.logs[state.currentIndex];
-                elements.compareSelect.innerHTML = '<option value="">No comparison</option>';
-
-                state.logs.forEach((log, index) => {
-                    if (log.id === currentLog?.id) return;
-                    const option = document.createElement('option');
-                    option.value = log.id;
-                    option.textContent = `${formatDateTime(log.finishedAt)}${index === state.currentIndex - 1 ? ' (previous)' : ''}`;
-                    elements.compareSelect.appendChild(option);
-                });
-
-                if (!currentLog) {
-                    elements.compareSelect.value = '';
-                    state.comparisonId = '';
-                    return;
-                }
-
-                const defaultComparison = state.logs[state.currentIndex + 1]?.id;
-                if (defaultComparison && !state.comparisonId) {
-                    state.comparisonId = defaultComparison;
-                }
-
-                const stillExists = state.logs.some((log) => log.id === state.comparisonId && log.id !== currentLog.id);
-                state.comparisonId = stillExists ? state.comparisonId : '';
-                elements.compareSelect.value = state.comparisonId;
 
                 if (state.comparisonId) {
                     elements.comparisonHint.textContent = 'Showing differences against the selected record.';
                 } else {
-                    elements.comparisonHint.textContent = 'Select another date to compare weights and reps.';
+                    elements.comparisonHint.textContent = 'Select another session to compare weights and reps.';
                 }
+            }
+
+            function updateComparisonOptions() {
+                elements.compareSelect.innerHTML = '<option value="">No comparison</option>';
+                state.sessions.forEach((session, idx) => {
+                    if (idx === state.currentIndex) return;
+                    const option = document.createElement('option');
+                    option.value = session.id;
+                    option.textContent = `${formatDate(session.date)} • ${formatTimestamp(session.created_at)}`;
+                    elements.compareSelect.appendChild(option);
+                });
+                elements.compareSelect.value = state.comparisonId;
             }
 
             function handleNavigation(direction) {
                 const nextIndex = state.currentIndex + direction;
-                if (nextIndex < 0 || nextIndex >= state.logs.length) return;
+                if (nextIndex < 0 || nextIndex >= state.sessions.length) return;
                 state.currentIndex = nextIndex;
+                state.comparisonId = '';
                 updateComparisonOptions();
-                renderLog(state.logs[state.currentIndex]);
-                elements.prevRecord.disabled = state.currentIndex === state.logs.length - 1;
+                renderSession(state.sessions[state.currentIndex]);
+                elements.prevRecord.disabled = state.currentIndex === state.sessions.length - 1;
                 elements.nextRecord.disabled = state.currentIndex === 0;
-                elements.recordStatus.textContent = `Showing ${formatDateTime(state.logs[state.currentIndex].finishedAt)}`;
+                elements.recordStatus.textContent = `Showing ${formatDate(state.sessions[state.currentIndex].date)}`;
             }
 
             async function refreshTemplates() {
@@ -577,8 +569,8 @@
                 elements.templateSelect.innerHTML = '<option value="" disabled selected>Pick a template…</option>';
 
                 try {
-                    const data = await callApi('/api/workouts');
-                    state.templates = Array.isArray(data) ? data : [];
+                    const data = await callApi('/templates');
+                    state.templates = Array.isArray(data?.templates) ? data.templates : [];
 
                     if (state.templates.length === 0) {
                         elements.templateStatus.textContent = 'No templates found.';
@@ -586,11 +578,11 @@
                     }
 
                     state.templates
-                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .sort((a, b) => a.localeCompare(b))
                         .forEach((template) => {
                             const option = document.createElement('option');
-                            option.value = template.id;
-                            option.textContent = template.name;
+                            option.value = template;
+                            option.textContent = template;
                             elements.templateSelect.appendChild(option);
                         });
 
@@ -602,34 +594,34 @@
                 }
             }
 
-            async function loadLogsForTemplate(id) {
+            async function loadSessionsForTemplate(id) {
                 elements.recordContainer.innerHTML = '';
                 elements.recordStatus.textContent = 'Loading records…';
                 elements.historyPanel.hidden = false;
                 elements.prevRecord.disabled = true;
                 elements.nextRecord.disabled = true;
                 elements.compareSelect.innerHTML = '<option value="">No comparison</option>';
-                state.logs = [];
+                state.sessions = [];
                 state.currentIndex = 0;
                 state.comparisonId = '';
 
                 try {
-                    const data = await callApi(`/api/workouts/${encodeURIComponent(id)}/logs`);
-                    state.logs = Array.isArray(data?.logs) ? data.logs : [];
+                    const data = await callApi(`/templates/${encodeURIComponent(id)}/sessions?limit=500&offset=0`);
+                    state.sessions = Array.isArray(data?.sessions) ? data.sessions : [];
 
-                    if (state.logs.length === 0) {
+                    if (state.sessions.length === 0) {
                         elements.recordStatus.textContent = 'No records found for this template yet.';
                         elements.recordContainer.innerHTML = '<div class="empty-state">Log a workout to see it here.</div>';
                         return;
                     }
 
                     state.currentIndex = 0;
-                    elements.prevRecord.disabled = state.logs.length <= 1;
+                    elements.prevRecord.disabled = state.sessions.length <= 1;
                     elements.nextRecord.disabled = true;
 
                     updateComparisonOptions();
-                    renderLog(state.logs[state.currentIndex]);
-                    elements.recordStatus.textContent = `Showing ${formatDateTime(state.logs[state.currentIndex].finishedAt)}`;
+                    renderSession(state.sessions[state.currentIndex]);
+                    elements.recordStatus.textContent = `Showing ${formatDate(state.sessions[state.currentIndex].date)}`;
                 } catch (error) {
                     elements.recordStatus.textContent = error.message;
                     elements.recordContainer.innerHTML = '<div class="empty-state">Could not load records.</div>';
@@ -637,19 +629,13 @@
             }
 
             function init() {
-                loadToken();
-                refreshTemplates();
-
-                elements.saveToken.addEventListener('click', saveToken);
-                elements.clearToken.addEventListener('click', clearToken);
                 elements.refreshTemplates.addEventListener('click', refreshTemplates);
 
                 elements.templateSelect.addEventListener('change', (event) => {
                     const id = event.target.value;
                     if (!id) return;
-                    const template = state.templates.find((tpl) => tpl.id === id);
-                    elements.templateStatus.textContent = template ? `Viewing logs for ${template.name}.` : '';
-                    loadLogsForTemplate(id);
+                    elements.templateStatus.textContent = `Viewing logs for ${id}.`;
+                    loadSessionsForTemplate(id);
                 });
 
                 elements.prevRecord.addEventListener('click', () => handleNavigation(1));
@@ -657,13 +643,15 @@
 
                 elements.compareSelect.addEventListener('change', (event) => {
                     state.comparisonId = event.target.value;
-                    renderLog(state.logs[state.currentIndex]);
+                    renderSession(state.sessions[state.currentIndex]);
                     if (state.comparisonId) {
                         elements.comparisonHint.textContent = 'Showing differences against the selected record.';
                     } else {
-                        elements.comparisonHint.textContent = 'Select another date to compare weights and reps.';
+                        elements.comparisonHint.textContent = 'Select another session to compare weights and reps.';
                     }
                 });
+
+                refreshTemplates();
             }
 
             document.addEventListener('DOMContentLoaded', init);

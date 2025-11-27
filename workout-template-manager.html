@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Template Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 1150px;
+            margin: 0 auto;
+            padding: 24px 20px 72px;
+        }
+
+        main {
+            display: grid;
+            gap: 1.2rem;
+        }
+
+        .card {
+            padding: clamp(1rem, 2vw, 1.25rem);
+        }
+
+        .stack { display: grid; gap: 0.75rem; }
+
+        .split { display: grid; gap: 0.75rem; }
+
+        .template-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .template-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.65rem 0.8rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .pill-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .pill { border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; background: var(--surface-3); font-size: 0.9rem; }
+
+        .block { border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; background: var(--surface-2); display: grid; gap: 0.65rem; }
+        .block header { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
+        .block-controls { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+        .inline-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem 0.75rem; }
+
+        .status { min-height: 1.1rem; color: var(--text-muted); }
+
+        .exercise-list { display: grid; gap: 0.65rem; }
+
+        pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; overflow-x: auto; }
+
+        .workout-links {
+            border: 1px solid var(--border);
+            background: var(--surface-1);
+        }
+
+        .link-grid {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .link-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            padding: 0.65rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-card:hover { border-color: var(--accent); }
+
+        @media (min-width: 900px) { .split { grid-template-columns: 1fr 1.05fr; } }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Workout Template Manager</h1>
+        <p class="lead">List, inspect, delete, and create workout templates against the Cloudflare Worker API.</p>
+    </header>
+
+    <main>
+        <section class="card surface stack">
+            <h2 style="margin: 0;">API configuration</h2>
+            <p class="status">Set the API base URL and bearer token once in <a href="workout-settings.html">Workout settings</a>. Stored values are reused automatically.</p>
+        </section>
+
+        <section class="split">
+            <article class="card surface stack">
+                <div class="split" style="align-items: center;">
+                    <div>
+                        <h2 style="margin: 0;">Templates</h2>
+                        <p class="status" id="list-status">Load templates to browse or preview them.</p>
+                    </div>
+                    <div class="tool-actions" style="justify-content: flex-end;">
+                        <button type="button" id="refresh-templates">Refresh list</button>
+                    </div>
+                </div>
+                <ul id="template-list" class="template-list"></ul>
+                <div id="template-empty" class="empty-state" hidden>No templates found. Create one below.</div>
+            </article>
+
+            <article class="card surface stack">
+                <div class="split" style="align-items: center;">
+                    <div>
+                        <h2 style="margin: 0;">Template preview</h2>
+                        <p class="status" id="preview-status">Select a template to see its exercises and metadata.</p>
+                    </div>
+                    <div class="tool-actions" style="justify-content: flex-end;">
+                        <button type="button" id="delete-template" class="danger" disabled>Delete template</button>
+                    </div>
+                </div>
+                <div id="preview-content" class="exercise-list"></div>
+                <details>
+                    <summary style="cursor: pointer;">Raw template JSON</summary>
+                    <pre id="template-raw">{}</pre>
+                </details>
+            </article>
+        </section>
+
+        <section class="card surface stack" id="create">
+            <h2 style="margin: 0;">Create a new template</h2>
+            <p class="status">Add, reorder, and customise exercise blocks before creating the template.</p>
+            <label>
+                Template name
+                <input type="text" id="template-name" placeholder="push_day_a">
+            </label>
+            <div class="stack" id="blocks"></div>
+            <div class="tool-actions" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                <button type="button" class="secondary" id="add-block">Add exercise block</button>
+                <button type="button" id="create-template">Create template</button>
+            </div>
+            <div class="status" id="create-status"></div>
+        </section>
+
+        <section class="surface stack workout-links" aria-label="Workout tools navigation">
+            <h2 style="margin: 0;">Workout tools</h2>
+            <p class="status-text">Quick links to the rest of the workout suite.</p>
+            <div class="link-grid">
+                <a class="link-card" href="workout-settings.html">Workout settings<span>→</span></a>
+                <a class="link-card" href="workout-template-manager.html">Workout template manager<span>→</span></a>
+                <a class="link-card" href="workout-session-logger.html">Workout session logger<span>→</span></a>
+                <a class="link-card" href="workout-session-viewer.html">Workout session viewer<span>→</span></a>
+                <a class="link-card" href="workout-exercise-manager.html">Workout exercise manager<span>→</span></a>
+                <a class="link-card" href="workout-exercise-record.html">Workout exercise records<span>→</span></a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+
+    <script>
+        (() => {
+            const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
+            const REST_BETWEEN_EXERCISES = 180; // seconds
+            const REST_BETWEEN_SETS = 90; // seconds
+            const SET_DURATION = 45; // seconds
+
+            const listStatus = document.getElementById('list-status');
+            const templateList = document.getElementById('template-list');
+            const templateEmpty = document.getElementById('template-empty');
+
+            const previewStatus = document.getElementById('preview-status');
+            const previewContent = document.getElementById('preview-content');
+            const previewRaw = document.getElementById('template-raw');
+            const deleteButton = document.getElementById('delete-template');
+
+            const createStatus = document.getElementById('create-status');
+            const templateNameInput = document.getElementById('template-name');
+            const blocksContainer = document.getElementById('blocks');
+            const addBlockBtn = document.getElementById('add-block');
+            const createBtn = document.getElementById('create-template');
+
+            let currentBlocks = [];
+            let selectedTemplate = null;
+
+            function readStored(primaryKey, legacyKey) {
+                return (localStorage.getItem(primaryKey) || localStorage.getItem(legacyKey) || '').trim();
+            }
+
+            function getConfig() {
+                const base = readStored(STORAGE_KEYS.base, 'workout_api_base');
+                const token = readStored(STORAGE_KEYS.token, 'workout_api_token');
+                if (!base || !token) {
+                    throw new Error('Set the API base URL and bearer token in Workout settings first.');
+                }
+                return { base, token };
+            }
+
+            async function apiFetch(path, options = {}) {
+                const { base, token } = getConfig();
+
+                const url = `${base.replace(/\/$/, '')}${path}`;
+                const response = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                        ...(options.headers || {}),
+                    },
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const message = data?.error?.message || data?.error || response.statusText || 'Request failed';
+                    throw new Error(message);
+                }
+                return data;
+            }
+
+            function formatSeconds(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.round(seconds % 60);
+                if (mins <= 0) return `${secs}s`;
+                return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+            }
+
+            function estimateExerciseSeconds(sets) {
+                if (!Number.isFinite(sets) || sets <= 0) return 0;
+                const work = sets * SET_DURATION;
+                const rest = Math.max(sets - 1, 0) * REST_BETWEEN_SETS;
+                return work + rest;
+            }
+
+            function renderTemplateDetail(template) {
+                const blocks = template?.exercise_blocks || [];
+                selectedTemplate = template?.name || null;
+                deleteButton.disabled = !selectedTemplate;
+
+                if (!blocks.length) {
+                    previewContent.innerHTML = '<div class="empty-state">No exercise blocks found for this template.</div>';
+                } else {
+                    const totalExerciseSeconds = blocks.reduce((total, block) => total + estimateExerciseSeconds(Number(block.sets)), 0);
+                    const totalRestBetweenExercises = Math.max(blocks.length - 1, 0) * REST_BETWEEN_EXERCISES;
+                    const totalSeconds = totalExerciseSeconds + totalRestBetweenExercises;
+
+                    const exerciseList = blocks.map((block, index) => {
+                        const repLabel = block.amrap ? 'AMRAP' : `${block.min_reps ?? 0}–${block.max_reps ?? 0} reps`;
+                        const perExercise = estimateExerciseSeconds(Number(block.sets));
+                        const restAfter = index < blocks.length - 1 ? REST_BETWEEN_EXERCISES : 0;
+                        return `
+                            <div class="block">
+                                <header>
+                                    <div>
+                                        <strong>${block.exercise_name || 'Unnamed exercise'}</strong>
+                                        <div class="status">Block ${index + 1}</div>
+                                    </div>
+                                    <div class="pill-group">
+                                        <span class="pill">${block.sets || 0} sets</span>
+                                        <span class="pill">${repLabel}</span>
+                                        ${restAfter ? `<span class="pill">${formatSeconds(restAfter)} rest before next</span>` : ''}
+                                        <span class="pill">${formatSeconds(perExercise)} per exercise</span>
+                                    </div>
+                                </header>
+                                <div class="status">${block.notes ? block.notes : 'No notes'}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    previewContent.innerHTML = `
+                        <div class="pill-group">
+                            <span class="pill">Template: ${template.name}</span>
+                            <span class="pill">Exercises: ${blocks.length}</span>
+                            <span class="pill">Estimated time: ${formatSeconds(totalSeconds)}</span>
+                        </div>
+                        <div class="exercise-list">${exerciseList}</div>
+                    `;
+                }
+
+                previewRaw.textContent = JSON.stringify(template || {}, null, 2);
+                previewStatus.textContent = selectedTemplate ? `${selectedTemplate} loaded.` : 'Select a template to preview.';
+            }
+
+            async function loadTemplates() {
+                listStatus.textContent = 'Loading templates…';
+                templateList.innerHTML = '';
+                templateEmpty.hidden = true;
+                try {
+                    const data = await apiFetch('/templates');
+                    const names = data.templates || [];
+                    if (!names.length) {
+                        listStatus.textContent = 'No templates available yet.';
+                        templateEmpty.hidden = false;
+                        return;
+                    }
+                    listStatus.textContent = 'Select a template to preview its contents.';
+                    names.forEach((name) => {
+                        const li = document.createElement('li');
+                        li.className = 'template-item';
+                        li.innerHTML = `
+                            <span>${name}</span>
+                            <div class="tool-actions" style="gap: 0.35rem;">
+                                <button type="button" data-action="view">Preview</button>
+                            </div>
+                        `;
+                        li.querySelector('[data-action="view"]').addEventListener('click', () => selectTemplate(name));
+                        templateList.appendChild(li);
+                    });
+                } catch (error) {
+                    listStatus.textContent = error.message;
+                }
+            }
+
+            async function selectTemplate(name) {
+                previewStatus.textContent = `Loading ${name}…`;
+                previewContent.innerHTML = '';
+                deleteButton.disabled = true;
+                try {
+                    const data = await apiFetch(`/templates/${encodeURIComponent(name)}`);
+                    renderTemplateDetail(data);
+                } catch (error) {
+                    previewStatus.textContent = error.message;
+                    previewContent.innerHTML = '';
+                    previewRaw.textContent = '{}';
+                }
+            }
+
+            async function deleteTemplate() {
+                if (!selectedTemplate) return;
+                const confirmed = confirm(`Delete template "${selectedTemplate}"?`);
+                if (!confirmed) return;
+                deleteButton.disabled = true;
+                previewStatus.textContent = 'Deleting template…';
+                try {
+                    await apiFetch(`/templates/${encodeURIComponent(selectedTemplate)}`, { method: 'DELETE' });
+                    previewContent.innerHTML = '';
+                    previewRaw.textContent = '{}';
+                    previewStatus.textContent = 'Template deleted. Refreshing list…';
+                    selectedTemplate = null;
+                    await loadTemplates();
+                } catch (error) {
+                    previewStatus.textContent = error.message;
+                }
+            }
+
+            function defaultBlock() {
+                return { exercise_name: '', sets: 3, min_reps: 6, max_reps: 10, amrap: false, notes: '' };
+            }
+
+            function renderBlocks() {
+                blocksContainer.innerHTML = '';
+                currentBlocks.forEach((block, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'block';
+                    div.dataset.index = index;
+                    div.innerHTML = `
+                        <header>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <strong>Block ${index + 1}</strong>
+                                <span class="status">${block.exercise_name || 'Exercise name'}</span>
+                            </div>
+                            <div class="block-controls">
+                                <button type="button" class="secondary" data-move="up">Move up</button>
+                                <button type="button" class="secondary" data-move="down">Move down</button>
+                                <button type="button" class="danger" data-remove="true">Remove</button>
+                            </div>
+                        </header>
+                        <div class="inline-grid">
+                            <label>Exercise name<input type="text" data-field="exercise_name" value="${block.exercise_name}"></label>
+                            <label>Sets<input type="number" min="1" data-field="sets" value="${block.sets}"></label>
+                            <label>Min reps<input type="number" min="0" data-field="min_reps" value="${block.min_reps}" ${block.amrap ? 'disabled' : ''}></label>
+                            <label>Max reps<input type="number" min="0" data-field="max_reps" value="${block.max_reps}" ${block.amrap ? 'disabled' : ''}></label>
+                            <label class="checkbox-label"><input type="checkbox" data-field="amrap" ${block.amrap ? 'checked' : ''}> AMRAP</label>
+                        </div>
+                        <label>Notes<textarea rows="2" data-field="notes">${block.notes || ''}</textarea></label>
+                    `;
+                    blocksContainer.appendChild(div);
+                });
+            }
+
+            function moveBlock(index, direction) {
+                const target = index + direction;
+                if (target < 0 || target >= currentBlocks.length) return;
+                const [item] = currentBlocks.splice(index, 1);
+                currentBlocks.splice(target, 0, item);
+                renderBlocks();
+            }
+
+            blocksContainer.addEventListener('input', (event) => {
+                const field = event.target.dataset.field;
+                const parent = event.target.closest('.block');
+                if (!field || !parent) return;
+                const index = Number(parent.dataset.index);
+                if (!Number.isInteger(index)) return;
+                if (event.target.type === 'checkbox') {
+                    currentBlocks[index][field] = event.target.checked;
+                    renderBlocks();
+                } else if (event.target.type === 'number') {
+                    currentBlocks[index][field] = Number(event.target.value);
+                } else {
+                    currentBlocks[index][field] = event.target.value;
+                    parent.querySelector('.status').textContent = currentBlocks[index].exercise_name || 'Exercise name';
+                }
+            });
+
+            blocksContainer.addEventListener('click', (event) => {
+                const parent = event.target.closest('.block');
+                if (!parent) return;
+                const index = Number(parent.dataset.index);
+                if (event.target.dataset.remove) {
+                    currentBlocks.splice(index, 1);
+                    if (!currentBlocks.length) currentBlocks.push(defaultBlock());
+                    renderBlocks();
+                    return;
+                }
+                if (event.target.dataset.move === 'up') moveBlock(index, -1);
+                if (event.target.dataset.move === 'down') moveBlock(index, 1);
+            });
+
+            function resetBlocks() {
+                currentBlocks = [defaultBlock()];
+                renderBlocks();
+            }
+
+            async function createTemplate() {
+                createStatus.textContent = '';
+                const name = templateNameInput.value.trim();
+                if (!name) {
+                    createStatus.textContent = 'Template name is required.';
+                    return;
+                }
+
+                const exerciseBlocks = currentBlocks
+                    .map((block) => ({
+                        ...block,
+                        exercise_name: (block.exercise_name || '').trim(),
+                        sets: Number(block.sets) || 0,
+                        min_reps: block.amrap ? null : Number(block.min_reps ?? 0),
+                        max_reps: block.amrap ? null : Number(block.max_reps ?? 0),
+                        notes: (block.notes || '').trim(),
+                    }))
+                    .filter((block) => block.exercise_name);
+
+                if (!exerciseBlocks.length) {
+                    createStatus.textContent = 'Add at least one exercise with a name.';
+                    return;
+                }
+
+                createStatus.textContent = 'Creating template…';
+                try {
+                    await apiFetch('/templates', {
+                        method: 'POST',
+                        body: JSON.stringify({ name, exercise_blocks: exerciseBlocks }),
+                    });
+                    createStatus.textContent = `Template "${name}" created.`;
+                    templateNameInput.value = '';
+                    resetBlocks();
+                    await loadTemplates();
+                } catch (error) {
+                    createStatus.textContent = error.message;
+                }
+            }
+
+            document.getElementById('refresh-templates').addEventListener('click', loadTemplates);
+            deleteButton.addEventListener('click', deleteTemplate);
+            addBlockBtn.addEventListener('click', () => { currentBlocks.push(defaultBlock()); renderBlocks(); });
+            createBtn.addEventListener('click', createTemplate);
+
+            resetBlocks();
+            loadTemplates();
+        })();
+    </script>
+</body>
+</html>
