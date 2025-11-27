@@ -1,1 +1,0 @@
-Manage workout templates stored in the paired Cloudflare Worker. Save your API base URL and token, list all templates, inspect a template’s exercise blocks with timing estimates, delete unwanted templates, and build new templates with reorderable exercise blocks and notes.

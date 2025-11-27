@@ -1,0 +1,1 @@
+Manage workout templates stored in the Cloudflare Worker API: configure your API base and token, list all templates, preview their blocks with time estimates, reorder and edit exercise blocks, create new templates, and delete ones you no longer need. This replaces the legacy Workout Manager tool.

@@ -1,0 +1,1 @@
+Review and update personal-best records for any exercise via the Cloudflare Worker API. Fetch the existing list of best sets, then append new weight and rep combinations to overwrite the record list in one step.

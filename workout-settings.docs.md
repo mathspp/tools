@@ -1,0 +1,1 @@
+Set the Cloudflare Worker API base URL and bearer token once for the workout tool suite. Save or clear the stored values in your browser so the template manager, session logger/viewer, and exercise utilities can call the API without duplicating settings.

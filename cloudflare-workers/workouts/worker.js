@@ -1,331 +1,445 @@
-const FRONTEND_ORIGIN = "https://tools.mathspp.com";
-const WORKOUTS_KEY = "user:me:workouts";
-const WORKOUT_LOGS_PREFIX = "user:me:workoutLogs:";
+const JSON_HEADERS = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
-function corsHeaders() {
-    return {
-        "Access-Control-Allow-Origin": FRONTEND_ORIGIN,
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Vary": "Origin",
-    };
-}
+const INDEX_KEYS = {
+    exercises: "exercises:index",
+    templates: "templates:index",
+};
+
+const KEY_PREFIXES = {
+    exercise: "exercise:",
+    template: "template:",
+    session: "session:",
+    sessionsByTemplate: "sessionsByTemplate:",
+};
 
 function jsonResponse(body, status = 200) {
-    return new Response(JSON.stringify(body), {
-        status,
-        headers: {
-            "Content-Type": "application/json; charset=utf-8",
-            ...corsHeaders(),
-        },
-    });
+    return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 }
 
-function unauthorizedResponse() {
-    return jsonResponse({ error: "Unauthorized" }, 401);
+function errorResponse(code, message, status = 400) {
+    return jsonResponse({ error: { code, message } }, status);
 }
 
-function serverErrorResponse(message = "Internal Server Error") {
-    return jsonResponse({ error: message }, 500);
+function unauthorized() {
+    return errorResponse("UNAUTHORIZED", "Missing or invalid bearer token.", 401);
 }
 
-function isAuthorized(request, env) {
-    const auth = request.headers.get("Authorization") || "";
-    const expected = `Bearer ${env.WORKOUT_API_TOKEN}`;
-    return auth === expected;
-}
-
-function handleOptions() {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+function notFound(code, message) {
+    return errorResponse(code, message, 404);
 }
 
 async function readJson(request) {
     try {
         return await request.json();
     } catch (error) {
-        return { error: "Invalid JSON body" };
+        return { __error: "Invalid JSON body" };
     }
 }
 
-function assertKvBinding(env) {
-    if (!env.WORKOUTS || typeof env.WORKOUTS.get !== "function" || typeof env.WORKOUTS.put !== "function") {
-        throw new Error("WORKOUTS KV binding is not configured");
-    }
+function isValidDate(dateStr) {
+    if (typeof dateStr !== "string") return false;
+    const match = /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+    if (!match) return false;
+    const date = new Date(`${dateStr}T00:00:00Z`);
+    return !Number.isNaN(date.getTime());
 }
 
-function safeParseArray(raw) {
-    if (!raw) {
-        return [];
-    }
-
+async function getIndex(env, key) {
+    const raw = await env.WORKOUTS.get(key);
+    if (!raw) return [];
     try {
-        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+        const parsed = JSON.parse(raw);
         return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
-        console.error("Failed to parse stored array", error);
         return [];
     }
 }
 
-async function getWorkouts(env) {
-    assertKvBinding(env);
-    const workouts = await env.WORKOUTS.get(WORKOUTS_KEY);
-    return safeParseArray(workouts);
+async function saveIndex(env, key, values) {
+    await env.WORKOUTS.put(key, JSON.stringify(values));
 }
 
-async function saveWorkouts(env, workouts) {
-    assertKvBinding(env);
-    await env.WORKOUTS.put(WORKOUTS_KEY, JSON.stringify(workouts));
-}
-
-async function getWorkoutLogs(env, workoutId) {
-    assertKvBinding(env);
-    const logs = await env.WORKOUTS.get(`${WORKOUT_LOGS_PREFIX}${workoutId}`);
-    const parsed = safeParseArray(logs);
-    return parsed.sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
-}
-
-async function saveWorkoutLogs(env, workoutId, logs) {
-    assertKvBinding(env);
-    const sorted = [...logs].sort((a, b) => new Date(b.finishedAt) - new Date(a.finishedAt));
-    await env.WORKOUTS.put(`${WORKOUT_LOGS_PREFIX}${workoutId}`, JSON.stringify(sorted));
-}
-
-function normalizeExerciseBlock(block) {
-    if (!block || typeof block !== "object") {
+async function getJson(env, key) {
+    const raw = await env.WORKOUTS.get(key);
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
         return null;
     }
+}
 
-    const name = typeof block.name === "string" ? block.name.trim() : "";
-    const sets = Number.isFinite(Number(block.sets)) ? Number(block.sets) : 0;
+async function putJson(env, key, value) {
+    await env.WORKOUTS.put(key, JSON.stringify(value));
+}
+
+function generateSessionId(createdAt) {
+    const suffix = crypto.randomUUID().split("-")[0];
+    return `session_${createdAt}_${suffix}`;
+}
+
+function validateExercisePayload(payload) {
+    const name = typeof payload?.name === "string" ? payload.name.trim() : "";
+    const display_name = typeof payload?.display_name === "string" ? payload.display_name.trim() : "";
+
+    if (!name) return { error: "Exercise name is required." };
+    if (!display_name) return { error: "Exercise display_name is required." };
+    return { name, display_name };
+}
+
+function validateRecords(records) {
+    if (!Array.isArray(records)) return false;
+    return records.every(
+        (r) =>
+            r &&
+            typeof r === "object" &&
+            Number.isFinite(Number(r.weight)) &&
+            Number.isInteger(Number(r.reps)) &&
+            Number(r.reps) >= 0
+    );
+}
+
+function validateExerciseBlock(block, exercisesSet) {
+    if (!block || typeof block !== "object") return { error: "Invalid exercise block." };
+    const exercise_name = typeof block.exercise_name === "string" ? block.exercise_name.trim() : "";
+    const sets = Number.isInteger(Number(block.sets)) ? Number(block.sets) : 0;
+    const min_reps = Number.isInteger(Number(block.min_reps)) ? Number(block.min_reps) : 0;
+    const max_reps = Number.isInteger(Number(block.max_reps)) ? Number(block.max_reps) : 0;
     const amrap = Boolean(block.amrap);
-    const repRange = block.repRange || {};
-    const min = Number.isFinite(Number(repRange.min)) ? Number(repRange.min) : 0;
-    const max = Number.isFinite(Number(repRange.max)) ? Number(repRange.max) : 0;
     const notes = typeof block.notes === "string" ? block.notes : "";
 
-    if (!name) {
-        return null;
+    if (!exercise_name) return { error: "exercise_name is required." };
+    if (exercisesSet && !exercisesSet.has(exercise_name)) {
+        return { error: `Exercise '${exercise_name}' does not exist.` };
+    }
+    if (sets < 1) return { error: "sets must be >= 1." };
+    if (!amrap && min_reps > max_reps) return { error: "min_reps must be <= max_reps." };
+
+    return { exercise_name, sets, min_reps, max_reps, amrap, notes };
+}
+
+function validateTemplatePayload(payload, exercisesSet) {
+    const name = typeof payload?.name === "string" ? payload.name.trim() : "";
+    if (!name) return { error: "Template name is required." };
+    const blocks = Array.isArray(payload?.exercise_blocks) ? payload.exercise_blocks : [];
+    const normalizedBlocks = [];
+    for (const block of blocks) {
+        const validated = validateExerciseBlock(block, exercisesSet);
+        if (validated.error) return { error: validated.error };
+        normalizedBlocks.push(validated);
+    }
+    return { name, exercise_blocks: normalizedBlocks };
+}
+
+function normalizeSessionBlock(block) {
+    const exercise_name = typeof block.exercise_name === "string" ? block.exercise_name.trim() : "";
+    const notes = typeof block.notes === "string" ? block.notes : "";
+    const rpe_reserve = Number.isInteger(Number(block.rpe_reserve)) ? Number(block.rpe_reserve) : null;
+    const setsInput = Array.isArray(block.sets) ? block.sets : [];
+    const sets = setsInput.map((s) => ({
+        weight: Number(s.weight),
+        reps: Number(s.reps),
+    }));
+    if (!exercise_name) return { error: "exercise_name is required in exercise_blocks." };
+    if (sets.some((s) => !Number.isFinite(s.weight) || !Number.isInteger(s.reps))) {
+        return { error: "sets must include weight (number) and reps (integer)." };
+    }
+    return { exercise_name, sets, notes, rpe_reserve };
+}
+
+function buildParetoRecords(existing, newRecord) {
+    const dominates = (a, b) => a.weight > b.weight || (a.weight < b.weight && a.reps > b.reps);
+    const filtered = existing.filter((record) => !dominates(newRecord, record));
+    const dominatedByExisting = filtered.some((record) => dominates(record, newRecord));
+    if (!dominatedByExisting) {
+        filtered.push({ weight: newRecord.weight, reps: newRecord.reps });
+    }
+    return filtered;
+}
+
+async function updateExerciseRecordsFromSession(env, session) {
+    const updates = new Map();
+    for (const block of session.exercise_blocks) {
+        if (!updates.has(block.exercise_name)) {
+            updates.set(block.exercise_name, []);
+        }
+        for (const set of block.sets) {
+            updates.get(block.exercise_name).push({ weight: Number(set.weight), reps: Number(set.reps) });
+        }
     }
 
-    return {
-        id: block.id || crypto.randomUUID(),
-        name,
-        sets: sets < 0 ? 0 : Math.round(sets),
-        amrap,
-        repRange: amrap
-            ? null
-            : {
-                  min,
-                  max,
-              },
-        notes,
-    };
-}
-
-function updateTimestamps(existing) {
-    const now = new Date().toISOString();
-    if (!existing.createdAt) {
-        existing.createdAt = now;
+    for (const [exerciseName, sets] of updates.entries()) {
+        const exerciseKey = `${KEY_PREFIXES.exercise}${exerciseName}`;
+        const exercise = await getJson(env, exerciseKey);
+        if (!exercise) continue;
+        let records = Array.isArray(exercise.records) ? exercise.records : [];
+        for (const record of sets) {
+            records = buildParetoRecords(records, record);
+        }
+        exercise.records = records;
+        await putJson(env, exerciseKey, exercise);
     }
-    existing.updatedAt = now;
-    return existing;
 }
 
-function findWorkout(workouts, id) {
-    return workouts.find((workout) => workout.id === id);
-}
-
-function normalizeSet(set, setIndex) {
-    const weight = Number.isFinite(Number(set?.weight)) ? Number(set.weight) : null;
-    const reps = Number.isFinite(Number(set?.reps)) ? Number(set.reps) : null;
-    const rir = Number.isFinite(Number(set?.rir)) ? Number(set.rir) : null;
-    const notes = typeof set?.notes === "string" ? set.notes.trim() : "";
-
-    return {
-        setIndex,
-        weight,
-        reps,
-        rir,
-        notes,
-    };
-}
-
-function normalizeExerciseLog(block, payloadExercise) {
-    const sets = [];
-    const providedSets = Array.isArray(payloadExercise?.sets) ? payloadExercise.sets : [];
-
-    for (let i = 0; i < block.sets; i += 1) {
-        sets.push(normalizeSet(providedSets[i] || {}, i));
+async function ensureAuth(request, env) {
+    const header = request.headers.get("Authorization") || "";
+    const token = header.replace(/^Bearer\s+/i, "").trim();
+    if (!token || token !== env.API_BEARER_TOKEN) {
+        return false;
     }
-
-    const progressionNotes =
-        typeof payloadExercise?.progressionNotes === "string" ? payloadExercise.progressionNotes.trim() : "";
-
-    return {
-        blockId: block.id,
-        blockName: block.name,
-        sets,
-        progressionNotes,
-    };
-}
-
-function buildLogEntry(template, payload) {
-    const startedAt = typeof payload?.startedAt === "string" ? payload.startedAt : null;
-    const finishedAt = typeof payload?.finishedAt === "string" ? payload.finishedAt : null;
-    const overallNotes = typeof payload?.overallNotes === "string" ? payload.overallNotes.trim() : "";
-
-    const payloadExercises = Array.isArray(payload?.exercises) ? payload.exercises : [];
-    const exerciseMap = new Map(payloadExercises.map((ex) => [ex?.blockId, ex]));
-
-    const exercises = template.exerciseBlocks.map((block) => {
-        const payloadExercise = exerciseMap.get(block.id) || {};
-        return normalizeExerciseLog(block, payloadExercise);
-    });
-
-    const completedAt = finishedAt || new Date().toISOString();
-
-    return {
-        id: crypto.randomUUID(),
-        workoutTemplateId: template.id,
-        templateName: template.name,
-        startedAt: startedAt || completedAt,
-        finishedAt: completedAt,
-        overallNotes,
-        exercises,
-    };
+    return true;
 }
 
 export default {
     async fetch(request, env) {
+        if (request.method === "OPTIONS") {
+            return new Response(null, { status: 204, headers: JSON_HEADERS });
+        }
+
+        if (!(await ensureAuth(request, env))) {
+            return unauthorized();
+        }
+
+        const url = new URL(request.url);
+        const path = url.pathname.replace(/^\/+/, "");
+        const segments = path.split("/");
+
         try {
-            const url = new URL(request.url);
-            const pathParts = url.pathname.replace(/^\/+/, "").split("/");
-
-            if (request.method === "OPTIONS") {
-                return handleOptions();
+            if (segments[0] !== "api") {
+                return notFound("NOT_FOUND", "Endpoint not found.");
             }
 
-            if (!isAuthorized(request, env)) {
-                return unauthorizedResponse();
-            }
-
-            if (url.pathname === "/api/workouts" && request.method === "GET") {
-                const workouts = await getWorkouts(env);
-                return jsonResponse(workouts);
-            }
-
-            if (url.pathname === "/api/workouts" && request.method === "POST") {
-                const body = await readJson(request);
-                if (body.error) {
-                    return jsonResponse({ error: body.error }, 400);
+            // Exercises
+            if (segments[1] === "exercises") {
+                if (segments.length === 2 && request.method === "GET") {
+                    const names = await getIndex(env, INDEX_KEYS.exercises);
+                    const exercises = await Promise.all(
+                        names.map(async (name) => {
+                            const exercise = await getJson(env, `${KEY_PREFIXES.exercise}${name}`);
+                            return exercise ? { name: exercise.name, display_name: exercise.display_name } : null;
+                        })
+                    );
+                    return jsonResponse({ exercises: exercises.filter(Boolean) });
                 }
 
-                const name = typeof body.name === "string" ? body.name.trim() : "";
-                if (!name) {
-                    return jsonResponse({ error: "Workout name is required" }, 400);
+                if (segments.length === 2 && request.method === "POST") {
+                    const body = await readJson(request);
+                    if (body.__error) return errorResponse("BAD_REQUEST", body.__error, 400);
+                    const validated = validateExercisePayload(body);
+                    if (validated.error) return errorResponse("BAD_REQUEST", validated.error, 400);
+
+                    const index = await getIndex(env, INDEX_KEYS.exercises);
+                    if (index.includes(validated.name)) {
+                        return errorResponse(
+                            "EXERCISE_ALREADY_EXISTS",
+                            `Exercise '${validated.name}' already exists.`,
+                            409
+                        );
+                    }
+
+                    const exercise = { ...validated, records: [] };
+                    await putJson(env, `${KEY_PREFIXES.exercise}${validated.name}`, exercise);
+                    index.push(validated.name);
+                    await saveIndex(env, INDEX_KEYS.exercises, index);
+                    return jsonResponse(exercise, 201);
                 }
 
-                const exerciseBlocksInput = Array.isArray(body.exerciseBlocks)
-                    ? body.exerciseBlocks
-                    : [];
-                const normalizedBlocks = exerciseBlocksInput
-                    .map(normalizeExerciseBlock)
-                    .filter(Boolean);
-
-                if (normalizedBlocks.length === 0) {
-                    return jsonResponse({ error: "At least one exercise block is required" }, 400);
-                }
-
-                const workouts = await getWorkouts(env);
-                const workout = updateTimestamps({
-                    id: body.id || crypto.randomUUID(),
-                    name,
-                    exerciseBlocks: normalizedBlocks,
-                    createdAt: undefined,
-                    updatedAt: undefined,
-                });
-
-                workouts.push(workout);
-                await saveWorkouts(env, workouts);
-                return jsonResponse(workout, 201);
-            }
-
-            if (pathParts[0] === "api" && pathParts[1] === "workouts" && pathParts[2]) {
-                const id = decodeURIComponent(pathParts[2]);
-                const workouts = await getWorkouts(env);
-                const existing = findWorkout(workouts, id);
-
-                if (!existing) {
-                    return jsonResponse({ error: "Workout not found" }, 404);
-                }
-
-                if (pathParts[3] === "logs") {
-                    if (request.method === "GET" && pathParts[4] === "latest") {
-                        const logs = await getWorkoutLogs(env, id);
-                        const latest = logs[0] || null;
-                        return jsonResponse({ log: latest });
+                if (segments.length === 4 && segments[3] === "records") {
+                    const exerciseName = decodeURIComponent(segments[2]);
+                    const exerciseKey = `${KEY_PREFIXES.exercise}${exerciseName}`;
+                    const exercise = await getJson(env, exerciseKey);
+                    if (!exercise) {
+                        return notFound("EXERCISE_NOT_FOUND", `Exercise '${exerciseName}' not found.`);
                     }
 
                     if (request.method === "GET") {
-                        const logs = await getWorkoutLogs(env, id);
-                        return jsonResponse({ logs });
+                        return jsonResponse({ exercise: exercise.name, records: exercise.records || [] });
                     }
 
-                    if (request.method === "POST") {
+                    if (request.method === "PUT") {
                         const body = await readJson(request);
-                        if (body.error) {
-                            return jsonResponse({ error: body.error }, 400);
+                        if (body.__error) return errorResponse("BAD_REQUEST", body.__error, 400);
+                        if (!validateRecords(body.records)) {
+                            return errorResponse("BAD_REQUEST", "records must be an array of {weight, reps}.", 400);
                         }
-
-                        const logEntry = buildLogEntry(existing, body);
-                        const logs = await getWorkoutLogs(env, id);
-                        logs.push(logEntry);
-                        await saveWorkoutLogs(env, id, logs);
-                        return jsonResponse(logEntry, 201);
+                        exercise.records = body.records.map((r) => ({ weight: Number(r.weight), reps: Number(r.reps) }));
+                        await putJson(env, exerciseKey, exercise);
+                        return jsonResponse({ exercise: exercise.name, records: exercise.records });
                     }
                 }
 
-                if (request.method === "GET") {
-                    return jsonResponse(existing);
-                }
-
-                if (request.method === "DELETE") {
-                    const updated = workouts.filter((workout) => workout.id !== id);
-                    await saveWorkouts(env, updated);
-                    return jsonResponse({ success: true });
-                }
-
-                if (request.method === "PUT") {
-                    const body = await readJson(request);
-                    if (body.error) {
-                        return jsonResponse({ error: body.error }, 400);
+                if (segments.length === 3 && request.method === "DELETE") {
+                    const exerciseName = decodeURIComponent(segments[2]);
+                    const exerciseKey = `${KEY_PREFIXES.exercise}${exerciseName}`;
+                    const exercise = await getJson(env, exerciseKey);
+                    if (!exercise) {
+                        return notFound("EXERCISE_NOT_FOUND", `Exercise '${exerciseName}' not found.`);
                     }
 
-                    const name = typeof body.name === "string" ? body.name.trim() : existing.name;
-                    const exerciseBlocksInput = Array.isArray(body.exerciseBlocks)
-                        ? body.exerciseBlocks
-                        : existing.exerciseBlocks;
-                    const normalizedBlocks = exerciseBlocksInput
-                        .map(normalizeExerciseBlock)
-                        .filter(Boolean);
-
-                    if (normalizedBlocks.length === 0) {
-                        return jsonResponse({ error: "At least one exercise block is required" }, 400);
+                    const templateNames = await getIndex(env, INDEX_KEYS.templates);
+                    const templates = await Promise.all(
+                        templateNames.map((name) => getJson(env, `${KEY_PREFIXES.template}${name}`))
+                    );
+                    const inUse = templates.some((t) => t?.exercise_blocks?.some((b) => b.exercise_name === exerciseName));
+                    if (inUse) {
+                        return errorResponse("EXERCISE_IN_USE", `Exercise '${exerciseName}' is used by a template.`, 409);
                     }
 
-                    existing.name = name;
-                    existing.exerciseBlocks = normalizedBlocks;
-                    updateTimestamps(existing);
-                    await saveWorkouts(env, workouts);
-                    return jsonResponse(existing);
+                    await env.WORKOUTS.delete(exerciseKey);
+                    const newExerciseIndex = (await getIndex(env, INDEX_KEYS.exercises)).filter((n) => n !== exerciseName);
+                    await saveIndex(env, INDEX_KEYS.exercises, newExerciseIndex);
+                    return new Response(null, { status: 204, headers: JSON_HEADERS });
                 }
             }
 
-            return jsonResponse({ error: "Not found" }, 404);
+            // Templates
+            if (segments[1] === "templates") {
+                if (segments.length === 2 && request.method === "GET") {
+                    const templates = await getIndex(env, INDEX_KEYS.templates);
+                    return jsonResponse({ templates });
+                }
+
+                if (segments.length === 2 && request.method === "POST") {
+                    const body = await readJson(request);
+                    if (body.__error) return errorResponse("BAD_REQUEST", body.__error, 400);
+                    const exerciseNames = new Set(await getIndex(env, INDEX_KEYS.exercises));
+                    const validated = validateTemplatePayload(body, exerciseNames);
+                    if (validated.error) return errorResponse("BAD_REQUEST", validated.error, 400);
+
+                    const templateIndex = await getIndex(env, INDEX_KEYS.templates);
+                    if (templateIndex.includes(validated.name)) {
+                        return errorResponse(
+                            "TEMPLATE_ALREADY_EXISTS",
+                            `Template '${validated.name}' already exists.`,
+                            409
+                        );
+                    }
+
+                    await putJson(env, `${KEY_PREFIXES.template}${validated.name}`, validated);
+                    templateIndex.push(validated.name);
+                    await saveIndex(env, INDEX_KEYS.templates, templateIndex);
+                    return jsonResponse(validated, 201);
+                }
+
+                if (segments.length === 3 && request.method === "GET") {
+                    const name = decodeURIComponent(segments[2]);
+                    const template = await getJson(env, `${KEY_PREFIXES.template}${name}`);
+                    if (!template) {
+                        return notFound("TEMPLATE_NOT_FOUND", `Template '${name}' not found.`);
+                    }
+                    return jsonResponse(template);
+                }
+
+                if (segments.length === 3 && request.method === "DELETE") {
+                    const name = decodeURIComponent(segments[2]);
+                    const templateKey = `${KEY_PREFIXES.template}${name}`;
+                    const template = await getJson(env, templateKey);
+                    if (!template) {
+                        return notFound("TEMPLATE_NOT_FOUND", `Template '${name}' not found.`);
+                    }
+                    await env.WORKOUTS.delete(templateKey);
+                    const templateIndex = (await getIndex(env, INDEX_KEYS.templates)).filter((t) => t !== name);
+                    await saveIndex(env, INDEX_KEYS.templates, templateIndex);
+                    return new Response(null, { status: 204, headers: JSON_HEADERS });
+                }
+
+                if (segments.length === 4 && segments[3] === "sessions" && request.method === "GET") {
+                    const name = decodeURIComponent(segments[2]);
+                    const template = await getJson(env, `${KEY_PREFIXES.template}${name}`);
+                    const sessionIndexKey = `${KEY_PREFIXES.sessionsByTemplate}${name}`;
+                    const sessionIndex = await getIndex(env, sessionIndexKey);
+                    if (!template && sessionIndex.length === 0) {
+                        return notFound("TEMPLATE_NOT_FOUND", `Template '${name}' not found.`);
+                    }
+                    const limitParam = parseInt(url.searchParams.get("limit") || "50", 10);
+                    const offsetParam = parseInt(url.searchParams.get("offset") || "0", 10);
+                    const limit = Math.min(Number.isFinite(limitParam) ? limitParam : 50, 500);
+                    const offset = Number.isFinite(offsetParam) ? offsetParam : 0;
+                    const slice = sessionIndex.slice(offset, offset + limit);
+                    const sessions = await Promise.all(
+                        slice.map(async (entry) => getJson(env, `${KEY_PREFIXES.session}${entry.id}`))
+                    );
+                    return jsonResponse({
+                        template_name: name,
+                        total: sessionIndex.length,
+                        limit,
+                        offset,
+                        sessions: sessions.filter(Boolean),
+                    });
+                }
+            }
+
+            // Sessions
+            if (segments[1] === "sessions") {
+                if (segments.length === 2 && request.method === "POST") {
+                    const body = await readJson(request);
+                    if (body.__error) return errorResponse("BAD_REQUEST", body.__error, 400);
+                    const templateName = typeof body.template_name === "string" ? body.template_name.trim() : "";
+                    if (!templateName) return errorResponse("BAD_REQUEST", "template_name is required.", 400);
+                    const template = await getJson(env, `${KEY_PREFIXES.template}${templateName}`);
+                    if (!template) {
+                        return notFound("TEMPLATE_NOT_FOUND", `Template '${templateName}' not found.`);
+                    }
+
+                    if (!isValidDate(body.date)) {
+                        return errorResponse("INVALID_DATE", "date must be YYYY-MM-DD.", 400);
+                    }
+
+                    const exerciseBlocks = Array.isArray(body.exercise_blocks) ? body.exercise_blocks : [];
+                    const normalizedBlocks = [];
+                    for (const block of exerciseBlocks) {
+                        const normalized = normalizeSessionBlock(block);
+                        if (normalized.error) return errorResponse("BAD_REQUEST", normalized.error, 400);
+                        normalizedBlocks.push(normalized);
+                    }
+
+                    const created_at = new Date().toISOString();
+                    const id = generateSessionId(created_at);
+                    const session = {
+                        id,
+                        template_name: templateName,
+                        date: body.date,
+                        created_at,
+                        notes: typeof body.notes === "string" ? body.notes : "",
+                        exercise_blocks: normalizedBlocks,
+                    };
+
+                    await putJson(env, `${KEY_PREFIXES.session}${id}`, session);
+                    const sessionIndexKey = `${KEY_PREFIXES.sessionsByTemplate}${templateName}`;
+                    const index = await getIndex(env, sessionIndexKey);
+                    index.push({ id: session.id, date: session.date, created_at: session.created_at });
+                    index.sort((a, b) => {
+                        if (a.date === b.date) {
+                            return b.created_at.localeCompare(a.created_at);
+                        }
+                        return b.date.localeCompare(a.date);
+                    });
+                    await saveIndex(env, sessionIndexKey, index);
+
+                    await updateExerciseRecordsFromSession(env, session);
+
+                    return jsonResponse(session, 201);
+                }
+
+                if (segments.length === 3 && request.method === "GET") {
+                    const id = decodeURIComponent(segments[2]);
+                    const session = await getJson(env, `${KEY_PREFIXES.session}${id}`);
+                    if (!session) {
+                        return notFound("SESSION_NOT_FOUND", `Session '${id}' not found.`);
+                    }
+                    return jsonResponse(session);
+                }
+            }
+
+            return notFound("NOT_FOUND", "Endpoint not found.");
         } catch (error) {
-            console.error("Unhandled error in workouts worker", error);
-            return serverErrorResponse(error.message);
+            console.error("Unhandled error", error);
+            return errorResponse("INTERNAL_ERROR", "Internal Server Error", 500);
         }
     },
 };

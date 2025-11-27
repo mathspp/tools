@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Settings</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 3vw, 2rem) clamp(3rem, 5vw, 4rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .surface {
+            padding: clamp(1rem, 3vw, 1.5rem);
+        }
+
+        .stack { display: grid; gap: 0.75rem; }
+
+        .status-text { color: var(--text-muted); min-height: 1.2rem; }
+
+        label input { width: 100%; }
+
+        .workout-links {
+            border: 1px solid var(--border);
+            background: var(--surface-1);
+        }
+
+        .link-grid {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .link-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            padding: 0.65rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-card:hover { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Workout Settings</h1>
+        <p class="lead">Store the Cloudflare Worker API endpoint and bearer token for all workout tools.</p>
+    </header>
+
+    <main>
+        <section class="surface stack">
+            <div class="stack">
+                <h2 style="margin: 0;">API configuration</h2>
+                <p class="status-text">Save the API base URL (include the <code>/api</code> prefix) and bearer token. These are reused by every workout tool.</p>
+            </div>
+            <label>
+                API base URL
+                <input type="url" id="api-base" placeholder="https://your-worker.example.com/api" autocomplete="url">
+            </label>
+            <label>
+                Bearer token
+                <input type="password" id="api-token" placeholder="WORKOUT_API_TOKEN" autocomplete="off">
+            </label>
+            <div class="tool-actions" style="justify-content: flex-start;">
+                <button type="button" id="save">Save</button>
+                <button type="button" class="secondary" id="clear">Clear</button>
+            </div>
+            <div id="status" class="status-text" aria-live="polite"></div>
+        </section>
+
+        <section class="surface stack workout-links" aria-label="Workout tools navigation">
+            <h2 style="margin: 0;">Workout tools</h2>
+            <p class="status-text">Quick links to the rest of the workout suite.</p>
+            <div class="link-grid">
+                <a class="link-card" href="workout-settings.html">Workout settings<span>→</span></a>
+                <a class="link-card" href="workout-template-manager.html">Workout template manager<span>→</span></a>
+                <a class="link-card" href="workout-session-logger.html">Workout session logger<span>→</span></a>
+                <a class="link-card" href="workout-session-viewer.html">Workout session viewer<span>→</span></a>
+                <a class="link-card" href="workout-exercise-manager.html">Workout exercise manager<span>→</span></a>
+                <a class="link-card" href="workout-exercise-record.html">Workout exercise records<span>→</span></a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+
+    <script>
+        const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
+        const baseInput = document.getElementById('api-base');
+        const tokenInput = document.getElementById('api-token');
+        const status = document.getElementById('status');
+        const saveBtn = document.getElementById('save');
+        const clearBtn = document.getElementById('clear');
+
+        function load() {
+            const savedBase = localStorage.getItem(STORAGE_KEYS.base) || '';
+            const savedToken = localStorage.getItem(STORAGE_KEYS.token) || '';
+            baseInput.value = savedBase;
+            tokenInput.value = savedToken;
+            status.textContent = savedBase || savedToken ? 'Restored saved API settings.' : '';
+        }
+
+        function save() {
+            const base = baseInput.value.trim();
+            const token = tokenInput.value.trim();
+            if (!base || !token) {
+                status.textContent = 'Provide both the API base URL and bearer token.';
+                return;
+            }
+            localStorage.setItem(STORAGE_KEYS.base, base);
+            localStorage.setItem(STORAGE_KEYS.token, token);
+            status.textContent = 'Settings saved for all workout tools.';
+        }
+
+        function clear() {
+            localStorage.removeItem(STORAGE_KEYS.base);
+            localStorage.removeItem(STORAGE_KEYS.token);
+            baseInput.value = '';
+            tokenInput.value = '';
+            status.textContent = 'Settings cleared from storage.';
+        }
+
+        saveBtn.addEventListener('click', save);
+        clearBtn.addEventListener('click', clear);
+        baseInput.addEventListener('input', () => status.textContent = '');
+        tokenInput.addEventListener('input', () => status.textContent = '');
+
+        load();
+    </script>
+</body>
+</html>

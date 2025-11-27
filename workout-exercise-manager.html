@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Exercise Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 20px 64px;
+        }
+
+        main { display: grid; gap: 1rem; }
+        .card { padding: 1rem; }
+        .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+        .status { min-height: 1.2rem; color: var(--text-muted); }
+        form { display: grid; gap: 0.75rem; }
+
+        .workout-links {
+            border: 1px solid var(--border);
+            background: var(--surface-1);
+        }
+
+        .link-grid {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .link-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            padding: 0.65rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-card:hover { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+    <main>
+        <header class="card grid">
+            <h1>Workout Exercise Manager</h1>
+            <p>List, add, and delete exercises from the Cloudflare Worker API.</p>
+            <p class="status">Configure the API base URL and bearer token once in <a href="workout-settings.html">Workout settings</a>. Stored values are reused here automatically.</p>
+        </header>
+
+        <section class="card grid">
+            <div class="flex between center">
+                <h2>Exercises</h2>
+                <button id="refresh">Refresh</button>
+            </div>
+            <div id="list-status" class="status"></div>
+            <ul id="exercise-list" class="list"></ul>
+        </section>
+
+        <section class="card grid">
+            <h2>Add exercise</h2>
+            <form id="exercise-form">
+                <label>Exercise name (slug)<input type="text" id="exercise-name" placeholder="bench_press" required></label>
+                <label>Display name<input type="text" id="exercise-display" placeholder="Bench Press" required></label>
+                <button type="submit">Create exercise</button>
+            </form>
+            <div id="form-status" class="status"></div>
+        </section>
+        <section class="surface stack workout-links" aria-label="Workout tools navigation">
+            <h2 style="margin: 0;">Workout tools</h2>
+            <p class="status-text">Quick links to the rest of the workout suite.</p>
+            <div class="link-grid">
+                <a class="link-card" href="workout-settings.html">Workout settings<span>→</span></a>
+                <a class="link-card" href="workout-template-manager.html">Workout template manager<span>→</span></a>
+                <a class="link-card" href="workout-session-logger.html">Workout session logger<span>→</span></a>
+                <a class="link-card" href="workout-session-viewer.html">Workout session viewer<span>→</span></a>
+                <a class="link-card" href="workout-exercise-manager.html">Workout exercise manager<span>→</span></a>
+                <a class="link-card" href="workout-exercise-record.html">Workout exercise records<span>→</span></a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const listStatus = document.getElementById('list-status');
+        const list = document.getElementById('exercise-list');
+        const formStatus = document.getElementById('form-status');
+
+        const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
+
+        function readStored(primaryKey, legacyKey) {
+            return (localStorage.getItem(primaryKey) || localStorage.getItem(legacyKey) || '').trim();
+        }
+
+        function getConfig() {
+            const base = readStored(STORAGE_KEYS.base, 'workout_api_base');
+            const token = readStored(STORAGE_KEYS.token, 'workout_api_token');
+            if (!base || !token) {
+                throw new Error('Set the API base URL and bearer token in Workout settings first.');
+            }
+            return { base, token };
+        }
+
+        async function apiFetch(path, options = {}) {
+            const { base, token } = getConfig();
+            const response = await fetch(`${base.replace(/\/$/, '')}${path}`, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    ...(options.headers || {}),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data?.error?.message || response.statusText);
+            return data;
+        }
+
+        async function loadExercises() {
+            listStatus.textContent = 'Loading...';
+            list.innerHTML = '';
+            try {
+                const data = await apiFetch('/exercises');
+                if (!data.exercises.length) {
+                    listStatus.textContent = 'No exercises created yet.';
+                    return;
+                }
+                listStatus.textContent = '';
+                data.exercises.forEach((ex) => {
+                    const li = document.createElement('li');
+                    li.className = 'item';
+                    const info = document.createElement('div');
+                    info.innerHTML = `<strong>${ex.display_name}</strong><br><small>${ex.name}</small>`;
+                    const del = document.createElement('button');
+                    del.textContent = 'Delete';
+                    del.addEventListener('click', () => deleteExercise(ex.name));
+                    li.appendChild(info);
+                    li.appendChild(del);
+                    list.appendChild(li);
+                });
+            } catch (error) {
+                listStatus.textContent = error.message;
+            }
+        }
+
+        async function deleteExercise(name) {
+            listStatus.textContent = `Deleting ${name}...`;
+            try {
+                await apiFetch(`/exercises/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                listStatus.textContent = `${name} deleted.`;
+                loadExercises();
+            } catch (error) {
+                listStatus.textContent = error.message;
+            }
+        }
+
+        document.getElementById('exercise-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            formStatus.textContent = 'Creating exercise...';
+            try {
+                await apiFetch('/exercises', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: document.getElementById('exercise-name').value.trim(),
+                        display_name: document.getElementById('exercise-display').value.trim(),
+                    }),
+                });
+                formStatus.textContent = 'Exercise created.';
+                event.target.reset();
+                loadExercises();
+            } catch (error) {
+                formStatus.textContent = error.message;
+            }
+        });
+
+        document.getElementById('refresh').addEventListener('click', loadExercises);
+        loadExercises();
+    </script>
+</body>
+</html>
