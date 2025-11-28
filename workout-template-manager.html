@@ -190,13 +190,9 @@
             let currentBlocks = [];
             let selectedTemplate = null;
 
-            function readStored(primaryKey, legacyKey) {
-                return (localStorage.getItem(primaryKey) || localStorage.getItem(legacyKey) || '').trim();
-            }
-
             function getConfig() {
-                const base = readStored(STORAGE_KEYS.base, 'workout_api_base');
-                const token = readStored(STORAGE_KEYS.token, 'workout_api_token');
+                const base = (localStorage.getItem(STORAGE_KEYS.base) || '').trim();
+                const token = (localStorage.getItem(STORAGE_KEYS.token) || '').trim();
                 if (!base || !token) {
                     throw new Error('Set the API base URL and bearer token in Workout settings first.');
                 }
