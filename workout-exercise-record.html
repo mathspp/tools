@@ -41,6 +41,8 @@
         }
 
         .link-card:hover { border-color: var(--accent); }
+
+        #exercise-select { align-self: start; }
     </style>
 </head>
 <body>
@@ -70,8 +72,8 @@
             <h2>Add record</h2>
             <form id="record-form">
                 <div class="grid">
-                    <label>Weight (number)<input type="number" step="0.1" id="record-weight" required></label>
-                    <label>Reps (integer)<input type="number" id="record-reps" required></label>
+                    <label>Weight<input type="number" step="0.1" id="record-weight" required></label>
+                    <label>Reps<input type="number" id="record-reps" required></label>
                 </div>
                 <button type="submit">Save records</button>
             </form>
@@ -96,6 +98,8 @@
         const loadStatus = document.getElementById('load-status');
         const recordRows = document.getElementById('record-rows');
         const recordStatus = document.getElementById('record-status');
+        const recordWeight = document.getElementById('record-weight');
+        const recordReps = document.getElementById('record-reps');
 
         const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
 
@@ -176,8 +180,17 @@
             );
         }
 
+        function clearRecordInputs() {
+            recordWeight.value = '';
+            recordReps.value = '';
+        }
+
         document.getElementById('refresh-exercises').addEventListener('click', loadExercises);
-        exerciseSelect.addEventListener('change', loadRecords);
+        exerciseSelect.addEventListener('change', () => {
+            clearRecordInputs();
+            recordStatus.textContent = '';
+            loadRecords();
+        });
 
         document.getElementById('record-form').addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -189,8 +202,8 @@
                 const current = await apiFetch(`/exercises/${encodeURIComponent(name)}/records`);
                 const records = current.records || [];
                 const newRecord = {
-                    weight: Number(document.getElementById('record-weight').value),
-                    reps: Number(document.getElementById('record-reps').value),
+                    weight: Number(recordWeight.value),
+                    reps: Number(recordReps.value),
                 };
 
                 const isDuplicate = records.some(
