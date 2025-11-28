@@ -189,7 +189,7 @@ async function updateExerciseRecordsFromSession(env, session) {
 async function ensureAuth(request, env) {
     const header = request.headers.get("Authorization") || "";
     const token = header.replace(/^Bearer\s+/i, "").trim();
-    if (!token || token !== env.API_BEARER_TOKEN) {
+    if (!token || token !== env.WORKOUT_API_TOKEN) {
         return false;
     }
     return true;

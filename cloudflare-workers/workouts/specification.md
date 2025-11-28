@@ -8,7 +8,7 @@ Single-user REST API implemented as a Cloudflare Worker with a bound KV namespac
 
 export interface Env {
   WORKOUTS: KVNamespace;
-  API_BEARER_TOKEN: string; // secret
+  WORKOUT_API_TOKEN: string; // secret
 }
 
 All data is stored in WORKOUTS. The API is designed for one authenticated user and assumes low-to-moderate data volume (personal use).
@@ -31,7 +31,7 @@ Authorization: Bearer <token>
 
 Behavior
 	•	If header missing or malformed → 401 Unauthorized
-	•	If token != Env.API_BEARER_TOKEN → 401 Unauthorized
+	•	If token != Env.WORKOUT_API_TOKEN → 401 Unauthorized
 
 Error format (standard)
 
