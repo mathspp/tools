@@ -14,8 +14,9 @@
 
         main { display: grid; gap: 1rem; }
         .card { padding: 1rem; }
-        .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+        .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0.75rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+        .item-name { font-weight: 700; }
         .status { min-height: 1.2rem; color: var(--text-muted); }
         form { display: grid; gap: 0.75rem; }
 
@@ -127,14 +128,18 @@
                     return;
                 }
                 listStatus.textContent = '';
-                data.exercises.forEach((ex) => {
+                const exercises = [...data.exercises].sort((a, b) =>
+                    a.display_name.localeCompare(b.display_name, 'en', { sensitivity: 'base' })
+                );
+
+                exercises.forEach((ex) => {
                     const li = document.createElement('li');
                     li.className = 'item';
                     const info = document.createElement('div');
-                    info.innerHTML = `<strong>${ex.display_name}</strong><br><small>${ex.name}</small>`;
+                    info.innerHTML = `<span class="item-name">${ex.display_name}</span>`;
                     const del = document.createElement('button');
                     del.textContent = 'Delete';
-                    del.addEventListener('click', () => deleteExercise(ex.name));
+                    del.addEventListener('click', () => deleteExercise(ex.name, ex.display_name));
                     li.appendChild(info);
                     li.appendChild(del);
                     list.appendChild(li);
@@ -144,11 +149,11 @@
             }
         }
 
-        async function deleteExercise(name) {
-            listStatus.textContent = `Deleting ${name}...`;
+        async function deleteExercise(name, displayName) {
+            listStatus.textContent = `Deleting ${displayName}...`;
             try {
                 await apiFetch(`/exercises/${encodeURIComponent(name)}`, { method: 'DELETE' });
-                listStatus.textContent = `${name} deleted.`;
+                listStatus.textContent = `${displayName} deleted.`;
                 loadExercises();
             } catch (error) {
                 listStatus.textContent = error.message;
