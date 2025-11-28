@@ -152,14 +152,23 @@ function normalizeSessionBlock(block) {
     return { exercise_name, sets, notes, rpe_reserve };
 }
 
+function dominates(a, b) {
+    return a.weight >= b.weight && a.reps >= b.reps && (a.weight > b.weight || a.reps > b.reps);
+}
+
 function buildParetoRecords(existing, newRecord) {
-    const dominates = (a, b) => a.weight > b.weight || (a.weight < b.weight && a.reps > b.reps);
     const filtered = existing.filter((record) => !dominates(newRecord, record));
-    const dominatedByExisting = filtered.some((record) => dominates(record, newRecord));
+    const dominatedByExisting = filtered.some(
+        (record) => dominates(record, newRecord) || (record.weight === newRecord.weight && record.reps === newRecord.reps)
+    );
     if (!dominatedByExisting) {
         filtered.push({ weight: newRecord.weight, reps: newRecord.reps });
     }
     return filtered;
+}
+
+function pruneRecords(records) {
+    return records.reduce((acc, record) => buildParetoRecords(acc, record), []);
 }
 
 async function updateExerciseRecordsFromSession(env, session) {
@@ -177,7 +186,7 @@ async function updateExerciseRecordsFromSession(env, session) {
         const exerciseKey = `${KEY_PREFIXES.exercise}${exerciseName}`;
         const exercise = await getJson(env, exerciseKey);
         if (!exercise) continue;
-        let records = Array.isArray(exercise.records) ? exercise.records : [];
+        let records = pruneRecords(Array.isArray(exercise.records) ? exercise.records : []);
         for (const record of sets) {
             records = buildParetoRecords(records, record);
         }
@@ -267,7 +276,8 @@ export default {
                         if (!validateRecords(body.records)) {
                             return errorResponse("BAD_REQUEST", "records must be an array of {weight, reps}.", 400);
                         }
-                        exercise.records = body.records.map((r) => ({ weight: Number(r.weight), reps: Number(r.reps) }));
+                        const normalized = body.records.map((r) => ({ weight: Number(r.weight), reps: Number(r.reps) }));
+                        exercise.records = pruneRecords(normalized);
                         await putJson(env, exerciseKey, exercise);
                         return jsonResponse({ exercise: exercise.name, records: exercise.records });
                     }

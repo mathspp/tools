@@ -168,6 +168,14 @@
             }
         }
 
+        function dominates(a, b) {
+            return (
+                a.weight >= b.weight &&
+                a.reps >= b.reps &&
+                (a.weight > b.weight || a.reps > b.reps)
+            );
+        }
+
         document.getElementById('refresh-exercises').addEventListener('click', loadExercises);
         exerciseSelect.addEventListener('change', loadRecords);
 
@@ -175,17 +183,33 @@
             event.preventDefault();
             const name = exerciseSelect.value;
             if (!name) return;
-            recordStatus.textContent = 'Saving records...';
+
+            recordStatus.textContent = 'Checking record...';
             try {
                 const current = await apiFetch(`/exercises/${encodeURIComponent(name)}/records`);
                 const records = current.records || [];
-                records.push({
+                const newRecord = {
                     weight: Number(document.getElementById('record-weight').value),
                     reps: Number(document.getElementById('record-reps').value),
-                });
+                };
+
+                const isDuplicate = records.some(
+                    (r) => r.weight === newRecord.weight && r.reps === newRecord.reps
+                );
+                const dominatedByExisting = records.some((r) => dominates(r, newRecord));
+
+                if (isDuplicate || dominatedByExisting) {
+                    recordStatus.textContent = 'Record not submitted: an existing record is better.';
+                    return;
+                }
+
+                const updatedRecords = records.filter((r) => !dominates(newRecord, r));
+                updatedRecords.push(newRecord);
+
+                recordStatus.textContent = 'Saving records...';
                 await apiFetch(`/exercises/${encodeURIComponent(name)}/records`, {
                     method: 'PUT',
-                    body: JSON.stringify({ records }),
+                    body: JSON.stringify({ records: updatedRecords }),
                 });
                 recordStatus.textContent = 'Records updated.';
                 loadRecords();
