@@ -129,8 +129,7 @@
         }
 
         function clear() {
-            localStorage.removeItem(STORAGE_KEYS.base);
-            localStorage.removeItem(STORAGE_KEYS.token);
+            [STORAGE_KEYS.base, STORAGE_KEYS.token].forEach((key) => localStorage.removeItem(key));
             baseInput.value = '';
             tokenInput.value = '';
             status.textContent = 'Settings cleared from storage.';

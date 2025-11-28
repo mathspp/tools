@@ -277,13 +277,9 @@
                 return `${STORAGE_KEYS.draftPrefix}${name}`;
             }
 
-            function readStored(primaryKey, legacyKey) {
-                return (localStorage.getItem(primaryKey) || localStorage.getItem(legacyKey) || '').trim();
-            }
-
             function getConfig() {
-                const token = readStored(STORAGE_KEYS.token, 'workout_api_token');
-                const base = readStored(STORAGE_KEYS.base, 'workout_api_base').replace(/\/$/, '');
+                const token = (localStorage.getItem(STORAGE_KEYS.token) || '').trim();
+                const base = (localStorage.getItem(STORAGE_KEYS.base) || '').trim().replace(/\/$/, '');
                 if (!token || !base) {
                     throw new Error('Set the API base URL and bearer token in Workout settings first.');
                 }
