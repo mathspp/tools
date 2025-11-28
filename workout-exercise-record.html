@@ -14,6 +14,7 @@
         th, td { padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: left; }
         form { display: grid; gap: 0.75rem; }
         .grid { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+        .status-text { color: var(--text-muted); }
 
         .workout-links {
             border: 1px solid var(--border);
@@ -43,12 +44,14 @@
     </style>
 </head>
 <body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Workout Exercise Records</h1>
+        <p class="lead">View and update personal bests for any exercise.</p>
+        <p class="status-text">Configure the API base URL and bearer token in <a href="workout-settings.html">Workout settings</a>. Stored values are reused automatically.</p>
+    </header>
+
     <main>
-        <header class="card grid">
-            <h1>Workout Exercise Records</h1>
-            <p>View and update personal bests for any exercise.</p>
-            <p class="status">Configure the API base URL and bearer token in <a href="workout-settings.html">Workout settings</a>. Stored values are reused automatically.</p>
-        </header>
 
         <section class="card grid">
             <div class="flex between center">
@@ -193,5 +196,9 @@
 
         loadExercises();
     </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 </html>
