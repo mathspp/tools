@@ -215,6 +215,7 @@ input[type="reset"] {
     background: var(--bg);
     color: var(--accent);
     cursor: pointer;
+    transform: translateY(0);
     transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -226,6 +227,7 @@ input[type="reset"]:hover {
     border-color: var(--accent-2);
     color: var(--accent-2);
     background: var(--bg-2);
+    transform: translateY(-2px);
 }
 
 button:disabled,
