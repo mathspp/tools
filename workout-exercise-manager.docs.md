@@ -1,1 +1,1 @@
-Create, list, and delete exercises maintained by the Cloudflare Worker workouts API. Store your API settings once, quickly add new exercises with display names, and prune entries you no longer use.
+Create, list, and delete exercises maintained by the Cloudflare Worker workouts API. Store your API settings once, quickly add new exercises by typing their names, and prune entries you no longer use. The tool now turns your typed exercise name into a URL-safe slug automatically while keeping the display name exactly as written.
