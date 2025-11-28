@@ -74,16 +74,11 @@ Represents a unique exercise name plus its personal-best records.
 	•	weight (number): weight used.
 	•	reps (integer): repetitions.
 
-Semantics for records maintenance:
-	•	A new record (w, r) is considered “better” than an existing (w0, r0) if:
-	•	w > w0, or
-	•	w < w0 and r > r0.
-	•	When automatically updating from workout sessions:
-	•	Add (w, r) if it is not strictly dominated by any existing record.
-	•	Remove any existing records that are strictly dominated by (w, r).
-(This yields a Pareto frontier of best sets.)
-
-Manual PUT /exercises/{name}/records overwrites the list exactly; no automatic sorting/pruning required.
+Semantics for records maintenance (Pareto frontier of best sets):
+	•	A record (w, r) strictly dominates (w0, r0) if w >= w0 and r >= r0 and at least one inequality is strict.
+	•	A new record is kept only if no existing record dominates it; equal records are ignored.
+	•	Whenever a new record is processed (from a workout session or a manual PUT), the worker prunes the exercise’s records list by removing dominated entries and deduplicating equivalent ones.
+	•	Manual PUT /exercises/{name}/records normalizes and prunes the supplied list to the minimal non-dominated frontier.
 
 ⸻
 
