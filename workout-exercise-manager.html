@@ -66,8 +66,8 @@
         <section class="card grid">
             <h2>Add exercise</h2>
             <form id="exercise-form">
-                <label>Exercise name (slug)<input type="text" id="exercise-name" placeholder="bench_press" required></label>
-                <label>Display name<input type="text" id="exercise-display" placeholder="Bench Press" required></label>
+                <label>Exercise name<input type="text" id="exercise-name" placeholder="Bench Press" required></label>
+                <p id="slug-preview" class="status" aria-live="polite"></p>
                 <button type="submit">Create exercise</button>
             </form>
             <div id="form-status" class="status"></div>
@@ -155,19 +155,45 @@
             }
         }
 
+        const nameInput = document.getElementById('exercise-name');
+        const slugPreview = document.getElementById('slug-preview');
+        slugPreview.textContent = 'Slug will appear here';
+
+        function buildSlug(name) {
+            return name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/(^-)|(-$)/g, '');
+        }
+
+        nameInput.addEventListener('input', () => {
+            const slug = buildSlug(nameInput.value.trim());
+            slugPreview.textContent = slug ? `Slug: ${slug}` : 'Slug will appear here';
+        });
+
         document.getElementById('exercise-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             formStatus.textContent = 'Creating exercise...';
             try {
+                const exerciseName = nameInput.value.trim();
+                const slug = buildSlug(exerciseName);
+
+                if (!exerciseName || !slug) {
+                    formStatus.textContent = 'Please enter a valid exercise name to generate a slug.';
+                    return;
+                }
+
                 await apiFetch('/exercises', {
                     method: 'POST',
                     body: JSON.stringify({
-                        name: document.getElementById('exercise-name').value.trim(),
-                        display_name: document.getElementById('exercise-display').value.trim(),
+                        name: slug,
+                        display_name: exerciseName,
                     }),
                 });
                 formStatus.textContent = 'Exercise created.';
                 event.target.reset();
+                slugPreview.textContent = 'Slug will appear here';
                 loadExercises();
             } catch (error) {
                 formStatus.textContent = error.message;
