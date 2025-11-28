@@ -18,6 +18,7 @@
         .item { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0.75rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
         .item-name { font-weight: 700; }
         .status { min-height: 1.2rem; color: var(--text-muted); }
+        .status-text { color: var(--text-muted); }
         form { display: grid; gap: 0.75rem; }
 
         .workout-links {
@@ -48,12 +49,14 @@
     </style>
 </head>
 <body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Workout Exercise Manager</h1>
+        <p class="lead">List, add, and delete exercises from the Cloudflare Worker API.</p>
+        <p class="status-text">Configure the API base URL and bearer token once in <a href="workout-settings.html">Workout settings</a>. Stored values are reused here automatically.</p>
+    </header>
+
     <main>
-        <header class="card grid">
-            <h1>Workout Exercise Manager</h1>
-            <p>List, add, and delete exercises from the Cloudflare Worker API.</p>
-            <p class="status">Configure the API base URL and bearer token once in <a href="workout-settings.html">Workout settings</a>. Stored values are reused here automatically.</p>
-        </header>
 
         <section class="card grid">
             <div class="flex between center">
@@ -208,5 +211,9 @@
         document.getElementById('refresh').addEventListener('click', loadExercises);
         loadExercises();
     </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
 </body>
 </html>
