@@ -43,6 +43,18 @@
         .link-card:hover { border-color: var(--accent); }
 
         #exercise-select { align-self: start; }
+
+        .record-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .record-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -56,12 +68,16 @@
     <main>
 
         <section class="card grid">
-            <div class="flex between center">
-                <h2>Exercises</h2>
-                <button id="refresh-exercises">Refresh list</button>
+            <h2>Records</h2>
+            <div class="record-controls">
+                <select id="exercise-select"></select>
+                <div class="record-actions">
+                    <button id="get-records">Get records</button>
+                    <button id="refresh-exercises">Refresh list</button>
+                </div>
             </div>
-            <select id="exercise-select"></select>
             <div id="load-status" class="status"></div>
+            <div id="viewing-label" aria-live="polite">Viewing records:</div>
             <table>
                 <thead><tr><th>Weight</th><th>Reps</th></tr></thead>
                 <tbody id="record-rows"></tbody>
@@ -100,6 +116,7 @@
         const recordStatus = document.getElementById('record-status');
         const recordWeight = document.getElementById('record-weight');
         const recordReps = document.getElementById('record-reps');
+        const viewingLabel = document.getElementById('viewing-label');
 
         const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
 
@@ -139,20 +156,29 @@
                 data.exercises.forEach((ex) => {
                     const option = document.createElement('option');
                     option.value = ex.name;
-                    option.textContent = `${ex.display_name} (${ex.name})`;
+                    option.textContent = ex.display_name;
+                    option.dataset.displayName = ex.display_name;
                     exerciseSelect.appendChild(option);
                 });
                 loadStatus.textContent = '';
-                loadRecords();
+                updateViewingLabel('');
+                recordRows.innerHTML = '';
             } catch (error) {
                 loadStatus.textContent = error.message;
             }
         }
 
+        function updateViewingLabel(name) {
+            viewingLabel.textContent = name ? `Viewing ${name} records:` : 'Viewing records:';
+        }
+
         async function loadRecords() {
-            const name = exerciseSelect.value;
-            if (!name) return;
-            loadStatus.textContent = `Loading records for ${name}...`;
+            const selected = exerciseSelect.selectedOptions[0];
+            if (!selected) return;
+            const displayName = selected.dataset.displayName || selected.textContent;
+            const name = selected.value;
+            updateViewingLabel(displayName);
+            loadStatus.textContent = `Loading records for ${displayName}...`;
             recordRows.innerHTML = '';
             try {
                 const data = await apiFetch(`/exercises/${encodeURIComponent(name)}/records`);
@@ -186,10 +212,15 @@
         }
 
         document.getElementById('refresh-exercises').addEventListener('click', loadExercises);
-        exerciseSelect.addEventListener('change', () => {
+        document.getElementById('get-records').addEventListener('click', () => {
             clearRecordInputs();
             recordStatus.textContent = '';
             loadRecords();
+        });
+        exerciseSelect.addEventListener('change', () => {
+            clearRecordInputs();
+            recordStatus.textContent = '';
+            loadStatus.textContent = '';
         });
 
         document.getElementById('record-form').addEventListener('submit', async (event) => {
