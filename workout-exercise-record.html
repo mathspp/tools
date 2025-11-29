@@ -47,13 +47,37 @@
         .record-controls {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 0.75rem;
             flex-wrap: wrap;
+            width: 100%;
         }
 
         .record-actions {
             display: flex;
             gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .record-actions button {
+            white-space: nowrap;
+        }
+
+        .record-table-container {
+            display: grid;
+            gap: 0.25rem;
+        }
+
+        .record-table {
+            width: 100%;
+        }
+
+        .record-table caption {
+            caption-side: top;
+            text-align: left;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
         }
     </style>
 </head>
@@ -67,7 +91,7 @@
 
     <main>
 
-        <section class="card grid">
+        <section class="card">
             <h2>Records</h2>
             <div class="record-controls">
                 <select id="exercise-select"></select>
@@ -76,12 +100,14 @@
                     <button id="refresh-exercises">Refresh list</button>
                 </div>
             </div>
-            <div id="load-status" class="status"></div>
-            <div id="viewing-label" aria-live="polite">Viewing records:</div>
-            <table>
-                <thead><tr><th>Weight</th><th>Reps</th></tr></thead>
-                <tbody id="record-rows"></tbody>
-            </table>
+            <div class="record-table-container">
+                <div id="load-status" class="status"></div>
+                <table class="record-table">
+                    <caption id="records-caption" aria-live="polite">Select an exercise to view records</caption>
+                    <thead><tr><th>Weight</th><th>Reps</th></tr></thead>
+                    <tbody id="record-rows"></tbody>
+                </table>
+            </div>
         </section>
 
         <section class="card grid">
@@ -116,7 +142,7 @@
         const recordStatus = document.getElementById('record-status');
         const recordWeight = document.getElementById('record-weight');
         const recordReps = document.getElementById('record-reps');
-        const viewingLabel = document.getElementById('viewing-label');
+        const recordsCaption = document.getElementById('records-caption');
 
         const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
 
@@ -161,15 +187,22 @@
                     exerciseSelect.appendChild(option);
                 });
                 loadStatus.textContent = '';
-                updateViewingLabel('');
+                updateRecordsCaption('');
                 recordRows.innerHTML = '';
             } catch (error) {
                 loadStatus.textContent = error.message;
             }
         }
 
-        function updateViewingLabel(name) {
-            viewingLabel.textContent = name ? `Viewing ${name} records:` : 'Viewing records:';
+        function updateRecordsCaption(name, hasRecords) {
+            if (!name) {
+                recordsCaption.textContent = 'Select an exercise to view records';
+                return;
+            }
+
+            recordsCaption.textContent = hasRecords === false
+                ? `No ${name} records`
+                : `${name} records`;
         }
 
         async function loadRecords() {
@@ -177,7 +210,7 @@
             if (!selected) return;
             const displayName = selected.dataset.displayName || selected.textContent;
             const name = selected.value;
-            updateViewingLabel(displayName);
+            updateRecordsCaption(displayName);
             loadStatus.textContent = `Loading records for ${displayName}...`;
             recordRows.innerHTML = '';
             try {
@@ -192,6 +225,7 @@
                     row.innerHTML = '<td colspan="2">No personal bests yet.</td>';
                     recordRows.appendChild(row);
                 }
+                updateRecordsCaption(displayName, data.records && data.records.length > 0);
                 loadStatus.textContent = '';
             } catch (error) {
                 loadStatus.textContent = error.message;
@@ -221,6 +255,8 @@
             clearRecordInputs();
             recordStatus.textContent = '';
             loadStatus.textContent = '';
+            updateRecordsCaption('');
+            recordRows.innerHTML = '';
         });
 
         document.getElementById('record-form').addEventListener('submit', async (event) => {
