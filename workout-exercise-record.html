@@ -16,6 +16,32 @@
         .grid { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
         .status-text { color: var(--text-muted); }
 
+        .add-record-card { display: grid; gap: 0.75rem; }
+
+        .add-record-header { display: flex; align-items: center; }
+
+        .add-record-form {
+            display: grid;
+            gap: 0.75rem;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            align-items: end;
+        }
+
+        .add-record-form button {
+            width: 100%;
+            justify-self: end;
+        }
+
+        @media (max-width: 540px) {
+            .add-record-form {
+                grid-template-columns: 1fr;
+            }
+
+            .add-record-form button {
+                justify-self: stretch;
+            }
+        }
+
         .workout-links {
             border: 1px solid var(--border);
             background: var(--surface-1);
@@ -110,14 +136,14 @@
             </div>
         </section>
 
-        <section class="card grid">
-            <h2>Add record</h2>
-            <form id="record-form">
-                <div class="grid">
-                    <label>Weight<input type="number" step="0.1" id="record-weight" required></label>
-                    <label>Reps<input type="number" id="record-reps" required></label>
-                </div>
-                <button type="submit">Save records</button>
+        <section class="card add-record-card">
+            <div class="add-record-header">
+                <h2>Add record</h2>
+            </div>
+            <form id="record-form" class="add-record-form">
+                <label>Weight<input type="number" step="0.1" id="record-weight" required></label>
+                <label>Reps<input type="number" id="record-reps" required></label>
+                <button type="submit">Add record</button>
             </form>
             <div id="record-status" class="status"></div>
         </section>
