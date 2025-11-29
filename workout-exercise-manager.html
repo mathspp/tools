@@ -14,12 +14,27 @@
 
         main { display: grid; gap: 1rem; }
         .card { padding: 1rem; }
-        .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0.75rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; }
+        .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.2rem; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0.55rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; gap: 0.75rem; }
         .item-name { font-weight: 700; }
         .status { min-height: 1.2rem; color: var(--text-muted); }
         .status-text { color: var(--text-muted); }
         form { display: grid; gap: 0.75rem; }
+
+        .delete-button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.9rem;
+            background: transparent;
+            color: var(--text-muted);
+            border-color: var(--ui-3);
+        }
+
+        .delete-button:hover,
+        .delete-button:focus-visible {
+            background: var(--surface-1);
+            color: var(--re);
+            border-color: var(--re);
+        }
 
         .workout-links {
             border: 1px solid var(--border);
@@ -141,6 +156,7 @@
                     const info = document.createElement('div');
                     info.innerHTML = `<span class="item-name">${ex.display_name}</span>`;
                     const del = document.createElement('button');
+                    del.className = 'delete-button';
                     del.textContent = 'Delete';
                     del.addEventListener('click', () => deleteExercise(ex.name, ex.display_name));
                     li.appendChild(info);
