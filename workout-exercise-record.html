@@ -120,7 +120,11 @@
         <section class="card">
             <h2>Records</h2>
             <div class="record-controls">
-                <select id="exercise-select"></select>
+                <div style="display: grid; gap: 0.25rem; align-self: start; width: min(320px, 100%);">
+                    <label for="exercise-select" class="status-text">Exercise</label>
+                    <input id="exercise-select" list="exercise-options" placeholder="Start typing to search" />
+                    <datalist id="exercise-options"></datalist>
+                </div>
                 <div class="record-actions">
                     <button id="get-records">Get records</button>
                     <button id="refresh-exercises">Refresh list</button>
@@ -163,6 +167,7 @@
 
     <script>
         const exerciseSelect = document.getElementById('exercise-select');
+        const exerciseOptions = document.getElementById('exercise-options');
         const loadStatus = document.getElementById('load-status');
         const recordRows = document.getElementById('record-rows');
         const recordStatus = document.getElementById('record-status');
@@ -171,6 +176,44 @@
         const recordsCaption = document.getElementById('records-caption');
 
         const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
+
+        let exercises = [];
+
+        function formatExerciseName(name) {
+            if (!name) return '';
+            const trimmed = name.trim();
+            return trimmed ? `${trimmed[0].toUpperCase()}${trimmed.slice(1)}` : '';
+        }
+
+        function populateExerciseOptions(list) {
+            exerciseOptions.innerHTML = '';
+            const sorted = [...list].sort((a, b) =>
+                a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+            );
+
+            sorted.forEach((ex) => {
+                const option = document.createElement('option');
+                option.value = formatExerciseName(ex.name);
+                option.dataset.name = ex.name;
+                option.dataset.displayName = ex.display_name || formatExerciseName(ex.name);
+                exerciseOptions.appendChild(option);
+            });
+        }
+
+        function getSelectedExercise() {
+            const inputValue = exerciseSelect.value.trim();
+            if (!inputValue) return null;
+            const lowerInput = inputValue.toLowerCase();
+
+            return (
+                exercises.find((ex) => {
+                    const formatted = formatExerciseName(ex.name).toLowerCase();
+                    const display = (ex.display_name || '').toLowerCase();
+                    const raw = ex.name.toLowerCase();
+                    return lowerInput === formatted || lowerInput === display || lowerInput === raw;
+                }) || null
+            );
+        }
 
         function getConfig() {
             const base = (localStorage.getItem(STORAGE_KEYS.base) || '').trim();
@@ -198,20 +241,15 @@
 
         async function loadExercises() {
             loadStatus.textContent = 'Loading exercises...';
-            exerciseSelect.innerHTML = '';
+            exerciseSelect.value = '';
             try {
                 const data = await apiFetch('/exercises');
                 if (!data.exercises.length) {
                     loadStatus.textContent = 'No exercises found.';
                     return;
                 }
-                data.exercises.forEach((ex) => {
-                    const option = document.createElement('option');
-                    option.value = ex.name;
-                    option.textContent = ex.display_name;
-                    option.dataset.displayName = ex.display_name;
-                    exerciseSelect.appendChild(option);
-                });
+                exercises = data.exercises;
+                populateExerciseOptions(exercises);
                 loadStatus.textContent = '';
                 updateRecordsCaption('');
                 recordRows.innerHTML = '';
@@ -232,10 +270,13 @@
         }
 
         async function loadRecords() {
-            const selected = exerciseSelect.selectedOptions[0];
-            if (!selected) return;
-            const displayName = selected.dataset.displayName || selected.textContent;
-            const name = selected.value;
+            const selected = getSelectedExercise();
+            if (!selected) {
+                loadStatus.textContent = 'Select a valid exercise first.';
+                return;
+            }
+            const displayName = selected.display_name || formatExerciseName(selected.name);
+            const name = selected.name;
             updateRecordsCaption(displayName);
             loadStatus.textContent = `Loading records for ${displayName}...`;
             recordRows.innerHTML = '';
@@ -277,7 +318,7 @@
             recordStatus.textContent = '';
             loadRecords();
         });
-        exerciseSelect.addEventListener('change', () => {
+        exerciseSelect.addEventListener('input', () => {
             clearRecordInputs();
             recordStatus.textContent = '';
             loadStatus.textContent = '';
@@ -287,8 +328,9 @@
 
         document.getElementById('record-form').addEventListener('submit', async (event) => {
             event.preventDefault();
-            const name = exerciseSelect.value;
-            if (!name) return;
+            const selected = getSelectedExercise();
+            if (!selected) return;
+            const name = selected.name;
 
             recordStatus.textContent = 'Checking record...';
             try {
