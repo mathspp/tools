@@ -162,37 +162,96 @@
     <script>
         (function () {
             const ranksAscending = [
-                'Airman',
-                'Airman First Class',
-                'Sergeant',
-                'Staff Sergeant',
-                'Technical Sergeant',
-                'Lieutenant',
-                'Captain',
-                'Major',
-                'Commander',
-                'Lt Colonel',
-                'Colonel',
-                'Chief Colonel',
-                'Air Commodore',
-                'Air Vice Marshal',
-                'Air Marshal',
-                'Air Chief Marshal',
-                'Air General',
-                'Air Force Marshal',
-                'Sky Captain'
+                { name: 'Airman', influence: 1 },
+                { name: 'Airman 1st Class', influence: 1 },
+                { name: 'Airman 1st Class*', influence: 1 },
+                { name: 'Airman 1st Class**', influence: 1 },
+                { name: 'Airman 1st Class***', influence: 1 },
+                { name: 'Airman 1st Class****', influence: 1 },
+                { name: 'Airman 1st Class*****', influence: 1 },
+                { name: 'Senior Airman', influence: 1 },
+                { name: 'Senior Airman*', influence: 1 },
+                { name: 'Senior Airman**', influence: 1 },
+                { name: 'Senior Airman***', influence: 1 },
+                { name: 'Senior Airman****', influence: 1 },
+                { name: 'Senior Airman*****', influence: 1 },
+                { name: 'Staff Sergeant', influence: 1 },
+                { name: 'Staff Sergeant*', influence: 1 },
+                { name: 'Staff Sergeant**', influence: 1 },
+                { name: 'Staff Sergeant***', influence: 1 },
+                { name: 'Staff Sergeant****', influence: 1 },
+                { name: 'Staff Sergeant*****', influence: 1 },
+                { name: 'Aviator', influence: 5 },
+                { name: 'Aviator*', influence: 10 },
+                { name: 'Aviator**', influence: 15 },
+                { name: 'Aviator***', influence: 20 },
+                { name: 'Aviator****', influence: 25 },
+                { name: 'Aviator*****', influence: 30 },
+                { name: 'Flight Lieutenant', influence: 35 },
+                { name: 'Flight Lieutenant*', influence: 40 },
+                { name: 'Flight Lieutenant**', influence: 45 },
+                { name: 'Flight Lieutenant***', influence: 50 },
+                { name: 'Flight Lieutenant****', influence: 55 },
+                { name: 'Flight Lieutenant*****', influence: 60 },
+                { name: 'Squadron Leader', influence: 65 },
+                { name: 'Squadron Leader*', influence: 70 },
+                { name: 'Squadron Leader**', influence: 75 },
+                { name: 'Squadron Leader***', influence: 80 },
+                { name: 'Squadron Leader****', influence: 85 },
+                { name: 'Squadron Leader*****', influence: 90 },
+                { name: 'Chief Master Sergeant', influence: 95 },
+                { name: 'Chief Master Sergeant*', influence: 100 },
+                { name: 'Chief Master Sergeant**', influence: 100 },
+                { name: 'Chief Master Sergeant***', influence: 100 },
+                { name: 'Chief Master Sergeant****', influence: 100 },
+                { name: 'Chief Master Sergeant*****', influence: 100 },
+                { name: 'Wing Commander', influence: 100 },
+                { name: 'Wing Commander*', influence: 100 },
+                { name: 'Wing Commander**', influence: 100 },
+                { name: 'Wing Commander***', influence: 100 },
+                { name: 'Wing Commander****', influence: 100 },
+                { name: 'Wing Commander*****', influence: 100 },
+                { name: 'Group Captain', influence: 100 },
+                { name: 'Group Captain*', influence: 100 },
+                { name: 'Group Captain**', influence: 100 },
+                { name: 'Group Captain***', influence: 100 },
+                { name: 'Group Captain****', influence: 100 },
+                { name: 'Group Captain*****', influence: 100 },
+                { name: 'Air Commodore', influence: 100 },
+                { name: 'Air Commodore*', influence: 100 },
+                { name: 'Air Commodore**', influence: 100 },
+                { name: 'Air Commodore***', influence: 100 },
+                { name: 'Air Commodore****', influence: 100 },
+                { name: 'Air Commodore*****', influence: 100 },
+                { name: 'Air Vice Marshal', influence: 100 },
+                { name: 'Air Vice Marshal*', influence: 100 },
+                { name: 'Air Vice Marshal**', influence: 100 },
+                { name: 'Air Vice Marshal***', influence: 100 },
+                { name: 'Air Vice Marshal****', influence: 100 },
+                { name: 'Air Vice Marshal*****', influence: 100 },
+                { name: 'Air Marshal', influence: 100 },
+                { name: 'Air Marshal*', influence: 100 },
+                { name: 'Air Marshal**', influence: 100 },
+                { name: 'Air Marshal***', influence: 100 },
+                { name: 'Air Marshal****', influence: 100 },
+                { name: 'Air Marshal*****', influence: 100 },
+                { name: 'Air Chief Marshal', influence: 100 },
+                { name: 'Air Chief Marshal*', influence: 100 },
+                { name: 'Air Chief Marshal**', influence: 100 },
+                { name: 'Air Chief Marshal***', influence: 100 },
+                { name: 'Air Chief Marshal****', influence: 100 },
+                { name: 'Air Chief Marshal*****', influence: 100 }
             ];
 
             const rankSelect = document.getElementById('rank');
             ranksAscending
-                .slice()
+                .map((rank, index) => ({ rank, index }))
                 .reverse()
-                .forEach((label, reverseIndex) => {
+                .forEach(({ rank, index }) => {
                     const option = document.createElement('option');
-                    const rankIndex = ranksAscending.length - 1 - reverseIndex;
-                    option.value = String(rankIndex);
-                    option.textContent = label;
-                    if (label === 'Air Commodore') {
+                    option.value = String(index);
+                    option.textContent = rank.name;
+                    if (rank.name === 'Air Commodore') {
                         option.selected = true;
                     }
                     rankSelect.appendChild(option);
@@ -208,12 +267,12 @@
             const breakdown = document.getElementById('breakdown');
 
             const weaponMultipliers = {
-                none: 0,
-                q1: 1 / 5,
-                q2: 2 / 5,
-                q3: 3 / 5,
-                q4: 4 / 5,
-                q5: 5 / 5,
+                none: 1,
+                q1: 1.2,
+                q2: 1.4,
+                q3: 1.6,
+                q4: 1.8,
+                q5: 2,
                 stinger: 1
             };
 
@@ -244,7 +303,8 @@
 
                 const baseDamage = isStinger ? 1000 : 10;
                 const energyFactor = energy / 10;
-                const rankMultiplier = isStinger ? 1 : 1 + rankIndex / 5;
+                const rankInfluence = ranksAscending[rankIndex]?.influence ?? 0;
+                const rankMultiplier = isStinger ? 1 : rankInfluence / 100;
                 const weaponMultiplier = weaponMultipliers[weapon] ?? 0;
                 const protectorMultiplier = 1 + protectorLevel / 100;
                 const boosterMultiplier = 1 + boosterPercent / 100;
@@ -263,7 +323,7 @@
                 finalDamage.textContent = formatNumber(result);
 
                 const parts = [
-                    `${formatNumber(energyFactor)} energy chunks`,
+                    `${formatNumber(energyFactor)} hits`,
                     `${formatNumber(baseDamage)} base damage`,
                     `rank ×${formatNumber(rankMultiplier)}`,
                     `${weapon === 'stinger' ? 'stinger damage' : 'weapon'} ×${formatNumber(weaponMultiplier)}`,
