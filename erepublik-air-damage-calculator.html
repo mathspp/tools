@@ -77,6 +77,43 @@
             margin: 0;
         }
 
+        .hover-note {
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-underline-offset: 0.15em;
+        }
+
+        .status-banner {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px dashed #cbd5e1;
+            background: #f8fafc;
+        }
+
+        .status-indicator {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+
+        .status-text {
+            margin: 0;
+        }
+
+        .status-banner.warning {
+            border-color: #fdba74;
+            background: #fff7ed;
+            color: #b45309;
+        }
+
+        .status-banner.warning .status-indicator {
+            background: #f97316;
+        }
+
         @media (max-width: 720px) {
             body {
                 padding: 20px 16px 40px;
@@ -100,6 +137,33 @@
                 <div class="result-value" id="final-damage">0</div>
                 <p class="helper-text" id="breakdown"></p>
             </div>
+        </section>
+
+        <section class="surface tool-card">
+            <div class="result-display">
+                <div class="status-banner" id="consumables-status" role="status" aria-live="polite">
+                    <span class="status-indicator" aria-hidden="true"></span>
+                    <p class="status-text" id="consumables-status-text">Fill in consumables to update energy automatically.</p>
+                </div>
+            </div>
+            <form id="energy-packs" class="inputs-grid" aria-label="Energy from consumables">
+                <div class="form-group">
+                    <label for="ebs">EBs</label>
+                    <input id="ebs" name="ebs" type="number" min="0" step="1" value="">
+                </div>
+                <div class="form-group">
+                    <label for="ebs2">x2 EBs</label>
+                    <input id="ebs2" name="ebs2" type="number" min="0" step="1" value="">
+                </div>
+                <div class="form-group">
+                    <label for="ebs3">x3 EBs</label>
+                    <input id="ebs3" name="ebs3" type="number" min="0" step="1" value="">
+                </div>
+                <div class="form-group">
+                    <label for="treats"><span class="hover-note" title="treaks, pumpkins, ice creams, and other 50 energy consumables">Treats</span></label>
+                    <input id="treats" name="treats" type="number" min="0" step="1" value="">
+                </div>
+            </form>
         </section>
 
         <section class="surface tool-card">
@@ -269,6 +333,12 @@
             const level100Checkbox = document.getElementById('level-100');
             const finalDamage = document.getElementById('final-damage');
             const breakdown = document.getElementById('breakdown');
+            const ebInput = document.getElementById('ebs');
+            const eb2Input = document.getElementById('ebs2');
+            const eb3Input = document.getElementById('ebs3');
+            const treatsInput = document.getElementById('treats');
+            const consumablesStatus = document.getElementById('consumables-status');
+            const consumablesStatusText = document.getElementById('consumables-status-text');
 
             const weaponMultipliers = {
                 none: 1,
@@ -290,6 +360,44 @@
                     return Math.min(Math.max(value, min), max);
                 }
                 return Math.max(value, min);
+            };
+
+            let updatingEnergyFromPacks = false;
+            const packInputs = [ebInput, eb2Input, eb3Input, treatsInput];
+
+            const setConsumablesStatus = (mode) => {
+                if (mode === 'manual') {
+                    consumablesStatusText.textContent = 'Energy set manually — consumable inputs are cleared and not being used.';
+                    consumablesStatus.classList.add('warning');
+                } else {
+                    consumablesStatusText.textContent = 'Fill in consumables to update energy automatically.';
+                    consumablesStatus.classList.remove('warning');
+                }
+            };
+
+            const resetEnergyPackInputs = () => {
+                packInputs.forEach((input) => {
+                    input.value = '';
+                });
+            };
+
+            const updateEnergyFromPacks = () => {
+                const eb = clampNumber(parseInt(ebInput.value, 10), 0);
+                const eb2 = clampNumber(parseInt(eb2Input.value, 10), 0);
+                const eb3 = clampNumber(parseInt(eb3Input.value, 10), 0);
+                const treats = clampNumber(parseInt(treatsInput.value, 10), 0);
+
+                ebInput.value = eb;
+                eb2Input.value = eb2;
+                eb3Input.value = eb3;
+                treatsInput.value = treats;
+
+                const energyFromPacks = (eb * 100) + (eb2 * 200) + (eb3 * 300) + (treats * 50);
+                updatingEnergyFromPacks = true;
+                energyInput.value = energyFromPacks;
+                calculateDamage();
+                updatingEnergyFromPacks = false;
+                setConsumablesStatus('auto');
             };
 
             function calculateDamage() {
@@ -339,7 +447,19 @@
                 breakdown.textContent = parts.join(' • ');
             }
 
+            energyInput.addEventListener('input', () => {
+                if (!updatingEnergyFromPacks) {
+                    resetEnergyPackInputs();
+                    setConsumablesStatus('manual');
+                }
+            });
+
+            packInputs.forEach((input) => {
+                input.addEventListener('input', updateEnergyFromPacks);
+            });
+
             document.getElementById('calculator').addEventListener('input', calculateDamage);
+            setConsumablesStatus('auto');
             calculateDamage();
         })();
     </script>
