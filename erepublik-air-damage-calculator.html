@@ -135,6 +135,9 @@
                 <p class="helper-text">Final damage</p>
                 <div class="result-value" id="final-damage">0</div>
                 <p class="helper-text" id="breakdown"></p>
+                <p class="helper-text">Rank</p>
+                <div class="result-value" id="rank-value">0</div>
+                <p class="helper-text" id="rank-breakdown"></p>
                 <p class="helper-text">Influence</p>
                 <div class="result-value" id="influence">0</div>
                 <p class="helper-text" id="influence-breakdown"></p>
@@ -196,6 +199,16 @@
                     <div class="form-group">
                         <label for="determination">Determination bonus</label>
                         <input id="determination" name="determination" type="number" min="1" step="0.01" value="1.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rank-booster">Rank booster</label>
+                        <select id="rank-booster" name="rank-booster">
+                            <option value="0" selected>0%</option>
+                            <option value="10">10%</option>
+                            <option value="20">20%</option>
+                            <option value="30">30%</option>
+                        </select>
                     </div>
                 </div>
 
@@ -350,11 +363,14 @@
             const protectorInput = document.getElementById('protector');
             const boosterSelect = document.getElementById('booster');
             const influenceBoosterSelect = document.getElementById('influence-booster');
+            const rankBoosterSelect = document.getElementById('rank-booster');
             const determinationInput = document.getElementById('determination');
             const naturalEnemyCheckbox = document.getElementById('natural-enemy');
             const level100Checkbox = document.getElementById('level-100');
             const finalDamage = document.getElementById('final-damage');
             const breakdown = document.getElementById('breakdown');
+            const rankValueElement = document.getElementById('rank-value');
+            const rankBreakdown = document.getElementById('rank-breakdown');
             const influenceValue = document.getElementById('influence');
             const influenceBreakdown = document.getElementById('influence-breakdown');
             const ebInput = document.getElementById('ebs');
@@ -444,6 +460,7 @@
                 const weapon = weaponSelect.value;
                 const boosterPercent = Number(boosterSelect.value) || 0;
                 const influenceBoosterPercent = Number(influenceBoosterSelect.value) || 0;
+                const rankBoosterPercent = Number(rankBoosterSelect.value) || 0;
                 const determinationBonus = clampNumber(parseFloat(determinationInput.value), 1);
                 determinationInput.value = determinationBonus.toFixed(2);
                 const isStinger = weapon === 'stinger';
@@ -456,6 +473,7 @@
                 const protectorMultiplier = 1 + protectorLevel / 100;
                 const boosterMultiplier = 1 + boosterPercent / 100;
                 const influenceBoosterMultiplier = 1 + influenceBoosterPercent / 100;
+                const rankBoosterMultiplier = 1 + rankBoosterPercent / 100;
                 const naturalEnemyMultiplier = naturalEnemyCheckbox.checked ? 1.1 : 1;
                 const level100Multiplier = level100Checkbox.checked ? 1.1 : 1;
                 const influenceRankMultiplier = getInfluenceRankMultiplier(rankValue);
@@ -483,6 +501,11 @@
                 ];
 
                 breakdown.textContent = parts.join(' • ');
+
+                const rankFromDamage = result * 0.1;
+                const rankTotal = Math.floor(rankFromDamage * rankBoosterMultiplier);
+                rankValueElement.textContent = formatNumber(rankTotal);
+                rankBreakdown.textContent = [`10% of damage = ${formatNumber(rankFromDamage)}`, `booster ×${formatNumber(rankBoosterMultiplier)}`].join(' • ');
 
                 const influence = Math.floor(result
                     * influenceBoosterMultiplier
