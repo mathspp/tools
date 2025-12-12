@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eRepublik Air Damage Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            --gap: clamp(0.75rem, 2vw, 1.25rem);
+        }
+
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .site-link {
+            font-weight: 600;
+            color: var(--foreground-subtle);
+            text-decoration: none;
+        }
+
+        .site-link:hover,
+        .site-link:focus-visible {
+            color: var(--foreground);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .result-display {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .result-value {
+            font-size: clamp(2rem, 4vw, 2.75rem);
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+
+        form {
+            display: grid;
+            gap: var(--gap);
+        }
+
+        .inputs-grid {
+            display: grid;
+            gap: var(--gap);
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .checkbox-row {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .helper-text {
+            color: var(--foreground-subtle);
+            margin: 0;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>eRepublik Air Damage Calculator</h1>
+        <p class="lead">Compute expected air battle damage using rank, weapons, boosters, and bonuses.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card" aria-live="polite">
+            <div class="result-display">
+                <p class="helper-text">Final damage</p>
+                <div class="result-value" id="final-damage">0</div>
+                <p class="helper-text" id="breakdown"></p>
+            </div>
+        </section>
+
+        <section class="surface tool-card">
+            <form id="calculator" aria-label="Air damage calculator">
+                <div class="inputs-grid">
+                    <div class="form-group">
+                        <label for="energy">Total energy to spend</label>
+                        <input id="energy" name="energy" type="number" min="0" step="1" value="10" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rank">Aircraft rank</label>
+                        <select id="rank" name="rank"></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="weapon">Weapon</label>
+                        <select id="weapon" name="weapon">
+                            <option value="none" selected>No weapon</option>
+                            <option value="q1">Q1 weapon</option>
+                            <option value="q2">Q2 weapon</option>
+                            <option value="q3">Q3 weapon</option>
+                            <option value="q4">Q4 weapon</option>
+                            <option value="q5">Q5 weapon</option>
+                            <option value="stinger">Stinger</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="protector">Protector level (0–50)</label>
+                        <input id="protector" name="protector" type="number" min="0" max="50" step="1" value="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="booster">Damage booster</label>
+                        <select id="booster" name="booster">
+                            <option value="0" selected>0%</option>
+                            <option value="20">20%</option>
+                            <option value="50">50%</option>
+                            <option value="100">100%</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="checkbox-row">
+                    <label class="checkbox">
+                        <input type="checkbox" id="natural-enemy" name="natural-enemy">
+                        <span>Fighting against natural enemy</span>
+                    </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="level-100" name="level-100">
+                        <span>Player is level 100+</span>
+                    </label>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+
+    <script>
+        (function () {
+            const ranksAscending = [
+                'Airman',
+                'Airman First Class',
+                'Sergeant',
+                'Staff Sergeant',
+                'Technical Sergeant',
+                'Lieutenant',
+                'Captain',
+                'Major',
+                'Commander',
+                'Lt Colonel',
+                'Colonel',
+                'Chief Colonel',
+                'Air Commodore',
+                'Air Vice Marshal',
+                'Air Marshal',
+                'Air Chief Marshal',
+                'Air General',
+                'Air Force Marshal',
+                'Sky Captain'
+            ];
+
+            const rankSelect = document.getElementById('rank');
+            ranksAscending
+                .slice()
+                .reverse()
+                .forEach((label, reverseIndex) => {
+                    const option = document.createElement('option');
+                    const rankIndex = ranksAscending.length - 1 - reverseIndex;
+                    option.value = String(rankIndex);
+                    option.textContent = label;
+                    if (label === 'Air Commodore') {
+                        option.selected = true;
+                    }
+                    rankSelect.appendChild(option);
+                });
+
+            const energyInput = document.getElementById('energy');
+            const weaponSelect = document.getElementById('weapon');
+            const protectorInput = document.getElementById('protector');
+            const boosterSelect = document.getElementById('booster');
+            const naturalEnemyCheckbox = document.getElementById('natural-enemy');
+            const level100Checkbox = document.getElementById('level-100');
+            const finalDamage = document.getElementById('final-damage');
+            const breakdown = document.getElementById('breakdown');
+
+            const weaponMultipliers = {
+                none: 0,
+                q1: 1 / 5,
+                q2: 2 / 5,
+                q3: 3 / 5,
+                q4: 4 / 5,
+                q5: 5 / 5,
+                stinger: 1
+            };
+
+            const formatNumber = (value) => {
+                return Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0';
+            };
+
+            const clampNumber = (value, min, max) => {
+                if (Number.isNaN(value)) return min;
+                if (typeof max === 'number') {
+                    return Math.min(Math.max(value, min), max);
+                }
+                return Math.max(value, min);
+            };
+
+            function calculateDamage() {
+                const energy = clampNumber(parseInt(energyInput.value, 10), 0);
+                if (energyInput.value === '') energyInput.value = energy;
+
+                const protectorLevel = clampNumber(parseInt(protectorInput.value, 10), 0, 50);
+                if (protectorInput.value === '') protectorInput.value = protectorLevel;
+                protectorInput.value = protectorLevel;
+
+                const weapon = weaponSelect.value;
+                const boosterPercent = Number(boosterSelect.value) || 0;
+                const isStinger = weapon === 'stinger';
+                const rankIndex = isStinger ? 0 : Number(rankSelect.value) || 0;
+
+                const baseDamage = isStinger ? 1000 : 10;
+                const energyFactor = energy / 10;
+                const rankMultiplier = isStinger ? 1 : 1 + rankIndex / 5;
+                const weaponMultiplier = weaponMultipliers[weapon] ?? 0;
+                const protectorMultiplier = 1 + protectorLevel / 100;
+                const boosterMultiplier = 1 + boosterPercent / 100;
+                const naturalEnemyMultiplier = naturalEnemyCheckbox.checked ? 1.1 : 1;
+                const level100Multiplier = level100Checkbox.checked ? 1.1 : 1;
+
+                const result = energyFactor
+                    * baseDamage
+                    * rankMultiplier
+                    * weaponMultiplier
+                    * protectorMultiplier
+                    * boosterMultiplier
+                    * naturalEnemyMultiplier
+                    * level100Multiplier;
+
+                finalDamage.textContent = formatNumber(result);
+
+                const parts = [
+                    `${formatNumber(energyFactor)} energy chunks`,
+                    `${formatNumber(baseDamage)} base damage`,
+                    `rank ×${formatNumber(rankMultiplier)}`,
+                    `${weapon === 'stinger' ? 'stinger damage' : 'weapon'} ×${formatNumber(weaponMultiplier)}`,
+                    `protector ×${formatNumber(protectorMultiplier)}`,
+                    `booster ×${formatNumber(boosterMultiplier)}`,
+                    naturalEnemyCheckbox.checked ? 'natural enemy ×1.1' : 'no natural enemy',
+                    level100Checkbox.checked ? 'level 100+ ×1.1' : 'below level 100'
+                ];
+
+                breakdown.textContent = parts.join(' • ');
+            }
+
+            document.getElementById('calculator').addEventListener('input', calculateDamage);
+            calculateDamage();
+        })();
+    </script>
+</body>
+</html>
