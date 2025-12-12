@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -83,9 +84,11 @@
         }
     </style>
 </head>
+
 <body>
     <header class="page-header">
-        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">←
+            tools.mathspp.com</a>
         <h1>eRepublik Air Damage Calculator</h1>
         <p class="lead">Compute expected air battle damage using rank, weapons, boosters, and bonuses.</p>
     </header>
@@ -127,7 +130,8 @@
 
                     <div class="form-group">
                         <label for="protector">Protector level (0–50)</label>
-                        <input id="protector" name="protector" type="number" min="0" max="50" step="1" value="0" required>
+                        <input id="protector" name="protector" type="number" min="0" max="50" step="1" value="0"
+                            required>
                     </div>
 
                     <div class="form-group">
@@ -303,28 +307,28 @@
 
                 const baseDamage = isStinger ? 1000 : 10;
                 const energyFactor = energy / 10;
-                const rankMultiplier = isStinger ? 1 : 1 + 0.05 * (rankValue - 1);
+                const rankMultiplier = isStinger ? 1 : 1 + (rankValue / 5);
                 const weaponMultiplier = weaponMultipliers[weapon] ?? 0;
                 const protectorMultiplier = 1 + protectorLevel / 100;
                 const boosterMultiplier = 1 + boosterPercent / 100;
                 const naturalEnemyMultiplier = naturalEnemyCheckbox.checked ? 1.1 : 1;
                 const level100Multiplier = level100Checkbox.checked ? 1.1 : 1;
 
-                const result = energyFactor
+                const result = Math.floor(energyFactor
                     * baseDamage
                     * rankMultiplier
                     * weaponMultiplier
                     * protectorMultiplier
                     * boosterMultiplier
                     * naturalEnemyMultiplier
-                    * level100Multiplier;
+                    * level100Multiplier);
 
                 finalDamage.textContent = formatNumber(result);
 
                 const parts = [
                     `${formatNumber(energyFactor)} hits`,
                     `${formatNumber(baseDamage)} base damage`,
-                    `rank (5% per level) ×${formatNumber(rankMultiplier)}`,
+                    `rank ×${formatNumber(rankMultiplier)}`,
                     `${weapon === 'stinger' ? 'stinger damage' : 'weapon'} ×${formatNumber(weaponMultiplier)}`,
                     `protector ×${formatNumber(protectorMultiplier)}`,
                     `booster ×${formatNumber(boosterMultiplier)}`,
@@ -340,4 +344,5 @@
         })();
     </script>
 </body>
+
 </html>
