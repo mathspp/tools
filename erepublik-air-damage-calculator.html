@@ -89,15 +89,15 @@
             gap: 0.5rem;
             padding: 0.6rem 0.75rem;
             border-radius: 0.75rem;
-            border: 1px dashed #cbd5e1;
-            background: #f8fafc;
+            border: 1px dashed var(--tx-3);
+            background: var(--ui);
         }
 
         .status-indicator {
             width: 0.75rem;
             height: 0.75rem;
             border-radius: 50%;
-            background: #22c55e;
+            background: var(--gr-2);
         }
 
         .status-text {
@@ -105,13 +105,12 @@
         }
 
         .status-banner.warning {
-            border-color: #fdba74;
-            background: #fff7ed;
-            color: #b45309;
+            border-color: var(--or-2);
+            color: var(--or);
         }
 
         .status-banner.warning .status-indicator {
-            background: #f97316;
+            background: var(--or-2);
         }
 
         @media (max-width: 720px) {
@@ -140,37 +139,10 @@
         </section>
 
         <section class="surface tool-card">
-            <div class="result-display">
-                <div class="status-banner" id="consumables-status" role="status" aria-live="polite">
-                    <span class="status-indicator" aria-hidden="true"></span>
-                    <p class="status-text" id="consumables-status-text">Fill in consumables to update energy automatically.</p>
-                </div>
-            </div>
-            <form id="energy-packs" class="inputs-grid" aria-label="Energy from consumables">
-                <div class="form-group">
-                    <label for="ebs">EBs</label>
-                    <input id="ebs" name="ebs" type="number" min="0" step="1" value="">
-                </div>
-                <div class="form-group">
-                    <label for="ebs2">x2 EBs</label>
-                    <input id="ebs2" name="ebs2" type="number" min="0" step="1" value="">
-                </div>
-                <div class="form-group">
-                    <label for="ebs3">x3 EBs</label>
-                    <input id="ebs3" name="ebs3" type="number" min="0" step="1" value="">
-                </div>
-                <div class="form-group">
-                    <label for="treats"><span class="hover-note" title="treaks, pumpkins, ice creams, and other 50 energy consumables">Treats</span></label>
-                    <input id="treats" name="treats" type="number" min="0" step="1" value="">
-                </div>
-            </form>
-        </section>
-
-        <section class="surface tool-card">
             <form id="calculator" aria-label="Air damage calculator">
                 <div class="inputs-grid">
                     <div class="form-group">
-                        <label for="energy">Total energy to spend</label>
+                        <label for="energy">Total <a href="#energy">energy to spend</a></label>
                         <input id="energy" name="energy" type="number" min="0" step="1" value="10" required>
                     </div>
 
@@ -218,6 +190,36 @@
                         <input type="checkbox" id="level-100" name="level-100">
                         <span>Player is level 100+</span>
                     </label>
+                </div>
+            </form>
+        </section>
+
+        <section class="surface tool-card" id="energy">
+            <div class="result-display">
+                <div class="status-banner" id="consumables-status" role="status" aria-live="polite">
+                    <span class="status-indicator" aria-hidden="true"></span>
+                    <p class="status-text" id="consumables-status-text">Fill in consumables to update energy
+                        automatically.</p>
+                </div>
+            </div>
+            <form id="energy-packs" class="inputs-grid" aria-label="Energy from consumables">
+                <div class="form-group">
+                    <label for="ebs">EBs</label>
+                    <input id="ebs" name="ebs" type="number" min="0" step="1" value="">
+                </div>
+                <div class="form-group">
+                    <label for="ebs2">x2 EBs</label>
+                    <input id="ebs2" name="ebs2" type="number" min="0" step="1" value="">
+                </div>
+                <div class="form-group">
+                    <label for="ebs3">x3 EBs</label>
+                    <input id="ebs3" name="ebs3" type="number" min="0" step="1" value="">
+                </div>
+                <div class="form-group">
+                    <label for="treats"><span class="hover-note"
+                            title="Treaks, pumpkins, ice creams, and other consumables that restore 50 energy">50-energy
+                            consumables</span></label>
+                    <input id="treats" name="treats" type="number" min="0" step="1" value="">
                 </div>
             </form>
         </section>
