@@ -225,8 +225,7 @@
                         </div>
                     </div>
                     <div class="actions">
-                        <button type="button" id="generate">Generate image</button>
-                        <button type="button" class="ghost" id="download" disabled>Download image</button>
+                        <button type="button" id="download">Download image</button>
                     </div>
                 </div>
             </section>
@@ -250,13 +249,10 @@
         const highlightButton = document.getElementById('highlightButton');
         const clearHighlightsButton = document.getElementById('clearHighlights');
         const highlightChips = document.getElementById('highlightChips');
-        const generateButton = document.getElementById('generate');
         const downloadButton = document.getElementById('download');
         const renderSurface = document.getElementById('renderSurface');
 
         let highlightPhrases = [];
-        let lastDataUrl = '';
-
         const escapeHtml = (str) => str.replace(/[&<>"']/g, (match) => ({
             '&': '&amp;',
             '<': '&lt;',
@@ -329,43 +325,33 @@
             status.textContent = `Highlighted: "${selected}"`;
         }
 
-        async function generateImage() {
-            status.textContent = 'Rendering image...';
-            generateButton.disabled = true;
-            downloadButton.disabled = true;
-            try {
-                const dataUrl = await htmlToImage.toPng(renderSurface, {
-                    pixelRatio: 2,
-                    backgroundColor: 'rgba(0,0,0,0)',
-                });
-                lastDataUrl = dataUrl;
-                status.textContent = 'Image ready. Click download to save.';
-                downloadButton.disabled = false;
-            } catch (error) {
-                console.error(error);
-                status.textContent = 'Could not generate the image. Try again.';
-            } finally {
-                generateButton.disabled = false;
-            }
-        }
-
         function slugify(text) {
             return text.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '') || 'person-name';
         }
 
-        function downloadImage() {
-            if (!lastDataUrl) {
-                status.textContent = 'Generate the image before downloading.';
-                return;
+        async function downloadImage() {
+            status.textContent = 'Rendering image...';
+            downloadButton.disabled = true;
+            try {
+                const dataUrl = await htmlToImage.toPng(renderSurface, {
+                    pixelRatio: 2,
+                    backgroundColor: 'rgba(0,0,0,0)',
+                });
+
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                const filename = `testimonial-${slugify(nameInput.value.trim() || 'person-name')}.png`;
+                link.download = filename;
+                link.click();
+                status.textContent = `Downloaded ${filename}`;
+            } catch (error) {
+                console.error(error);
+                status.textContent = 'Could not generate the image. Try again.';
+            } finally {
+                downloadButton.disabled = false;
             }
-            const link = document.createElement('a');
-            link.href = lastDataUrl;
-            const filename = `testimonial-${slugify(nameInput.value.trim() || 'person-name')}.png`;
-            link.download = filename;
-            link.click();
-            status.textContent = `Downloaded ${filename}`;
         }
 
         testimonialInput.addEventListener('input', renderPreview);
@@ -379,7 +365,6 @@
             updateChips();
             status.textContent = 'Highlights cleared.';
         });
-        generateButton.addEventListener('click', generateImage);
         downloadButton.addEventListener('click', downloadImage);
 
         renderPreview();
