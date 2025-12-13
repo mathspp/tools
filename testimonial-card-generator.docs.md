@@ -1,0 +1,1 @@
+Generate elegant testimonial cards from text, name, affiliation, and a photo link, then download a transparent PNG sized for social media sharing. Highlight key phrases directly from the testimonial input to emphasize them in the preview and exported image.
