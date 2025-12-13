@@ -42,10 +42,31 @@
             display: none;
         }
 
+        .editor-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+
+        .editor-header label {
+            margin: 0;
+        }
+
         .button-row {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
+            flex-wrap: nowrap;
+            gap: 0.65rem;
+            align-items: center;
+        }
+
+        .button-row button,
+        .button-row .btn,
+        .button-row .secondary {
+            font-size: clamp(0.9rem, 1.5vw, 1rem);
+            padding: clamp(0.55rem, 1.6vw, 0.7rem) clamp(0.85rem, 2vw, 1rem);
+            white-space: nowrap;
         }
 
         .secondary {
@@ -69,6 +90,17 @@
             body {
                 padding: 1.25rem 1rem 2.5rem;
             }
+
+            .button-row {
+                gap: 0.5rem;
+            }
+
+            .button-row button,
+            .button-row .btn,
+            .button-row .secondary {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.75rem;
+            }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
@@ -84,18 +116,20 @@
 
     <main>
         <section class="surface tool-card">
-            <div class="form-group">
+            <div class="editor-header">
                 <label for="markdown-input">Markdown content</label>
+                <div class="button-row">
+                    <button id="toggle-preview" type="button" class="btn">Preview</button>
+                    <button id="copy-permalink" type="button" class="btn secondary">Copy permalink</button>
+                    <button id="copy-markdown" type="button" class="btn secondary">Copy markdown</button>
+                </div>
+            </div>
+
+            <div class="form-group">
                 <textarea id="markdown-input" name="markdown-input" placeholder="Write your Markdown here" spellcheck="false"></textarea>
             </div>
 
             <div id="preview" class="preview hidden" aria-live="polite"></div>
-
-            <div class="button-row">
-                <button id="toggle-preview" type="button" class="btn">Preview</button>
-                <button id="copy-permalink" type="button" class="btn secondary">Copy permalink</button>
-                <button id="copy-markdown" type="button" class="btn secondary">Copy markdown</button>
-            </div>
 
             <p class="status" id="status" aria-live="polite"></p>
         </section>
