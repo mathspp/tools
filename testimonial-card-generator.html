@@ -93,8 +93,7 @@
         }
 
         .image-space {
-            width: var(--image-width);
-            max-width: 100%;
+            width: min(100%, var(--image-width));
             aspect-ratio: calc(var(--image-width) / var(--image-height));
             background: var(--bg-2);
             border: 1px solid var(--ui-2);
@@ -103,11 +102,13 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            margin-inline: auto;
         }
 
         .render-surface {
-            width: var(--image-width);
-            height: var(--image-height);
+            width: min(100%, var(--image-width));
+            max-width: var(--image-width);
+            aspect-ratio: calc(var(--image-width) / var(--image-height));
             display: flex;
             justify-content: center;
             align-items: center;
@@ -116,8 +117,8 @@
         }
 
         .card {
-            width: var(--card-width);
-            max-width: min(90%, 820px);
+            width: clamp(280px, 75vw, var(--card-width));
+            max-width: min(100%, 820px);
             background: linear-gradient(135deg, var(--bg), var(--bg-2));
             padding: var(--card-padding);
             border-radius: var(--radius-lg);
