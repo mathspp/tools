@@ -81,6 +81,12 @@
             background: var(--ui);
             color: var(--foreground);
             box-shadow: 0 2px 6px hsl(0 0% 0% / 0.08);
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .tooltip-icon:hover {
+            transform: translateY(-2px);
+            background: var(--bg);
         }
 
         .tooltip-icon:focus-visible {
@@ -185,22 +191,22 @@
     <main>
         <section class="surface tool-card" aria-live="polite">
             <div class="result-display">
-                <p class="helper-text">Final damage</p>
                 <div class="result-with-tooltip" id="final-damage-wrapper">
                     <div class="result-value tooltip-target" id="final-damage" tabindex="0">0</div>
                     <span class="tooltip-icon" aria-hidden="true">?</span>
+                    <p class="helper-text">final damage</p>
                 </div>
                 <p class="helper-text" id="breakdown"></p>
-                <p class="helper-text">Influence</p>
                 <div class="result-with-tooltip" id="influence-wrapper">
                     <div class="result-value tooltip-target" id="influence" tabindex="0">0</div>
                     <span class="tooltip-icon" aria-hidden="true">?</span>
+                    <p class="helper-text">influence</p>
                 </div>
                 <p class="helper-text" id="influence-breakdown"></p>
-                <p class="helper-text">Rank</p>
                 <div class="result-with-tooltip" id="rank-wrapper">
                     <div class="result-value tooltip-target" id="rank-value" tabindex="0">0</div>
                     <span class="tooltip-icon" aria-hidden="true">?</span>
+                    <p class="helper-text">rank points</p>
                 </div>
                 <p class="helper-text" id="rank-breakdown"></p>
             </div>
@@ -211,7 +217,7 @@
                 <div class="inputs-grid">
                     <div class="form-group">
                         <label for="energy">Total <a href="#energy">energy to spend</a></label>
-                        <input id="energy" name="energy" type="number" min="0" step="1" value="10" required>
+                        <input id="energy" name="energy" type="number" min="0" step="10" value="10" required>
                     </div>
 
                     <div class="form-group">
@@ -463,13 +469,10 @@
 
             const finalDamageWrapper = document.getElementById('final-damage-wrapper');
             const finalDamage = document.getElementById('final-damage');
-            const breakdown = document.getElementById('breakdown');
             const rankWrapper = document.getElementById('rank-wrapper');
             const rankValueElement = document.getElementById('rank-value');
-            const rankBreakdown = document.getElementById('rank-breakdown');
             const influenceWrapper = document.getElementById('influence-wrapper');
             const influenceValue = document.getElementById('influence');
-            const influenceBreakdown = document.getElementById('influence-breakdown');
             const ebInput = document.getElementById('ebs');
             const eb2Input = document.getElementById('ebs2');
             const eb3Input = document.getElementById('ebs3');
@@ -483,11 +486,6 @@
             tooltipPopover.setAttribute('role', 'tooltip');
             tooltipPopover.setAttribute('aria-hidden', 'true');
             document.body.appendChild(tooltipPopover);
-
-            const tooltipHint = 'Hover the value or click the question mark for the latest formula.';
-            breakdown.textContent = tooltipHint;
-            rankBreakdown.textContent = tooltipHint;
-            influenceBreakdown.textContent = tooltipHint;
 
             const setTooltipContent = (wrapper, valueElement, content) => {
                 wrapper.title = content;
@@ -636,12 +634,12 @@
                 const determinationBonus = clampNumber(parseFloat(determinationInput.value), 1);
                 determinationInput.value = determinationBonus.toFixed(2);
                 const isStinger = weapon === 'stinger';
-                const rankValue = isStinger ? 1 : Number(rankSelect.value) || 1;
+                const rankValue = Number(rankSelect.value) || 1;
 
                 const baseDamage = isStinger ? 1000 : 10;
-                const energyFactor = energy / 10;
+                const hits = energy / 10;
                 const rankMultiplier = isStinger ? 1 : 1 + (rankValue / 5);
-                const weaponMultiplier = weaponMultipliers[weapon] ?? 0;
+                const weaponMultiplier = weaponMultipliers[weapon] ?? 1;
                 const protectorMultiplier = 1 + protectorLevel / 100;
                 const boosterMultiplier = 1 + boosterPercent / 100;
                 const influenceBoosterMultiplier = 1 + influenceBoosterPercent / 100;
@@ -650,7 +648,7 @@
                 const level100Multiplier = level100Checkbox.checked ? 1.1 : 1;
                 const influenceRankMultiplier = getInfluenceRankMultiplier(rankValue);
 
-                const result = Math.floor(energyFactor
+                const result = Math.floor(hits
                     * baseDamage
                     * rankMultiplier
                     * weaponMultiplier
@@ -662,14 +660,14 @@
                 finalDamage.textContent = formatNumber(result);
                 const damageFormula = [
                     'Final damage = floor(',
-                    `  ${formatNumber(energyFactor)} hits`,
+                    `  ${formatNumber(hits)} hits`,
                     `× ${formatNumber(baseDamage)} base damage`,
                     `× rank ×${formatNumber(rankMultiplier)}`,
                     `× ${weapon === 'stinger' ? 'stinger damage' : 'weapon'} ×${formatNumber(weaponMultiplier)}`,
                     `× protector ×${formatNumber(protectorMultiplier)}`,
                     `× booster ×${formatNumber(boosterMultiplier)}`,
-                    `× ${naturalEnemyCheckbox.checked ? 'natural enemy bonus ×1.1' : 'natural enemy bonus ×1'}`,
-                    `× ${level100Checkbox.checked ? 'level 100+ bonus ×1.1' : 'level 100 bonus ×1'}`,
+                    `× ${naturalEnemyCheckbox.checked ? 'natural enemy bonus ×1.1' : 'no natural enemy bonus ×1'}`,
+                    `× ${level100Checkbox.checked ? 'level 100+ bonus ×1.1' : 'no level 100 bonus ×1'}`,
                     `) = ${formatNumber(result)}`
                 ].join('\n');
 
