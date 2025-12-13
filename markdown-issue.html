@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Issue</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2.75rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 320px;
+        }
+
+        .preview {
+            border: 1px solid var(--ui-2);
+            border-radius: 12px;
+            padding: clamp(1rem, 2vw, 1.25rem);
+            background: var(--bg);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .secondary {
+            background: var(--bg);
+            color: var(--tx);
+            border: 1px solid var(--ui-2);
+        }
+
+        .secondary:hover,
+        .secondary:focus-visible {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .status {
+            color: var(--tx-3);
+            min-height: 1.25rem;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1.25rem 1rem 2.5rem;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" defer></script>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Markdown Issue</h1>
+        <p class="lead">Draft and preview a Markdown issue with shareable permalinks and quick copying.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="form-group">
+                <label for="markdown-input">Markdown content</label>
+                <textarea id="markdown-input" name="markdown-input" placeholder="Write your Markdown issue here" spellcheck="false"></textarea>
+            </div>
+
+            <div id="preview" class="preview hidden" aria-live="polite"></div>
+
+            <div class="button-row">
+                <button id="toggle-preview" type="button" class="btn">Preview</button>
+                <button id="copy-permalink" type="button" class="btn secondary">Copy permalink</button>
+                <button id="copy-markdown" type="button" class="btn secondary">Copy markdown</button>
+            </div>
+
+            <p class="status" id="status" aria-live="polite"></p>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.getElementById('markdown-input');
+            const preview = document.getElementById('preview');
+            const togglePreviewButton = document.getElementById('toggle-preview');
+            const copyPermalinkButton = document.getElementById('copy-permalink');
+            const copyMarkdownButton = document.getElementById('copy-markdown');
+            const status = document.getElementById('status');
+
+            const base64Encode = (text) => {
+                const bytes = new TextEncoder().encode(text);
+                const binary = Array.from(bytes, (char) => String.fromCharCode(char)).join('');
+                return btoa(binary);
+            };
+
+            const base64Decode = (text) => {
+                const binary = atob(text);
+                const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+                return new TextDecoder().decode(bytes);
+            };
+
+            const updateStatus = (message) => {
+                status.textContent = message;
+                if (message) {
+                    setTimeout(() => {
+                        status.textContent = '';
+                    }, 3500);
+                }
+            };
+
+            const renderPreview = () => {
+                const raw = textarea.value;
+                const html = DOMPurify.sanitize(marked.parse(raw));
+                preview.innerHTML = html || '<p><em>No content to preview yet.</em></p>';
+            };
+
+            const setMode = (mode) => {
+                const isPreview = mode === 'preview';
+                preview.classList.toggle('hidden', !isPreview);
+                textarea.classList.toggle('hidden', isPreview);
+                togglePreviewButton.textContent = isPreview ? 'Edit' : 'Preview';
+                togglePreviewButton.setAttribute('aria-pressed', isPreview);
+                if (isPreview) {
+                    renderPreview();
+                }
+            };
+
+            const applyQueryContent = () => {
+                const params = new URLSearchParams(window.location.search);
+                const encoded = params.get('md');
+                if (!encoded) return;
+
+                try {
+                    const decoded = base64Decode(encoded);
+                    textarea.value = decoded;
+                    setMode('preview');
+                    updateStatus('Loaded markdown from permalink.');
+                } catch (error) {
+                    updateStatus('Could not parse permalink content.');
+                    setMode('edit');
+                }
+            };
+
+            togglePreviewButton.addEventListener('click', () => {
+                const isCurrentlyPreview = togglePreviewButton.textContent === 'Edit';
+                setMode(isCurrentlyPreview ? 'edit' : 'preview');
+            });
+
+            copyMarkdownButton.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(textarea.value);
+                    updateStatus('Markdown copied to clipboard.');
+                } catch (error) {
+                    updateStatus('Clipboard is unavailable.');
+                }
+            });
+
+            copyPermalinkButton.addEventListener('click', async () => {
+                try {
+                    const encoded = base64Encode(textarea.value);
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('md', encoded);
+                    const permalink = url.toString();
+                    await navigator.clipboard.writeText(permalink);
+                    updateStatus('Permalink copied to clipboard.');
+                } catch (error) {
+                    updateStatus('Unable to copy permalink.');
+                }
+            });
+
+            textarea.addEventListener('input', () => {
+                if (togglePreviewButton.textContent === 'Edit') {
+                    renderPreview();
+                }
+            });
+
+            applyQueryContent();
+        });
+    </script>
+</body>
+
+</html>
