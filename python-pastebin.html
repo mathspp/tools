@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Pastebin</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/lib/codemirror.min.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .site-link {
+            font-weight: 600;
+            color: var(--foreground-subtle);
+            text-decoration: none;
+        }
+
+        .site-link:hover,
+        .site-link:focus-visible {
+            color: var(--foreground);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .tool-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .CodeMirror {
+            height: 480px;
+            font-family: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 15px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+
+            .CodeMirror {
+                height: 360px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Python Pastebin</h1>
+        <p class="lead">Paste or write Python code, then share it with a permalink or copy it straight to your clipboard.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="tool-actions" role="group" aria-label="Share and copy actions">
+                <button type="button" id="copy-permalink">Copy permalink</button>
+                <button type="button" id="copy-code">Copy code</button>
+            </div>
+            <label class="sr-only" for="code-input">Python code</label>
+            <textarea id="code-input" name="code-input"></textarea>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/lib/codemirror.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/mode/python/python.min.js"></script>
+    <script>
+        (function () {
+            const copyPermalinkButton = document.getElementById('copy-permalink');
+            const copyCodeButton = document.getElementById('copy-code');
+            const textarea = document.getElementById('code-input');
+
+            const editor = CodeMirror.fromTextArea(textarea, {
+                mode: 'python',
+                lineNumbers: true,
+                indentUnit: 4,
+                indentWithTabs: false,
+                lineWrapping: true,
+                viewportMargin: Infinity,
+            });
+
+            function encodeCode(value) {
+                return btoa(encodeURIComponent(value).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+                    String.fromCharCode(parseInt(p1, 16))
+                ));
+            }
+
+            function decodeCode(value) {
+                return decodeURIComponent(Array.from(atob(value)).map(char =>
+                    `%${('00' + char.charCodeAt(0).toString(16)).slice(-2)}`
+                ).join(''));
+            }
+
+            function applyCodeFromUrl() {
+                const params = new URLSearchParams(window.location.search);
+                const codeParam = params.get('code');
+                if (!codeParam) return;
+
+                try {
+                    const decoded = decodeCode(codeParam);
+                    editor.setValue(decoded);
+                } catch (error) {
+                    console.error('Could not decode code from URL.', error);
+                }
+            }
+
+            async function copyPermalink() {
+                const url = new URL(window.location.href);
+                const encoded = encodeCode(editor.getValue());
+                url.searchParams.set('code', encoded);
+
+                await navigator.clipboard.writeText(url.toString());
+                copyPermalinkButton.textContent = 'Permalink copied!';
+                setTimeout(() => copyPermalinkButton.textContent = 'Copy permalink', 1500);
+            }
+
+            async function copyCode() {
+                await navigator.clipboard.writeText(editor.getValue());
+                copyCodeButton.textContent = 'Code copied!';
+                setTimeout(() => copyCodeButton.textContent = 'Copy code', 1500);
+            }
+
+            applyCodeFromUrl();
+
+            copyPermalinkButton.addEventListener('click', () => {
+                copyPermalink().catch(error => {
+                    console.error('Failed to copy permalink', error);
+                    copyPermalinkButton.textContent = 'Copy failed';
+                    setTimeout(() => copyPermalinkButton.textContent = 'Copy permalink', 1500);
+                });
+            });
+
+            copyCodeButton.addEventListener('click', () => {
+                copyCode().catch(error => {
+                    console.error('Failed to copy code', error);
+                    copyCodeButton.textContent = 'Copy failed';
+                    setTimeout(() => copyCodeButton.textContent = 'Copy code', 1500);
+                });
+            });
+        })();
+    </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+</body>
+</html>
