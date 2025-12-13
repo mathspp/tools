@@ -55,6 +55,34 @@
             letter-spacing: 0.01em;
         }
 
+        .result-with-tooltip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            width: fit-content;
+        }
+
+        .tooltip-target {
+            cursor: help;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-underline-offset: 0.12em;
+        }
+
+        .tooltip-icon {
+            inline-size: 1.5rem;
+            block-size: 1.5rem;
+            display: grid;
+            place-items: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border-radius: 999px;
+            border: 1px solid var(--tx-3);
+            background: var(--ui);
+            color: var(--foreground);
+            box-shadow: 0 2px 6px hsl(0 0% 0% / 0.08);
+        }
+
         form {
             display: grid;
             gap: var(--gap);
@@ -133,14 +161,23 @@
         <section class="surface tool-card" aria-live="polite">
             <div class="result-display">
                 <p class="helper-text">Final damage</p>
-                <div class="result-value" id="final-damage">0</div>
+                <div class="result-with-tooltip" id="final-damage-wrapper">
+                    <div class="result-value tooltip-target" id="final-damage" tabindex="0">0</div>
+                    <span class="tooltip-icon" aria-hidden="true">?</span>
+                </div>
                 <p class="helper-text" id="breakdown"></p>
-                <p class="helper-text">Rank</p>
-                <div class="result-value" id="rank-value">0</div>
-                <p class="helper-text" id="rank-breakdown"></p>
                 <p class="helper-text">Influence</p>
-                <div class="result-value" id="influence">0</div>
+                <div class="result-with-tooltip" id="influence-wrapper">
+                    <div class="result-value tooltip-target" id="influence" tabindex="0">0</div>
+                    <span class="tooltip-icon" aria-hidden="true">?</span>
+                </div>
                 <p class="helper-text" id="influence-breakdown"></p>
+                <p class="helper-text">Rank</p>
+                <div class="result-with-tooltip" id="rank-wrapper">
+                    <div class="result-value tooltip-target" id="rank-value" tabindex="0">0</div>
+                    <span class="tooltip-icon" aria-hidden="true">?</span>
+                </div>
+                <p class="helper-text" id="rank-breakdown"></p>
             </div>
         </section>
 
@@ -367,10 +404,13 @@
             const determinationInput = document.getElementById('determination');
             const naturalEnemyCheckbox = document.getElementById('natural-enemy');
             const level100Checkbox = document.getElementById('level-100');
+            const finalDamageWrapper = document.getElementById('final-damage-wrapper');
             const finalDamage = document.getElementById('final-damage');
             const breakdown = document.getElementById('breakdown');
+            const rankWrapper = document.getElementById('rank-wrapper');
             const rankValueElement = document.getElementById('rank-value');
             const rankBreakdown = document.getElementById('rank-breakdown');
+            const influenceWrapper = document.getElementById('influence-wrapper');
             const influenceValue = document.getElementById('influence');
             const influenceBreakdown = document.getElementById('influence-breakdown');
             const ebInput = document.getElementById('ebs');
@@ -379,6 +419,17 @@
             const treatsInput = document.getElementById('treats');
             const consumablesStatus = document.getElementById('consumables-status');
             const consumablesStatusText = document.getElementById('consumables-status-text');
+
+            const damageFormulaText = 'Final damage = floor((energy / 10) × base damage × rank multiplier × weapon multiplier × protector multiplier × booster multiplier × natural enemy bonus × level 100 bonus)';
+            const rankFormulaText = 'Rank points = floor((final damage × 0.1) × rank booster multiplier)';
+            const influenceFormulaText = 'Influence = floor(final damage × influence booster multiplier × determination bonus × rank influence multiplier)';
+
+            finalDamageWrapper.title = damageFormulaText;
+            finalDamage.setAttribute('aria-label', damageFormulaText);
+            rankWrapper.title = rankFormulaText;
+            rankValueElement.setAttribute('aria-label', rankFormulaText);
+            influenceWrapper.title = influenceFormulaText;
+            influenceValue.setAttribute('aria-label', influenceFormulaText);
 
             const weaponMultipliers = {
                 none: 1,
