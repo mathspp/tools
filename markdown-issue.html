@@ -108,7 +108,16 @@
             const togglePreviewButton = document.getElementById('toggle-preview');
             const copyPermalinkButton = document.getElementById('copy-permalink');
             const copyMarkdownButton = document.getElementById('copy-markdown');
+            const saveButton = document.createElement('button');
             const status = document.getElementById('status');
+
+            saveButton.id = 'save-markdown';
+            saveButton.type = 'button';
+            saveButton.textContent = 'Save';
+            saveButton.className = 'btn secondary';
+            copyMarkdownButton.insertAdjacentElement('afterend', saveButton);
+
+            const STORAGE_KEY = 'markdown-issue-content';
 
             const base64Encode = (text) => {
                 const bytes = new TextEncoder().encode(text);
@@ -137,6 +146,19 @@
                 preview.innerHTML = html || '<p><em>No content to preview yet.</em></p>';
             };
 
+            const saveToLocalStorage = (content, silent = false) => {
+                try {
+                    localStorage.setItem(STORAGE_KEY, content);
+                    if (!silent) {
+                        updateStatus('Saved to local storage.');
+                    }
+                } catch (error) {
+                    if (!silent) {
+                        updateStatus('Unable to save to local storage.');
+                    }
+                }
+            };
+
             const setMode = (mode) => {
                 const isPreview = mode === 'preview';
                 preview.classList.toggle('hidden', !isPreview);
@@ -151,16 +173,18 @@
             const applyQueryContent = () => {
                 const params = new URLSearchParams(window.location.search);
                 const encoded = params.get('md');
-                if (!encoded) return;
+                if (!encoded) return false;
 
                 try {
                     const decoded = base64Decode(encoded);
                     textarea.value = decoded;
                     setMode('preview');
                     updateStatus('Loaded markdown from permalink.');
+                    return true;
                 } catch (error) {
                     updateStatus('Could not parse permalink content.');
                     setMode('edit');
+                    return false;
                 }
             };
 
@@ -176,6 +200,10 @@
                 } catch (error) {
                     updateStatus('Clipboard is unavailable.');
                 }
+            });
+
+            saveButton.addEventListener('click', () => {
+                saveToLocalStorage(textarea.value);
             });
 
             copyPermalinkButton.addEventListener('click', async () => {
@@ -197,7 +225,24 @@
                 }
             });
 
-            applyQueryContent();
+            const hadQueryContent = applyQueryContent();
+
+            if (!hadQueryContent) {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    textarea.value = stored;
+                    setMode('preview');
+                    updateStatus('Loaded markdown from local storage.');
+                }
+            }
+
+            if (!hadQueryContent && !textarea.value) {
+                setMode('edit');
+            }
+
+            setInterval(() => {
+                saveToLocalStorage(textarea.value, true);
+            }, 5000);
         });
     </script>
 </body>
