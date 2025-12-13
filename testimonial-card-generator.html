@@ -13,125 +13,91 @@
             --image-height: 675px;
         }
 
-        body {
-            max-width: 960px;
-        }
-
         .layout {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-
-        .inputs {
-            background: #0d0d0d;
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: clamp(1rem, 3vw, 1.5rem);
+            align-items: start;
         }
 
         .field {
-            margin-bottom: 16px;
+            display: grid;
+            gap: 0.35rem;
+            margin-bottom: 1rem;
         }
 
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        textarea,
-        input[type="text"],
-        input[type="url"] {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid #2f2f2f;
-            background: #0b0b0b;
-            color: #f6f7fb;
+        .inputs {
+            display: grid;
+            gap: 1rem;
         }
 
         textarea {
-            min-height: 120px;
+            min-height: 140px;
         }
 
         .helper {
-            font-size: 0.9rem;
-            color: #b3b3b3;
-            margin-top: 4px;
+            font-size: 0.95rem;
+            color: var(--tx-2);
+            margin: 0;
         }
 
         .highlight-controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 0.5rem;
             align-items: center;
-            margin-top: 10px;
+            margin-top: 0.5rem;
         }
 
         .chip {
-            background: #1c1c1f;
-            border: 1px solid #303032;
+            background: var(--bg);
+            border: 1px solid var(--ui-2);
             border-radius: 999px;
-            padding: 6px 10px;
-            font-size: 0.9rem;
+            padding: 0.35rem 0.7rem;
+            font-size: 0.95rem;
             display: inline-flex;
-            gap: 8px;
+            gap: 0.35rem;
             align-items: center;
         }
 
         .chip button {
-            background: none;
+            background: transparent;
             border: none;
-            color: #f6f7fb;
+            color: inherit;
             cursor: pointer;
         }
 
         .actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 0.75rem;
             align-items: center;
-            margin-top: 8px;
+            margin-top: 0.35rem;
         }
 
-        button.primary {
-            background: #4a72ff;
-            border: none;
-            color: white;
-            padding: 12px 18px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        button.secondary {
+        .ghost {
             background: transparent;
-            border: 1px solid #3b3b3b;
-            color: #e1e1e6;
-            padding: 10px 14px;
-            border-radius: 12px;
-            cursor: pointer;
+            border-color: var(--ui-3);
+            color: var(--tx);
         }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        .ghost:hover,
+        .ghost:focus-visible {
+            background: var(--bg-2);
         }
 
         .preview-wrapper {
-            border: 1px solid #2a2a2a;
-            border-radius: 16px;
-            padding: 16px;
-            background: #0c0c0e;
+            display: grid;
+            gap: 0.75rem;
         }
 
         .image-space {
             width: var(--image-width);
             max-width: 100%;
             aspect-ratio: calc(var(--image-width) / var(--image-height));
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 20px;
+            background: var(--bg-2);
+            border: 1px solid var(--ui-2);
+            border-radius: var(--radius-lg);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -144,47 +110,45 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: transparent;
+            background: var(--bg);
+            padding: clamp(1.5rem, 3vw, 2rem);
         }
 
         .card {
             width: var(--card-width);
-            max-width: 90%;
-            background: linear-gradient(135deg, #0f0f10, #1a1c25);
-            color: #f6f7fb;
+            max-width: min(90%, 820px);
+            background: linear-gradient(135deg, var(--bg), var(--bg-2));
             padding: var(--card-padding);
-            border-radius: 18px;
-            box-shadow: 0 24px 55px rgba(0, 0, 0, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-lg);
         }
 
         .card blockquote {
             font-size: 1.15rem;
             line-height: 1.6;
             margin: 0 0 18px;
-            color: #e6e8f2;
+            color: var(--tx);
         }
 
         .card blockquote mark {
-            background: rgba(74, 114, 255, 0.18);
-            color: #f8f9ff;
+            background: rgba(160, 47, 111, 0.16);
+            color: inherit;
             padding: 2px 4px;
             border-radius: 6px;
         }
 
         .person {
             display: flex;
-            gap: 12px;
+            gap: 0.75rem;
             align-items: center;
         }
 
         .avatar {
             width: 64px;
             height: 64px;
-            border-radius: 14px;
+            border-radius: var(--radius-md);
             object-fit: cover;
-            border: 2px solid rgba(255, 255, 255, 0.08);
-            background: #111;
+            border: 2px solid var(--ui-2);
+            background: var(--bg-2);
         }
 
         .name {
@@ -192,83 +156,85 @@
         }
 
         .affiliation {
-            color: #c6c9d4;
+            color: var(--tx-2);
         }
 
         .status {
             min-height: 24px;
             font-size: 0.95rem;
-            color: #d1d1d1;
+            color: var(--tx-2);
         }
 
-        @media (max-width: 860px) {
-            :root {
-                --card-width: 640px;
-            }
-
+        @media (max-width: 960px) {
             .layout {
                 grid-template-columns: 1fr;
-            }
-
-            .actions {
-                flex-direction: column;
-                align-items: flex-start;
             }
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js" integrity="sha512-wjKs64+h0/pk3jfbQ3VIAtF+wNCz7L+G2kZZgwyUr0vbJIUKGwEuITdSb9VjA36TObgGJE0E7E5Wdl66iRS0Ng==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
-    <h1>Testimonial Card Image Generator</h1>
-    <p>Create a polished testimonial card from text, name, affiliation, and avatar, then download it as a social-ready PNG.</p>
+    <div class="page-shell">
+        <header class="page-header">
+            <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+            <h1>Testimonial Card Image Generator</h1>
+            <p class="lead">Create a polished testimonial card from text, name, affiliation, and avatar, then download it as a social-ready PNG.</p>
+        </header>
 
-    <div class="layout">
-        <div class="inputs">
-            <div class="field">
-                <label for="testimonial">Testimonial text</label>
-                <textarea id="testimonial" placeholder="Paste the testimonial..."></textarea>
-                <p class="helper">Select text in the testimonial field and click “Highlight selection” to emphasize key phrases.</p>
-                <div class="highlight-controls" id="highlightChips"></div>
-                <div class="actions">
-                    <button class="primary" id="highlightButton">Highlight selection</button>
-                    <button class="secondary" id="clearHighlights">Clear highlights</button>
+        <main class="content-flow">
+            <section class="layout">
+                <div class="surface inputs">
+                    <div class="field">
+                        <label for="testimonial">Testimonial text</label>
+                        <textarea id="testimonial" placeholder="Paste the testimonial..."></textarea>
+                        <p class="helper">Select text in the testimonial field and click “Highlight selection” to emphasize key phrases.</p>
+                        <div class="highlight-controls" id="highlightChips"></div>
+                        <div class="actions">
+                            <button type="button" id="highlightButton">Highlight selection</button>
+                            <button type="button" class="ghost" id="clearHighlights">Clear highlights</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="name">Person name</label>
+                        <input type="text" id="name" placeholder="Name">
+                    </div>
+                    <div class="field">
+                        <label for="affiliation">Affiliation</label>
+                        <input type="text" id="affiliation" placeholder="Company, role, or project">
+                    </div>
+                    <div class="field">
+                        <label for="photo">Photo URL</label>
+                        <input type="url" id="photo" placeholder="https://example.com/photo.jpg">
+                    </div>
                 </div>
-            </div>
-            <div class="field">
-                <label for="name">Person name</label>
-                <input type="text" id="name" placeholder="Name">
-            </div>
-            <div class="field">
-                <label for="affiliation">Affiliation</label>
-                <input type="text" id="affiliation" placeholder="Company, role, or project">
-            </div>
-            <div class="field">
-                <label for="photo">Photo URL</label>
-                <input type="url" id="photo" placeholder="https://example.com/photo.jpg">
-            </div>
-        </div>
 
-        <div class="preview-wrapper">
-            <div class="status" id="status"></div>
-            <div class="image-space">
-                <div class="render-surface" id="renderSurface">
-                    <div class="card" id="card">
-                        <blockquote id="quote">Add your testimonial to see a preview.</blockquote>
-                        <div class="person">
-                            <img class="avatar" id="avatar" src="" alt="Avatar preview">
-                            <div>
-                                <div class="name" id="previewName">Name</div>
-                                <div class="affiliation" id="previewAffiliation">Affiliation</div>
+                <div class="surface preview-wrapper" aria-live="polite">
+                    <div class="status" id="status"></div>
+                    <div class="image-space">
+                        <div class="render-surface" id="renderSurface">
+                            <div class="card" id="card">
+                                <blockquote id="quote">Add your testimonial to see a preview.</blockquote>
+                                <div class="person">
+                                    <img class="avatar" id="avatar" src="" alt="Avatar preview">
+                                    <div>
+                                        <div class="name" id="previewName">Name</div>
+                                        <div class="affiliation" id="previewAffiliation">Affiliation</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    <div class="actions">
+                        <button type="button" id="generate">Generate image</button>
+                        <button type="button" class="ghost" id="download" disabled>Download image</button>
+                    </div>
                 </div>
-            </div>
-            <div class="actions" style="margin-top: 16px;">
-                <button class="primary" id="generate">Generate image</button>
-                <button class="secondary" id="download" disabled>Download image</button>
-            </div>
-        </div>
+            </section>
+        </main>
+
+        <footer class="page-footer">
+            <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+        </footer>
     </div>
 
     <script>
