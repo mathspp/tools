@@ -83,6 +83,31 @@
             box-shadow: 0 2px 6px hsl(0 0% 0% / 0.08);
         }
 
+        .tooltip-icon:focus-visible {
+            outline: 2px solid var(--link);
+            outline-offset: 2px;
+        }
+
+        .tooltip-popover {
+            position: absolute;
+            z-index: 10;
+            max-inline-size: min(28rem, 90vw);
+            padding: 0.75rem 0.9rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--tx-3);
+            background: var(--surface, white);
+            box-shadow: 0 10px 30px hsl(0 0% 0% / 0.08);
+            color: var(--foreground);
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .tooltip-popover[data-visible="true"] {
+            display: block;
+        }
+
         form {
             display: grid;
             gap: var(--gap);
@@ -452,16 +477,80 @@
             const consumablesStatus = document.getElementById('consumables-status');
             const consumablesStatusText = document.getElementById('consumables-status-text');
 
-            const damageFormulaText = 'Final damage = floor((energy / 10) × base damage × rank multiplier × weapon multiplier × protector multiplier × booster multiplier × natural enemy bonus × level 100 bonus)';
-            const rankFormulaText = 'Rank points = floor((final damage × 0.1) × rank booster multiplier)';
-            const influenceFormulaText = 'Influence = floor(final damage × influence booster multiplier × determination bonus × rank influence multiplier)';
+            const tooltipPopover = document.createElement('div');
+            tooltipPopover.id = 'tooltip-popover';
+            tooltipPopover.className = 'tooltip-popover';
+            tooltipPopover.setAttribute('role', 'tooltip');
+            tooltipPopover.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(tooltipPopover);
 
-            finalDamageWrapper.title = damageFormulaText;
-            finalDamage.setAttribute('aria-label', damageFormulaText);
-            rankWrapper.title = rankFormulaText;
-            rankValueElement.setAttribute('aria-label', rankFormulaText);
-            influenceWrapper.title = influenceFormulaText;
-            influenceValue.setAttribute('aria-label', influenceFormulaText);
+            const tooltipHint = 'Hover the value or click the question mark for the latest formula.';
+            breakdown.textContent = tooltipHint;
+            rankBreakdown.textContent = tooltipHint;
+            influenceBreakdown.textContent = tooltipHint;
+
+            const setTooltipContent = (wrapper, valueElement, content) => {
+                wrapper.title = content;
+                valueElement.title = content;
+                valueElement.setAttribute('aria-label', content);
+                wrapper.dataset.tooltipContent = content;
+            };
+
+            const tooltipIcons = Array.from(document.querySelectorAll('.result-with-tooltip .tooltip-icon'));
+            tooltipIcons.forEach((icon) => {
+                icon.setAttribute('role', 'button');
+                icon.setAttribute('tabindex', '0');
+                icon.setAttribute('aria-label', 'Show calculation details');
+            });
+
+            let activeTooltipTarget = null;
+
+            const hidePopover = () => {
+                tooltipPopover.dataset.visible = 'false';
+                tooltipPopover.setAttribute('aria-hidden', 'true');
+                tooltipPopover.textContent = '';
+                activeTooltipTarget = null;
+            };
+
+            const showPopover = (trigger, content) => {
+                const rect = trigger.getBoundingClientRect();
+                tooltipPopover.textContent = content;
+                tooltipPopover.style.top = `${rect.bottom + window.scrollY + 10}px`;
+                tooltipPopover.style.left = `${rect.left + window.scrollX}px`;
+                tooltipPopover.dataset.visible = 'true';
+                tooltipPopover.setAttribute('aria-hidden', 'false');
+                activeTooltipTarget = trigger;
+            };
+
+            document.addEventListener('click', (event) => {
+                if (!activeTooltipTarget) return;
+                if (event.target === activeTooltipTarget || tooltipPopover.contains(event.target)) return;
+                if (activeTooltipTarget.contains(event.target)) return;
+                hidePopover();
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    hidePopover();
+                }
+            });
+
+            const handleTooltipTrigger = (event) => {
+                const trigger = event.currentTarget;
+                const wrapper = trigger.closest('.result-with-tooltip');
+                if (!wrapper || !wrapper.dataset.tooltipContent) return;
+                showPopover(trigger, wrapper.dataset.tooltipContent);
+            };
+
+            tooltipIcons.forEach((icon) => {
+                icon.addEventListener('click', handleTooltipTrigger);
+                icon.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleTooltipTrigger(event);
+                    }
+                });
+            });
 
             const weaponMultipliers = {
                 none: 1,
@@ -571,24 +660,29 @@
                     * level100Multiplier);
 
                 finalDamage.textContent = formatNumber(result);
-
-                const parts = [
-                    `${formatNumber(energyFactor)} hits`,
-                    `${formatNumber(baseDamage)} base damage`,
-                    `rank ×${formatNumber(rankMultiplier)}`,
-                    `${weapon === 'stinger' ? 'stinger damage' : 'weapon'} ×${formatNumber(weaponMultiplier)}`,
-                    `protector ×${formatNumber(protectorMultiplier)}`,
-                    `booster ×${formatNumber(boosterMultiplier)}`,
-                    naturalEnemyCheckbox.checked ? 'natural enemy ×1.1' : 'no natural enemy',
-                    level100Checkbox.checked ? 'level 100+ ×1.1' : 'below level 100'
-                ];
-
-                breakdown.textContent = parts.join(' • ');
+                const damageFormula = [
+                    'Final damage = floor(',
+                    `  ${formatNumber(energyFactor)} hits`,
+                    `× ${formatNumber(baseDamage)} base damage`,
+                    `× rank ×${formatNumber(rankMultiplier)}`,
+                    `× ${weapon === 'stinger' ? 'stinger damage' : 'weapon'} ×${formatNumber(weaponMultiplier)}`,
+                    `× protector ×${formatNumber(protectorMultiplier)}`,
+                    `× booster ×${formatNumber(boosterMultiplier)}`,
+                    `× ${naturalEnemyCheckbox.checked ? 'natural enemy bonus ×1.1' : 'natural enemy bonus ×1'}`,
+                    `× ${level100Checkbox.checked ? 'level 100+ bonus ×1.1' : 'level 100 bonus ×1'}`,
+                    `) = ${formatNumber(result)}`
+                ].join('\n');
 
                 const rankFromDamage = result * 0.1;
                 const rankTotal = Math.floor(rankFromDamage * rankBoosterMultiplier);
                 rankValueElement.textContent = formatNumber(rankTotal);
-                rankBreakdown.textContent = [`10% of damage = ${formatNumber(rankFromDamage)}`, `booster ×${formatNumber(rankBoosterMultiplier)}`].join(' • ');
+                const rankFormula = [
+                    'Rank points = floor(',
+                    `  ${formatNumber(result)} damage × 0.1`,
+                    `× rank booster ×${formatNumber(rankBoosterMultiplier)}`,
+                    `) = ${formatNumber(rankTotal)}`,
+                    `Base rank points before booster: ${formatNumber(rankFromDamage)}`
+                ].join('\n');
 
                 const influence = Math.floor(result
                     * influenceBoosterMultiplier
@@ -596,12 +690,25 @@
                     * influenceRankMultiplier);
 
                 influenceValue.textContent = formatNumber(influence);
-                const influenceParts = [
-                    `booster ×${formatNumber(influenceBoosterMultiplier)}`,
-                    `determination ×${determinationBonus.toFixed(2)}`,
-                    `rank ×${formatNumber(influenceRankMultiplier)}`
-                ];
-                influenceBreakdown.textContent = influenceParts.join(' • ');
+                const influenceFormula = [
+                    'Influence = floor(',
+                    `  ${formatNumber(result)} final damage`,
+                    `× influence booster ×${formatNumber(influenceBoosterMultiplier)}`,
+                    `× determination ×${determinationBonus.toFixed(2)}`,
+                    `× rank influence ×${formatNumber(influenceRankMultiplier)}`,
+                    `) = ${formatNumber(influence)}`
+                ].join('\n');
+
+                setTooltipContent(finalDamageWrapper, finalDamage, damageFormula);
+                setTooltipContent(rankWrapper, rankValueElement, rankFormula);
+                setTooltipContent(influenceWrapper, influenceValue, influenceFormula);
+
+                if (activeTooltipTarget) {
+                    const activeWrapper = activeTooltipTarget.closest('.result-with-tooltip');
+                    if (activeWrapper && activeWrapper.dataset.tooltipContent) {
+                        tooltipPopover.textContent = activeWrapper.dataset.tooltipContent;
+                    }
+                }
             }
 
             energyInput.addEventListener('input', () => {
