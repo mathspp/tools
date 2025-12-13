@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Markdown Issue</title>
+    <title>Markdown Preview</title>
     <link rel="stylesheet" href="styles.css">
     <style>
         body {
@@ -78,15 +78,15 @@
 <body>
     <header class="page-header">
         <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
-        <h1>Markdown Issue</h1>
-        <p class="lead">Draft and preview a Markdown issue with shareable permalinks and quick copying.</p>
+        <h1>Markdown Preview</h1>
+        <p class="lead">Write and preview Markdown with shareable permalinks, autosave, and quick copying.</p>
     </header>
 
     <main>
         <section class="surface tool-card">
             <div class="form-group">
                 <label for="markdown-input">Markdown content</label>
-                <textarea id="markdown-input" name="markdown-input" placeholder="Write your Markdown issue here" spellcheck="false"></textarea>
+                <textarea id="markdown-input" name="markdown-input" placeholder="Write your Markdown here" spellcheck="false"></textarea>
             </div>
 
             <div id="preview" class="preview hidden" aria-live="polite"></div>
@@ -117,7 +117,7 @@
             saveButton.className = 'btn secondary';
             copyMarkdownButton.insertAdjacentElement('afterend', saveButton);
 
-            const STORAGE_KEY = 'markdown-issue-content';
+            const STORAGE_KEY = 'markdown-preview-content';
 
             const base64Encode = (text) => {
                 const bytes = new TextEncoder().encode(text);
