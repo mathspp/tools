@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -171,14 +172,19 @@
             }
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js" integrity="sha512-wjKs64+h0/pk3jfbQ3VIAtF+wNCz7L+G2kZZgwyUr0vbJIUKGwEuITdSb9VjA36TObgGJE0E7E5Wdl66iRS0Ng==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js"
+        integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
+
 <body>
     <div class="page-shell">
         <header class="page-header">
-            <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+            <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">←
+                tools.mathspp.com</a>
             <h1>Testimonial Card Image Generator</h1>
-            <p class="lead">Create a polished testimonial card from text, name, affiliation, and avatar, then download it as a social-ready PNG.</p>
+            <p class="lead">Create a polished testimonial card from text, name, affiliation, and avatar, then download
+                it as a social-ready PNG.</p>
         </header>
 
         <main class="content-flow">
@@ -187,7 +193,8 @@
                     <div class="field">
                         <label for="testimonial">Testimonial text</label>
                         <textarea id="testimonial" placeholder="Paste the testimonial..."></textarea>
-                        <p class="helper">Select text in the testimonial field and click “Highlight selection” to emphasize key phrases.</p>
+                        <p class="helper">Select text in the testimonial field and click “Highlight selection” to
+                            emphasize key phrases.</p>
                         <div class="highlight-controls" id="highlightChips"></div>
                         <div class="actions">
                             <button type="button" id="highlightButton">Highlight selection</button>
@@ -370,4 +377,5 @@
         renderPreview();
     </script>
 </body>
+
 </html>
