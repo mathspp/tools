@@ -381,6 +381,27 @@
                 'Air Chief Marshal*****'
             ].map((name, index) => ({ name, rankValue: index + 1 }));
 
+            const storageKeys = {
+                rank: 'erep-air-rank',
+                level100: 'erep-air-level-100'
+            };
+
+            const safeGetStorageItem = (key) => {
+                try {
+                    return window.localStorage.getItem(key);
+                } catch (error) {
+                    return null;
+                }
+            };
+
+            const safeSetStorageItem = (key, value) => {
+                try {
+                    window.localStorage.setItem(key, value);
+                } catch (error) {
+                    // Ignore storage errors.
+                }
+            };
+
             const rankSelect = document.getElementById('rank');
             ranksAscending
                 .slice()
@@ -404,6 +425,17 @@
             const determinationInput = document.getElementById('determination');
             const naturalEnemyCheckbox = document.getElementById('natural-enemy');
             const level100Checkbox = document.getElementById('level-100');
+
+            const storedRank = safeGetStorageItem(storageKeys.rank);
+            if (storedRank && ranksAscending.some((rank) => String(rank.rankValue) === storedRank)) {
+                rankSelect.value = storedRank;
+            }
+
+            const storedLevel100 = safeGetStorageItem(storageKeys.level100);
+            if (storedLevel100 !== null) {
+                level100Checkbox.checked = storedLevel100 === 'true';
+            }
+
             const finalDamageWrapper = document.getElementById('final-damage-wrapper');
             const finalDamage = document.getElementById('final-damage');
             const breakdown = document.getElementById('breakdown');
@@ -581,6 +613,14 @@
 
             packInputs.forEach((input) => {
                 input.addEventListener('input', updateEnergyFromPacks);
+            });
+
+            rankSelect.addEventListener('change', () => {
+                safeSetStorageItem(storageKeys.rank, rankSelect.value);
+            });
+
+            level100Checkbox.addEventListener('change', () => {
+                safeSetStorageItem(storageKeys.level100, String(level100Checkbox.checked));
             });
 
             document.getElementById('calculator').addEventListener('input', calculateDamage);
