@@ -16,9 +16,9 @@
 
         .layout {
             display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
+            grid-template-columns: 1fr;
             gap: clamp(1rem, 3vw, 1.5rem);
-            align-items: start;
+            align-items: stretch;
         }
 
         .field {
@@ -166,13 +166,8 @@
             color: var(--tx-2);
         }
 
-        @media (max-width: 960px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js"
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js"
         integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
