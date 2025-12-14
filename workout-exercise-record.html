@@ -79,6 +79,43 @@
             width: 100%;
         }
 
+        .exercise-picker {
+            display: grid;
+            gap: 0.25rem;
+            align-self: start;
+            width: min(360px, 100%);
+        }
+
+        .exercise-browser {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.25rem 0.5rem;
+            background: var(--surface-2);
+        }
+
+        .exercise-browser summary {
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.25rem 0;
+        }
+
+        .exercise-browser select {
+            width: 100%;
+            margin-top: 0.25rem;
+        }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
         .record-actions {
             display: flex;
             gap: 0.5rem;
@@ -120,10 +157,16 @@
         <section class="card">
             <h2>Records</h2>
             <div class="record-controls">
-                <div style="display: grid; gap: 0.25rem; align-self: start; width: min(320px, 100%);">
+                <div class="exercise-picker">
                     <label for="exercise-select" class="status-text">Exercise</label>
-                    <input id="exercise-select" list="exercise-options" placeholder="Start typing to search" />
+                    <input id="exercise-select" list="exercise-options" placeholder="Start typing or pick from the list" aria-describedby="exercise-help" />
+                    <p id="exercise-help" class="status-text">Start typing to search or open the dropdown to pick an exercise.</p>
                     <datalist id="exercise-options"></datalist>
+                    <details class="exercise-browser">
+                        <summary>Browse exercise list</summary>
+                        <label class="visually-hidden" for="exercise-browse-select">Browse exercises</label>
+                        <select id="exercise-browse-select" size="8"></select>
+                    </details>
                 </div>
                 <div class="record-actions">
                     <button id="get-records">Get records</button>
@@ -168,6 +211,7 @@
     <script>
         const exerciseSelect = document.getElementById('exercise-select');
         const exerciseOptions = document.getElementById('exercise-options');
+        const exerciseBrowseSelect = document.getElementById('exercise-browse-select');
         const loadStatus = document.getElementById('load-status');
         const recordRows = document.getElementById('record-rows');
         const recordStatus = document.getElementById('record-status');
@@ -187,16 +231,24 @@
 
         function populateExerciseOptions(list) {
             exerciseOptions.innerHTML = '';
+            exerciseBrowseSelect.innerHTML = '';
             const sorted = [...list].sort((a, b) =>
                 a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
             );
 
             sorted.forEach((ex) => {
+                const displayName = ex.display_name || formatExerciseName(ex.name);
                 const option = document.createElement('option');
-                option.value = formatExerciseName(ex.name);
+                option.value = displayName;
                 option.dataset.name = ex.name;
-                option.dataset.displayName = ex.display_name || formatExerciseName(ex.name);
+                option.dataset.displayName = displayName;
                 exerciseOptions.appendChild(option);
+
+                const selectOption = document.createElement('option');
+                selectOption.value = displayName;
+                selectOption.textContent = displayName;
+                selectOption.dataset.name = ex.name;
+                exerciseBrowseSelect.appendChild(selectOption);
             });
         }
 
@@ -242,6 +294,7 @@
         async function loadExercises() {
             loadStatus.textContent = 'Loading exercises...';
             exerciseSelect.value = '';
+            exerciseBrowseSelect.selectedIndex = -1;
             try {
                 const data = await apiFetch('/exercises');
                 if (!data.exercises.length) {
@@ -324,6 +377,16 @@
             loadStatus.textContent = '';
             updateRecordsCaption('');
             recordRows.innerHTML = '';
+        });
+
+        exerciseBrowseSelect.addEventListener('change', (event) => {
+            const selectedOption = event.target.selectedOptions[0];
+            if (!selectedOption) return;
+            const value = selectedOption.value || selectedOption.textContent;
+            exerciseSelect.value = value;
+            exerciseSelect.dispatchEvent(new Event('input', { bubbles: true }));
+            const details = exerciseBrowseSelect.closest('details');
+            if (details) details.open = false;
         });
 
         document.getElementById('record-form').addEventListener('submit', async (event) => {
