@@ -203,6 +203,12 @@
                     <p class="helper-text">influence</p>
                 </div>
                 <p class="helper-text" id="influence-breakdown"></p>
+                <div class="result-with-tooltip" id="time-wrapper">
+                    <div class="result-value tooltip-target" id="time-estimate" tabindex="0">≈0s</div>
+                    <span class="tooltip-icon" aria-hidden="true">?</span>
+                    <p class="helper-text">time to deal damage</p>
+                </div>
+                <p class="helper-text" id="time-breakdown"></p>
                 <div class="result-with-tooltip" id="rank-wrapper">
                     <div class="result-value tooltip-target" id="rank-value" tabindex="0">0</div>
                     <span class="tooltip-icon" aria-hidden="true">?</span>
@@ -251,6 +257,15 @@
                             <option value="20">20%</option>
                             <option value="50">50%</option>
                             <option value="100">100%</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="damage-accelerator">Damage accelerator</label>
+                        <select id="damage-accelerator" name="damage-accelerator">
+                            <option value="1" selected>None (x1)</option>
+                            <option value="2">x2</option>
+                            <option value="5">x5</option>
                         </select>
                     </div>
 
@@ -451,6 +466,7 @@
             const weaponSelect = document.getElementById('weapon');
             const protectorInput = document.getElementById('protector');
             const boosterSelect = document.getElementById('booster');
+            const damageAcceleratorSelect = document.getElementById('damage-accelerator');
             const influenceBoosterSelect = document.getElementById('influence-booster');
             const rankBoosterSelect = document.getElementById('rank-booster');
             const determinationInput = document.getElementById('determination');
@@ -473,6 +489,8 @@
             const rankValueElement = document.getElementById('rank-value');
             const influenceWrapper = document.getElementById('influence-wrapper');
             const influenceValue = document.getElementById('influence');
+            const timeWrapper = document.getElementById('time-wrapper');
+            const timeEstimate = document.getElementById('time-estimate');
             const ebInput = document.getElementById('ebs');
             const eb2Input = document.getElementById('ebs2');
             const eb3Input = document.getElementById('ebs3');
@@ -629,6 +647,7 @@
 
                 const weapon = weaponSelect.value;
                 const boosterPercent = Number(boosterSelect.value) || 0;
+                const damageAcceleratorMultiplier = Number(damageAcceleratorSelect.value) || 1;
                 const influenceBoosterPercent = Number(influenceBoosterSelect.value) || 0;
                 const rankBoosterPercent = Number(rankBoosterSelect.value) || 0;
                 const determinationBonus = clampNumber(parseFloat(determinationInput.value), 1);
@@ -638,6 +657,8 @@
 
                 const baseDamage = isStinger ? 1000 : 10;
                 const hits = energy / 10;
+                const baseHitsPerSecond = isStinger ? 1 : 3;
+                const actualHitsPerSecond = baseHitsPerSecond * damageAcceleratorMultiplier;
                 const rankMultiplier = isStinger ? 1 : 1 + (rankValue / 5);
                 const weaponMultiplier = weaponMultipliers[weapon] ?? 1;
                 const protectorMultiplier = 1 + protectorLevel / 100;
@@ -671,6 +692,14 @@
                     `) = ${formatNumber(result)}`
                 ].join('\n');
 
+                const timeSeconds = hits / actualHitsPerSecond;
+                timeEstimate.textContent = `≈${formatNumber(timeSeconds)}s`;
+                const timeFormula = [
+                    'Time = hits ÷ (hits per second × accelerator)',
+                    `= ${formatNumber(hits)} ÷ (${formatNumber(baseHitsPerSecond)} × ${formatNumber(damageAcceleratorMultiplier)})`,
+                    `≈ ${formatNumber(timeSeconds)} seconds`
+                ].join('\n');
+
                 const rankFromDamage = result * 0.1;
                 const rankTotal = Math.floor(rankFromDamage * rankBoosterMultiplier);
                 rankValueElement.textContent = formatNumber(rankTotal);
@@ -698,6 +727,7 @@
                 ].join('\n');
 
                 setTooltipContent(finalDamageWrapper, finalDamage, damageFormula);
+                setTooltipContent(timeWrapper, timeEstimate, timeFormula);
                 setTooltipContent(rankWrapper, rankValueElement, rankFormula);
                 setTooltipContent(influenceWrapper, influenceValue, influenceFormula);
 
