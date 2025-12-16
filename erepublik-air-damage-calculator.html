@@ -304,6 +304,10 @@
                         <input type="checkbox" id="level-100" name="level-100">
                         <span>Player is level 100+</span>
                     </label>
+                    <label class="checkbox">
+                        <input type="checkbox" id="snow-fight" name="snow-fight">
+                        <span>Active snow fight token</span>
+                    </label>
                 </div>
             </form>
         </section>
@@ -472,6 +476,7 @@
             const determinationInput = document.getElementById('determination');
             const naturalEnemyCheckbox = document.getElementById('natural-enemy');
             const level100Checkbox = document.getElementById('level-100');
+            const snowFightCheckbox = document.getElementById('snow-fight');
 
             const storedRank = safeGetStorageItem(storageKeys.rank);
             if (storedRank && ranksAscending.some((rank) => String(rank.rankValue) === storedRank)) {
@@ -667,6 +672,7 @@
                 const rankBoosterMultiplier = 1 + rankBoosterPercent / 100;
                 const naturalEnemyMultiplier = naturalEnemyCheckbox.checked ? 1.1 : 1;
                 const level100Multiplier = level100Checkbox.checked ? 1.1 : 1;
+                const snowFightMultiplier = snowFightCheckbox.checked ? 1.1 : 1;
                 const influenceRankMultiplier = getInfluenceRankMultiplier(rankValue);
 
                 const result = Math.floor(hits
@@ -676,7 +682,8 @@
                     * protectorMultiplier
                     * boosterMultiplier
                     * naturalEnemyMultiplier
-                    * level100Multiplier);
+                    * level100Multiplier
+                    * snowFightMultiplier);
 
                 finalDamage.textContent = formatNumber(result);
                 const damageFormula = [
@@ -689,6 +696,7 @@
                     `× booster ×${formatNumber(boosterMultiplier)}`,
                     `× ${naturalEnemyCheckbox.checked ? 'natural enemy bonus ×1.1' : 'no natural enemy bonus ×1'}`,
                     `× ${level100Checkbox.checked ? 'level 100+ bonus ×1.1' : 'no level 100 bonus ×1'}`,
+                    `× ${snowFightCheckbox.checked ? 'snow fight token ×1.1' : 'no snow fight token ×1'}`,
                     `) = ${formatNumber(result)}`
                 ].join('\n');
 
