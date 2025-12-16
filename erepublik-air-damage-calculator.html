@@ -206,7 +206,7 @@
                 <div class="result-with-tooltip" id="time-wrapper">
                     <div class="result-value tooltip-target" id="time-estimate" tabindex="0">≈0s</div>
                     <span class="tooltip-icon" aria-hidden="true">?</span>
-                    <p class="helper-text">time to deal damage</p>
+                    <p class="helper-text">time to deploy</p>
                 </div>
                 <p class="helper-text" id="time-breakdown"></p>
                 <div class="result-with-tooltip" id="rank-wrapper">
@@ -707,11 +707,13 @@
                 ].join('\n');
 
                 const timeSeconds = hits / actualHitsPerSecond;
-                timeEstimate.textContent = `≈${formatNumber(timeSeconds)}s`;
+                const timeSecondsRounded = Math.ceil(timeSeconds);
+                timeEstimate.textContent = `≈${formatNumber(timeSecondsRounded)}s`;
                 const timeFormula = [
-                    'Time = hits ÷ (hits per second × accelerator)',
-                    `= ${formatNumber(hits)} ÷ (${formatNumber(baseHitsPerSecond)} × ${formatNumber(damageAcceleratorMultiplier)})`,
-                    `≈ ${formatNumber(timeSeconds)} seconds`
+                    'Time = ceil(hits ÷ (hits per second × accelerator))',
+                    `= ceil(${formatNumber(hits)} ÷ (${formatNumber(baseHitsPerSecond)} × ${formatNumber(damageAcceleratorMultiplier)}))`,
+                    `= ceil(${formatNumber(timeSeconds)} seconds)`,
+                    `= ${formatNumber(timeSecondsRounded)} seconds`
                 ].join('\n');
 
                 const rankFromDamage = result * 0.1;
