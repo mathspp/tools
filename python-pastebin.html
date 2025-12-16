@@ -111,13 +111,12 @@
                 ).join(''));
             }
 
-            function applyCodeFromUrl() {
-                const params = new URLSearchParams(window.location.search);
-                const codeParam = params.get('code');
-                if (!codeParam) return;
+            function applyCodeFromAnchor() {
+                const hash = window.location.hash.slice(1);
+                if (!hash) return;
 
                 try {
-                    const decoded = decodeCode(codeParam);
+                    const decoded = decodeCode(hash);
                     editor.setValue(decoded);
                 } catch (error) {
                     console.error('Could not decode code from URL.', error);
@@ -127,7 +126,8 @@
             async function copyPermalink() {
                 const url = new URL(window.location.href);
                 const encoded = encodeCode(editor.getValue());
-                url.searchParams.set('code', encoded);
+                url.search = '';
+                url.hash = encoded;
 
                 await navigator.clipboard.writeText(url.toString());
                 copyPermalinkButton.textContent = 'Permalink copied!';
@@ -140,7 +140,7 @@
                 setTimeout(() => copyCodeButton.textContent = 'Copy code', 1500);
             }
 
-            applyCodeFromUrl();
+            applyCodeFromAnchor();
 
             copyPermalinkButton.addEventListener('click', () => {
                 copyPermalink().catch(error => {
