@@ -204,9 +204,8 @@
                 }
             };
 
-            const applyQueryContent = () => {
-                const params = new URLSearchParams(window.location.search);
-                const encoded = params.get('md');
+            const applyAnchorContent = () => {
+                const encoded = window.location.hash.slice(1);
                 if (!encoded) return false;
 
                 try {
@@ -244,7 +243,8 @@
                 try {
                     const encoded = base64Encode(textarea.value);
                     const url = new URL(window.location.href);
-                    url.searchParams.set('md', encoded);
+                    url.search = '';
+                    url.hash = encoded;
                     const permalink = url.toString();
                     await navigator.clipboard.writeText(permalink);
                     updateStatus('Permalink copied to clipboard.');
@@ -259,9 +259,9 @@
                 }
             });
 
-            const hadQueryContent = applyQueryContent();
+            const hadAnchorContent = applyAnchorContent();
 
-            if (!hadQueryContent) {
+            if (!hadAnchorContent) {
                 const stored = localStorage.getItem(STORAGE_KEY);
                 if (stored) {
                     textarea.value = stored;
@@ -270,7 +270,7 @@
                 }
             }
 
-            if (!hadQueryContent && !textarea.value) {
+            if (!hadAnchorContent && !textarea.value) {
                 setMode('edit');
             }
 
