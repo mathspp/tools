@@ -14,11 +14,21 @@
             --image-height: 630px;
         }
 
+        .page-shell {
+            max-width: min(100%, calc(var(--image-width) + 320px));
+        }
+
         .layout {
             display: grid;
             grid-template-columns: 1fr;
             gap: clamp(1rem, 3vw, 1.5rem);
-            align-items: stretch;
+            align-items: start;
+        }
+
+        @media (min-width: 1100px) {
+            .layout {
+                grid-template-columns: minmax(320px, 1fr) auto;
+            }
         }
 
         .field {
@@ -90,11 +100,19 @@
         .preview-wrapper {
             display: grid;
             gap: 0.75rem;
+            align-items: start;
+            min-inline-size: 0;
+        }
+
+        .preview-shell {
+            width: 100%;
+            overflow-x: auto;
+            padding: 0.25rem;
         }
 
         .image-space {
-            width: min(100%, var(--image-width));
-            aspect-ratio: calc(var(--image-width) / var(--image-height));
+            width: var(--image-width);
+            height: var(--image-height);
             background: var(--bg-2);
             border: 1px solid var(--ui-2);
             border-radius: var(--radius-lg);
@@ -106,9 +124,8 @@
         }
 
         .render-surface {
-            width: min(100%, var(--image-width));
-            max-width: var(--image-width);
-            aspect-ratio: calc(var(--image-width) / var(--image-height));
+            width: var(--image-width);
+            height: var(--image-height);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -213,15 +230,17 @@
 
                 <div class="surface preview-wrapper" aria-live="polite">
                     <div class="status" id="status"></div>
-                    <div class="image-space">
-                        <div class="render-surface" id="renderSurface">
-                            <div class="card" id="card">
-                                <blockquote id="quote">Add your testimonial to see a preview.</blockquote>
-                                <div class="person">
-                                    <img class="avatar" id="avatar" src="" alt="Avatar preview">
-                                    <div>
-                                        <div class="name" id="previewName">Name</div>
-                                        <div class="affiliation" id="previewAffiliation">Affiliation</div>
+                    <div class="preview-shell">
+                        <div class="image-space">
+                            <div class="render-surface" id="renderSurface">
+                                <div class="card" id="card">
+                                    <blockquote id="quote">Add your testimonial to see a preview.</blockquote>
+                                    <div class="person">
+                                        <img class="avatar" id="avatar" src="" alt="Avatar preview">
+                                        <div>
+                                            <div class="name" id="previewName">Name</div>
+                                            <div class="affiliation" id="previewAffiliation">Affiliation</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
