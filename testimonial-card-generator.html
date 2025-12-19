@@ -178,6 +178,22 @@
             color: var(--tx-2);
         }
 
+        .paste-zone {
+            border: 1px dashed var(--ui-3);
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            background: var(--bg);
+            display: grid;
+            gap: 0.35rem;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .paste-zone:focus-visible {
+            outline: 2px solid var(--link);
+            outline-offset: 2px;
+        }
+
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js"
         integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg=="
@@ -217,8 +233,15 @@
                         <input type="text" id="affiliation" placeholder="Company, role, or project">
                     </div>
                     <div class="field">
-                        <label for="photo">Photo URL</label>
-                        <input type="url" id="photo" placeholder="https://example.com/photo.jpg">
+                        <label for="photoUpload">Photo</label>
+                        <p class="helper">Upload an image file or paste one from your clipboard (Ctrl/Cmd + V). Images
+                            stay on your device.</p>
+                        <input type="file" id="photoUpload" accept="image/*">
+                        <div class="paste-zone" id="pasteZone" tabindex="0" role="button"
+                            aria-label="Click or focus and paste an image for the avatar">
+                            <strong>Click to choose a file, then paste an image here.</strong>
+                            <p class="helper">Pasting will replace the current photo preview.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -256,7 +279,8 @@
         const testimonialInput = document.getElementById('testimonial');
         const nameInput = document.getElementById('name');
         const affiliationInput = document.getElementById('affiliation');
-        const photoInput = document.getElementById('photo');
+        const photoUploadInput = document.getElementById('photoUpload');
+        const pasteZone = document.getElementById('pasteZone');
         const quote = document.getElementById('quote');
         const previewName = document.getElementById('previewName');
         const previewAffiliation = document.getElementById('previewAffiliation');
@@ -267,8 +291,11 @@
         const highlightChips = document.getElementById('highlightChips');
         const downloadButton = document.getElementById('download');
         const renderSurface = document.getElementById('renderSurface');
+        const placeholderImage = 'https://placehold.co/128x128?text=Photo';
 
         let highlightPhrases = [];
+        let uploadedPhotoUrl = '';
+        let objectUrl = '';
         const escapeHtml = (str) => str.replace(/[&<>"']/g, (match) => ({
             '&': '&amp;',
             '<': '&lt;',
@@ -295,8 +322,8 @@
             quote.innerHTML = testimonialText ? applyHighlights(testimonialText) : 'Add your testimonial to see a preview.';
             previewName.textContent = nameInput.value.trim() || 'Name';
             previewAffiliation.textContent = affiliationInput.value.trim() || 'Affiliation';
-            const photo = photoInput.value.trim();
-            avatar.src = photo || 'https://placehold.co/128x128?text=Photo';
+            const photo = uploadedPhotoUrl;
+            avatar.src = photo || placeholderImage;
             avatar.alt = photo ? `${previewName.textContent} photo` : 'Placeholder avatar';
             status.textContent = '';
         }
@@ -379,10 +406,32 @@
             }
         }
 
+        function setPhotoFromFile(file, source) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                status.textContent = 'Please choose an image file.';
+                return;
+            }
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+            objectUrl = URL.createObjectURL(file);
+            uploadedPhotoUrl = objectUrl;
+            renderPreview();
+            status.textContent = source;
+        }
+
+        function handlePaste(event) {
+            const files = event.clipboardData?.files || [];
+            const imageFile = Array.from(files).find((file) => file.type.startsWith('image/'));
+            if (!imageFile) return;
+            event.preventDefault();
+            setPhotoFromFile(imageFile, 'Photo added from pasted image.');
+        }
+
         testimonialInput.addEventListener('input', renderPreview);
         nameInput.addEventListener('input', renderPreview);
         affiliationInput.addEventListener('input', renderPreview);
-        photoInput.addEventListener('input', renderPreview);
         highlightButton.addEventListener('click', addHighlightFromSelection);
         clearHighlightsButton.addEventListener('click', () => {
             highlightPhrases = [];
@@ -391,6 +440,20 @@
             status.textContent = 'Highlights cleared.';
         });
         downloadButton.addEventListener('click', downloadImage);
+        photoUploadInput.addEventListener('change', (event) => {
+            const [file] = event.target.files;
+            if (!file) return;
+            setPhotoFromFile(file, 'Photo added from file upload.');
+        });
+        pasteZone.addEventListener('click', () => photoUploadInput.click());
+        pasteZone.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                photoUploadInput.click();
+            }
+        });
+        pasteZone.addEventListener('paste', handlePaste);
+        document.addEventListener('paste', handlePaste);
 
         renderPreview();
     </script>
