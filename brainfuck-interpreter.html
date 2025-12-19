@@ -137,8 +137,8 @@
                     </label>
                 </div>
                 <label for="bf-input">Program input</label>
-                <input type="text" id="bf-input" name="bf-input" placeholder="Type characters or numbers matching the selected input mode">
-                <p class="input-help" id="input-help">ASCII mode sends each character as its byte value.</p>
+                <textarea id="bf-input" name="bf-input" rows="4" placeholder="Type or paste program input, including new lines"></textarea>
+                <p class="input-help" id="input-help">ASCII mode sends each character as its byte value, including new lines.</p>
             </div>
 
             <p class="status" id="status" role="status" aria-live="polite"></p>
@@ -300,7 +300,9 @@
                             output.push(tape[pointer]);
                             break;
                         case ',':
-                            tape[pointer] = inputIndex < inputs.length ? inputs[inputIndex++] : 0;
+                            if (inputIndex < inputs.length) {
+                                tape[pointer] = inputs[inputIndex++];
+                            }
                             break;
                         case '[':
                             if (tape[pointer] === 0) {
@@ -327,8 +329,8 @@
 
             function updateInputHelp() {
                 if (asciiModeRadio.checked) {
-                    inputHelp.textContent = 'ASCII mode sends each character as its byte value.';
-                    bfInput.placeholder = 'Type the exact characters your program should consume';
+                    inputHelp.textContent = 'ASCII mode sends each character, including new lines, as its byte value.';
+                    bfInput.placeholder = 'Type or paste text, including multi-line input';
                 } else {
                     inputHelp.textContent = 'Number mode expects comma-separated integers; values wrap within 0-255.';
                     bfInput.placeholder = 'e.g. 65, 66, 67 for A, B, C';
