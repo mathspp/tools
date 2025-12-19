@@ -19,16 +19,10 @@
         }
 
         .layout {
-            display: grid;
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
             gap: clamp(1rem, 3vw, 1.5rem);
-            align-items: start;
-        }
-
-        @media (min-width: 1100px) {
-            .layout {
-                grid-template-columns: minmax(320px, 1fr) auto;
-            }
+            align-items: stretch;
         }
 
         .field {
@@ -236,7 +230,7 @@
                                 <div class="card" id="card">
                                     <blockquote id="quote">Add your testimonial to see a preview.</blockquote>
                                     <div class="person">
-                                        <img class="avatar" id="avatar" src="" alt="Avatar preview">
+                                        <img class="avatar" id="avatar" src="" alt="Avatar preview" crossorigin="anonymous" referrerpolicy="no-referrer">
                                         <div>
                                             <div class="name" id="previewName">Name</div>
                                             <div class="affiliation" id="previewAffiliation">Affiliation</div>
@@ -353,6 +347,14 @@
                 .replace(/(^-|-$)/g, '') || 'person-name';
         }
 
+        const fetchOptions = {
+            mode: 'cors',
+            referrerPolicy: 'no-referrer',
+            headers: {
+                Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            },
+        };
+
         async function downloadImage() {
             status.textContent = 'Rendering image...';
             downloadButton.disabled = true;
@@ -360,6 +362,7 @@
                 const dataUrl = await htmlToImage.toPng(renderSurface, {
                     pixelRatio: 2,
                     backgroundColor: 'rgba(0,0,0,0)',
+                    fetchRequestInit: fetchOptions,
                 });
 
                 const link = document.createElement('a');
