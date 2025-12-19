@@ -116,7 +116,10 @@
                     <span>Program</span>
                     <small style="color: var(--tx-2); font-weight: 500;">Run executes the code below</small>
                 </h2>
-                <button type="button" id="run-button">Run</button>
+                <div style="display: inline-flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" id="save-button" class="secondary">Save</button>
+                    <button type="button" id="run-button">Run</button>
+                </div>
             </div>
 
             <label class="sr-only" for="code-input">Brainfuck code</label>
@@ -163,6 +166,7 @@
     <script>
         (function () {
             const runButton = document.getElementById('run-button');
+            const saveButton = document.getElementById('save-button');
             const statusEl = document.getElementById('status');
             const outputAscii = document.getElementById('output-ascii');
             const outputBytes = document.getElementById('output-bytes');
@@ -179,15 +183,42 @@
                 viewportMargin: Infinity,
             });
 
-            const sampleProgram = `
-++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.
->++.<<+++++++++++++++.>.+++.------.--------.>+.>.
-`.trim();
-            editor.setValue(sampleProgram);
+            const STORAGE_KEY = 'brainfuck-interpreter-code';
 
             function updateStatus(message, isError = false) {
                 statusEl.textContent = message;
                 statusEl.classList.toggle('error', isError);
+            }
+
+            function saveToLocalStorage(content, silent = false) {
+                try {
+                    localStorage.setItem(STORAGE_KEY, content);
+                    if (!silent) {
+                        updateStatus('Saved program to local storage.');
+                    }
+                } catch (error) {
+                    if (!silent) {
+                        updateStatus('Unable to save program to local storage.', true);
+                    }
+                }
+            }
+
+            function loadStoredProgram() {
+                try {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        editor.setValue(stored);
+                        return true;
+                    }
+                } catch (error) {
+                    // Ignore retrieval errors and fall back to an empty editor.
+                }
+                return false;
+            }
+
+            const hadStoredProgram = loadStoredProgram();
+            if (!hadStoredProgram) {
+                editor.setValue('');
             }
 
             function clampByte(value) {
@@ -319,10 +350,24 @@
                 }
             });
 
+            saveButton.addEventListener('click', () => {
+                saveToLocalStorage(editor.getValue());
+            });
+
             asciiModeRadio.addEventListener('change', updateInputHelp);
             document.getElementById('mode-numbers').addEventListener('change', updateInputHelp);
             updateInputHelp();
-            updateStatus('Ready to run. Tape starts at 0 and overflows/underflows within 0-255.');
+            updateStatus(hadStoredProgram
+                ? 'Loaded program from local storage.'
+                : 'Ready to run. Tape starts at 0 and overflows/underflows within 0-255.');
+
+            editor.on('change', () => {
+                saveToLocalStorage(editor.getValue(), true);
+            });
+
+            setInterval(() => {
+                saveToLocalStorage(editor.getValue(), true);
+            }, 5000);
         })();
     </script>
 </body>
