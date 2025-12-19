@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainfuck Editor & Interpreter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/lib/codemirror.min.css">
+    <style>
+        body {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: clamp(1.75rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2.5rem) clamp(3rem, 5vw, 4rem);
+        }
+
+        main {
+            display: grid;
+            gap: clamp(1.25rem, 2.5vw, 1.75rem);
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-header h2 {
+            margin: 0;
+        }
+
+        .CodeMirror {
+            height: 420px;
+            border: 1px solid var(--ui-3);
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: 15px;
+        }
+
+        .mode-toggle {
+            display: inline-flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-toggle label {
+            display: inline-flex;
+            gap: 0.35rem;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .input-help {
+            color: var(--tx-2);
+            font-size: 0.95rem;
+            margin-top: 0.35rem;
+        }
+
+        .output-grid {
+            display: grid;
+            gap: 0.9rem;
+        }
+
+        .output-block {
+            background: var(--bg);
+            border: 1px solid var(--ui-2);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 0.9rem;
+            min-height: 80px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .status {
+            margin-top: 0.5rem;
+            font-size: 0.98rem;
+            color: var(--tx-2);
+        }
+
+        .status.error {
+            color: var(--re);
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 1.4rem 1rem 2.5rem;
+            }
+
+            .CodeMirror {
+                height: 320px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Brainfuck Editor & Interpreter</h1>
+        <p class="lead">Write brainfuck code with a CodeMirror editor, feed it ASCII or comma-separated input, and run it
+            directly in your browser.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="card-header">
+                <h2 class="content-flow" style="--flow-space: 0.1rem;">
+                    <span>Program</span>
+                    <small style="color: var(--tx-2); font-weight: 500;">Run executes the code below</small>
+                </h2>
+                <button type="button" id="run-button">Run</button>
+            </div>
+
+            <label class="sr-only" for="code-input">Brainfuck code</label>
+            <textarea id="code-input" name="code-input"></textarea>
+
+            <div class="content-flow" style="--flow-space: 0.35rem; margin-top: 1rem;">
+                <div class="mode-toggle" role="group" aria-label="Input mode">
+                    <label>
+                        <input type="radio" name="input-mode" value="ascii" id="mode-ascii" checked>
+                        ASCII
+                    </label>
+                    <label>
+                        <input type="radio" name="input-mode" value="numbers" id="mode-numbers">
+                        Comma-separated integers
+                    </label>
+                </div>
+                <label for="bf-input">Program input</label>
+                <input type="text" id="bf-input" name="bf-input" placeholder="Type characters or numbers matching the selected input mode">
+                <p class="input-help" id="input-help">ASCII mode sends each character as its byte value.</p>
+            </div>
+
+            <p class="status" id="status" role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="surface tool-card">
+            <div class="card-header" style="margin-bottom: 0.35rem;">
+                <h2 style="margin: 0;">Output</h2>
+            </div>
+            <div class="output-grid">
+                <div>
+                    <div class="input-help">ASCII</div>
+                    <div class="output-block" id="output-ascii">(no output)</div>
+                </div>
+                <div>
+                    <div class="input-help">Byte values</div>
+                    <div class="output-block" id="output-bytes">(no output)</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/lib/codemirror.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/mode/javascript/javascript.min.js"></script>
+    <script>
+        (function () {
+            const runButton = document.getElementById('run-button');
+            const statusEl = document.getElementById('status');
+            const outputAscii = document.getElementById('output-ascii');
+            const outputBytes = document.getElementById('output-bytes');
+            const bfInput = document.getElementById('bf-input');
+            const inputHelp = document.getElementById('input-help');
+            const asciiModeRadio = document.getElementById('mode-ascii');
+
+            const textarea = document.getElementById('code-input');
+            const editor = CodeMirror.fromTextArea(textarea, {
+                mode: 'text/plain',
+                lineNumbers: true,
+                indentUnit: 2,
+                lineWrapping: true,
+                viewportMargin: Infinity,
+            });
+
+            const sampleProgram = `
+++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.
+>++.<<+++++++++++++++.>.+++.------.--------.>+.>.
+`.trim();
+            editor.setValue(sampleProgram);
+
+            function updateStatus(message, isError = false) {
+                statusEl.textContent = message;
+                statusEl.classList.toggle('error', isError);
+            }
+
+            function clampByte(value) {
+                return ((value % 256) + 256) % 256;
+            }
+
+            function parseInputs(rawValue, mode) {
+                if (!rawValue) return [];
+
+                if (mode === 'ascii') {
+                    return Array.from(rawValue, (char) => clampByte(char.charCodeAt(0)));
+                }
+
+                return rawValue.split(',')
+                    .map(part => part.trim())
+                    .filter(Boolean)
+                    .map((part, index) => {
+                        const numeric = Number(part);
+                        if (!Number.isFinite(numeric)) {
+                            throw new Error(`Input ${index + 1} is not a valid number: "${part}"`);
+                        }
+                        return clampByte(numeric);
+                    });
+            }
+
+            function buildJumpMap(program) {
+                const stack = [];
+                const map = new Map();
+
+                program.split('').forEach((char, index) => {
+                    if (char === '[') {
+                        stack.push(index);
+                    } else if (char === ']') {
+                        const start = stack.pop();
+                        if (start === undefined) {
+                            throw new Error(`Unmatched ']' at position ${index + 1}`);
+                        }
+                        map.set(start, index);
+                        map.set(index, start);
+                    }
+                });
+
+                if (stack.length) {
+                    throw new Error(`Unmatched '[' at position ${stack[stack.length - 1] + 1}`);
+                }
+
+                return map;
+            }
+
+            function runProgram(program, inputs) {
+                const commands = program.replace(/[^\>\<\+\-\.\,\[\]]/g, '');
+                const jumpMap = buildJumpMap(commands);
+
+                const tape = [0];
+                let pointer = 0;
+                let inputIndex = 0;
+                let ip = 0;
+                const output = [];
+
+                while (ip < commands.length) {
+                    const instruction = commands[ip];
+                    switch (instruction) {
+                        case '>':
+                            pointer += 1;
+                            if (pointer === tape.length) {
+                                tape.push(0);
+                            }
+                            break;
+                        case '<':
+                            pointer = Math.max(0, pointer - 1);
+                            break;
+                        case '+':
+                            tape[pointer] = clampByte(tape[pointer] + 1);
+                            break;
+                        case '-':
+                            tape[pointer] = clampByte(tape[pointer] - 1);
+                            break;
+                        case '.':
+                            output.push(tape[pointer]);
+                            break;
+                        case ',':
+                            tape[pointer] = inputIndex < inputs.length ? inputs[inputIndex++] : 0;
+                            break;
+                        case '[':
+                            if (tape[pointer] === 0) {
+                                ip = jumpMap.get(ip);
+                            }
+                            break;
+                        case ']':
+                            if (tape[pointer] !== 0) {
+                                ip = jumpMap.get(ip);
+                            }
+                            break;
+                    }
+                    ip += 1;
+                }
+
+                return output;
+            }
+
+            function renderOutput(bytes) {
+                const ascii = String.fromCharCode(...bytes);
+                outputAscii.textContent = ascii || '(no output)';
+                outputBytes.textContent = bytes.length ? bytes.join(', ') : '(no output)';
+            }
+
+            function updateInputHelp() {
+                if (asciiModeRadio.checked) {
+                    inputHelp.textContent = 'ASCII mode sends each character as its byte value.';
+                    bfInput.placeholder = 'Type the exact characters your program should consume';
+                } else {
+                    inputHelp.textContent = 'Number mode expects comma-separated integers; values wrap within 0-255.';
+                    bfInput.placeholder = 'e.g. 65, 66, 67 for A, B, C';
+                }
+            }
+
+            runButton.addEventListener('click', () => {
+                try {
+                    const mode = asciiModeRadio.checked ? 'ascii' : 'numbers';
+                    const inputs = parseInputs(bfInput.value, mode);
+                    const program = editor.getValue();
+                    const output = runProgram(program, inputs);
+                    renderOutput(output);
+                    updateStatus(`Program ran successfully. Output length: ${output.length} byte${output.length === 1 ? '' : 's'}.`);
+                } catch (error) {
+                    updateStatus(error.message, true);
+                    outputAscii.textContent = '(no output)';
+                    outputBytes.textContent = '(no output)';
+                }
+            });
+
+            asciiModeRadio.addEventListener('change', updateInputHelp);
+            document.getElementById('mode-numbers').addEventListener('change', updateInputHelp);
+            updateInputHelp();
+            updateStatus('Ready to run. Tape starts at 0 and overflows/underflows within 0-255.');
+        })();
+    </script>
+</body>
+
+</html>
