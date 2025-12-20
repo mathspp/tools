@@ -124,6 +124,8 @@
                 </h2>
                 <div style="display: inline-flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button type="button" id="save-button" class="secondary">Save</button>
+                    <button type="button" id="copy-code-button" class="secondary">Copy code</button>
+                    <button type="button" id="copy-permalink-button" class="secondary">Copy permalink</button>
                     <button type="button" id="run-button">Run</button>
                 </div>
             </div>
@@ -173,6 +175,8 @@
         (function () {
             const runButton = document.getElementById('run-button');
             const saveButton = document.getElementById('save-button');
+            const copyCodeButton = document.getElementById('copy-code-button');
+            const copyPermalinkButton = document.getElementById('copy-permalink-button');
             const statusEl = document.getElementById('status');
             const outputAscii = document.getElementById('output-ascii');
             const outputBytes = document.getElementById('output-bytes');
@@ -222,8 +226,34 @@
                 return false;
             }
 
-            const hadStoredProgram = loadStoredProgram();
-            if (!hadStoredProgram) {
+            function encodeProgram(program) {
+                return btoa(unescape(encodeURIComponent(program)));
+            }
+
+            function decodeProgram(encoded) {
+                return decodeURIComponent(escape(atob(encoded)));
+            }
+
+            function loadProgramFromHash() {
+                if (!window.location.hash) return null;
+                const rawHash = window.location.hash.slice(1);
+                const encodedProgram = rawHash.startsWith('program=') ? rawHash.slice(8) : rawHash;
+
+                try {
+                    const decoded = decodeProgram(decodeURIComponent(encodedProgram));
+                    saveToLocalStorage(decoded, true);
+                    return decoded;
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            const programFromHash = loadProgramFromHash();
+            const hadStoredProgram = programFromHash === null ? loadStoredProgram() : false;
+
+            if (programFromHash !== null) {
+                editor.setValue(programFromHash);
+            } else if (!hadStoredProgram) {
                 editor.setValue('');
             }
 
@@ -362,12 +392,41 @@
                 saveToLocalStorage(editor.getValue());
             });
 
+            async function copyToClipboard(text, successMessage, failureMessage) {
+                if (!navigator.clipboard) {
+                    updateStatus('Clipboard access is not available in this browser.', true);
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(text);
+                    updateStatus(successMessage);
+                } catch (error) {
+                    updateStatus(failureMessage, true);
+                }
+            }
+
+            copyCodeButton.addEventListener('click', () => {
+                copyToClipboard(editor.getValue(), 'Copied code to clipboard.', 'Unable to copy code to clipboard.');
+            });
+
+            copyPermalinkButton.addEventListener('click', () => {
+                const encoded = encodeURIComponent(encodeProgram(editor.getValue()));
+                const permalink = `${window.location.origin}${window.location.pathname}#program=${encoded}`;
+                history.replaceState(null, '', `#program=${encoded}`);
+                copyToClipboard(permalink, 'Copied permalink to clipboard.', 'Unable to copy permalink to clipboard.');
+            });
+
             asciiModeRadio.addEventListener('change', updateInputHelp);
             document.getElementById('mode-numbers').addEventListener('change', updateInputHelp);
             updateInputHelp();
-            updateStatus(hadStoredProgram
-                ? 'Loaded program from local storage.'
-                : 'Ready to run. Tape starts at 0 and overflows/underflows within 0-255.');
+
+            const initialStatus = programFromHash !== null
+                ? 'Loaded program from URL and saved to local storage.'
+                : hadStoredProgram
+                    ? 'Loaded program from local storage.'
+                    : 'Ready to run. Tape starts at 0 and overflows/underflows within 0-255.';
+            updateStatus(initialStatus);
 
             editor.on('change', () => {
                 saveToLocalStorage(editor.getValue(), true);
