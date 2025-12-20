@@ -46,13 +46,30 @@
         .result-display {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.75rem;
         }
 
         .result-value {
             font-size: clamp(2rem, 4vw, 2.75rem);
             font-weight: 700;
             letter-spacing: 0.01em;
+        }
+
+        .result-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: clamp(0.75rem, 2vw, 1.25rem);
+            align-items: start;
+        }
+
+        .result-value--compact {
+            font-size: clamp(1.4rem, 3vw, 1.85rem);
+        }
+
+        .result-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
         }
 
         .result-with-tooltip {
@@ -197,24 +214,32 @@
                     <p class="helper-text">final damage</p>
                 </div>
                 <p class="helper-text" id="breakdown"></p>
-                <div class="result-with-tooltip" id="influence-wrapper">
-                    <div class="result-value tooltip-target" id="influence" tabindex="0">0</div>
-                    <span class="tooltip-icon" aria-hidden="true">?</span>
-                    <p class="helper-text">influence</p>
+                <div class="result-metrics-grid">
+                    <div class="result-group">
+                        <div class="result-with-tooltip result-with-tooltip--compact" id="time-wrapper">
+                            <div class="result-value result-value--compact tooltip-target" id="time-estimate" tabindex="0">≈0s</div>
+                            <span class="tooltip-icon" aria-hidden="true">?</span>
+                            <p class="helper-text">time to deploy</p>
+                        </div>
+                        <p class="helper-text" id="time-breakdown"></p>
+                    </div>
+                    <div class="result-group">
+                        <div class="result-with-tooltip result-with-tooltip--compact" id="rank-wrapper">
+                            <div class="result-value result-value--compact tooltip-target" id="rank-value" tabindex="0">0</div>
+                            <span class="tooltip-icon" aria-hidden="true">?</span>
+                            <p class="helper-text">rank points</p>
+                        </div>
+                        <p class="helper-text" id="rank-breakdown"></p>
+                    </div>
+                    <div class="result-group">
+                        <div class="result-with-tooltip result-with-tooltip--compact" id="influence-wrapper">
+                            <div class="result-value result-value--compact tooltip-target" id="influence" tabindex="0">0</div>
+                            <span class="tooltip-icon" aria-hidden="true">?</span>
+                            <p class="helper-text">influence</p>
+                        </div>
+                        <p class="helper-text" id="influence-breakdown"></p>
+                    </div>
                 </div>
-                <p class="helper-text" id="influence-breakdown"></p>
-                <div class="result-with-tooltip" id="time-wrapper">
-                    <div class="result-value tooltip-target" id="time-estimate" tabindex="0">≈0s</div>
-                    <span class="tooltip-icon" aria-hidden="true">?</span>
-                    <p class="helper-text">time to deploy</p>
-                </div>
-                <p class="helper-text" id="time-breakdown"></p>
-                <div class="result-with-tooltip" id="rank-wrapper">
-                    <div class="result-value tooltip-target" id="rank-value" tabindex="0">0</div>
-                    <span class="tooltip-icon" aria-hidden="true">?</span>
-                    <p class="helper-text">rank points</p>
-                </div>
-                <p class="helper-text" id="rank-breakdown"></p>
             </div>
         </section>
 
@@ -593,6 +618,17 @@
                 return Number.isFinite(value) ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0';
             };
 
+            const formatDeployTime = (seconds) => {
+                const wholeSeconds = Math.max(0, Math.ceil(seconds));
+                if (wholeSeconds < 60) {
+                    return `≈${formatNumber(wholeSeconds)}s`;
+                }
+
+                const minutes = Math.floor(wholeSeconds / 60);
+                const remainingSeconds = String(wholeSeconds % 60).padStart(2, '0');
+                return `≈${formatNumber(minutes)}m:${remainingSeconds}s`;
+            };
+
             const clampNumber = (value, min, max) => {
                 if (Number.isNaN(value)) return min;
                 if (typeof max === 'number') {
@@ -708,12 +744,12 @@
 
                 const timeSeconds = hits / actualHitsPerSecond;
                 const timeSecondsRounded = Math.ceil(timeSeconds);
-                timeEstimate.textContent = `≈${formatNumber(timeSecondsRounded)}s`;
+                timeEstimate.textContent = formatDeployTime(timeSecondsRounded);
                 const timeFormula = [
                     'Time = ceil(hits ÷ (hits per second × accelerator))',
                     `= ceil(${formatNumber(hits)} ÷ (${formatNumber(baseHitsPerSecond)} × ${formatNumber(damageAcceleratorMultiplier)}))`,
                     `= ceil(${formatNumber(timeSeconds)} seconds)`,
-                    `= ${formatNumber(timeSecondsRounded)} seconds`
+                    `= ${formatDeployTime(timeSecondsRounded)}`
                 ].join('\n');
 
                 const rankFromDamage = result * 0.1;
