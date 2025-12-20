@@ -821,12 +821,12 @@
                 }[weapon];
 
                 if (weaponQuality) {
-                    const weaponsNeeded = Math.ceil(energy / weaponQuality);
+                    const weaponsNeeded = Math.ceil(hits / weaponQuality);
                     infoMessages.push(`${formatNumber(weaponsNeeded)} weapons required to deploy ${formatNumber(energy)} energy`);
                 }
 
                 if (isStinger) {
-                    const stingersNeeded = Math.ceil(energy / 3);
+                    const stingersNeeded = Math.ceil(hits / 3);
                     infoMessages.push(`${formatNumber(stingersNeeded)} stingers required to deploy ${formatNumber(energy)} energy`);
                 }
 
