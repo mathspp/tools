@@ -189,6 +189,18 @@
             background: var(--or-2);
         }
 
+        .result-info {
+            display: grid;
+            gap: 0.35rem;
+            font-size: 0.95rem;
+            color: var(--foreground-subtle);
+            margin-top: 0.35rem;
+        }
+
+        .result-info__item {
+            margin: 0;
+        }
+
         @media (max-width: 720px) {
             body {
                 padding: 20px 16px 40px;
@@ -240,6 +252,7 @@
                         <p class="helper-text" id="influence-breakdown"></p>
                     </div>
                 </div>
+                <div class="result-info" id="result-info" aria-live="polite"></div>
             </div>
         </section>
 
@@ -527,6 +540,7 @@
             const influenceValue = document.getElementById('influence');
             const timeWrapper = document.getElementById('time-wrapper');
             const timeEstimate = document.getElementById('time-estimate');
+            const resultInfo = document.getElementById('result-info');
             const ebInput = document.getElementById('ebs');
             const eb2Input = document.getElementById('ebs2');
             const eb3Input = document.getElementById('ebs3');
@@ -627,6 +641,13 @@
                 const minutes = Math.floor(wholeSeconds / 60);
                 const remainingSeconds = String(wholeSeconds % 60).padStart(2, '0');
                 return `≈${formatNumber(minutes)}m:${remainingSeconds}s`;
+            };
+
+            const formatDuration = (seconds) => {
+                const wholeSeconds = Math.max(0, Math.ceil(seconds));
+                const minutes = Math.floor(wholeSeconds / 60);
+                const remainingSeconds = String(wholeSeconds % 60).padStart(2, '0');
+                return `${minutes}m${remainingSeconds}s`;
             };
 
             const clampNumber = (value, min, max) => {
@@ -789,6 +810,49 @@
                         tooltipPopover.textContent = activeWrapper.dataset.tooltipContent;
                     }
                 }
+
+                const infoMessages = [];
+                const weaponQuality = {
+                    q1: 1,
+                    q2: 2,
+                    q3: 3,
+                    q4: 4,
+                    q5: 5
+                }[weapon];
+
+                if (weaponQuality) {
+                    const weaponsNeeded = Math.ceil(energy / weaponQuality);
+                    infoMessages.push(`${formatNumber(weaponsNeeded)} weapons required to deploy ${formatNumber(energy)} energy`);
+                }
+
+                if (isStinger) {
+                    const stingersNeeded = Math.ceil(energy / 3);
+                    infoMessages.push(`${formatNumber(stingersNeeded)} stingers required to deploy ${formatNumber(energy)} energy`);
+                }
+
+                const boostersSelected = boosterPercent > 0
+                    || influenceBoosterPercent > 0
+                    || rankBoosterPercent > 0;
+
+                const boostersDurationSeconds = 10 * 60;
+                if (boostersSelected && timeSecondsRounded > boostersDurationSeconds) {
+                    const boostersNeeded = Math.ceil(timeSecondsRounded / boostersDurationSeconds);
+                    infoMessages.push(`You may need ${formatNumber(boostersNeeded)}+ boosters because the deploy time is ${formatDuration(timeSecondsRounded)} (assuming each booster lasts 10m)`);
+                }
+
+                const damageAcceleratorDurationSeconds = 5 * 60;
+                if (damageAcceleratorMultiplier > 1 && timeSecondsRounded > damageAcceleratorDurationSeconds) {
+                    const acceleratorsNeeded = Math.ceil(timeSecondsRounded / damageAcceleratorDurationSeconds);
+                    infoMessages.push(`You may need ${formatNumber(acceleratorsNeeded)}+ damage accelerators because the deploy time is ${formatDuration(timeSecondsRounded)} (assuming each accelerator lasts 5m)`);
+                }
+
+                resultInfo.innerHTML = '';
+                infoMessages.forEach((message) => {
+                    const item = document.createElement('p');
+                    item.className = 'result-info__item';
+                    item.textContent = message;
+                    resultInfo.appendChild(item);
+                });
             }
 
             energyInput.addEventListener('input', () => {
