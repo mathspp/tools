@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Alt Text Extractor</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .site-link {
+            font-weight: 600;
+            color: var(--foreground-subtle);
+            text-decoration: none;
+        }
+
+        .site-link:hover,
+        .site-link:focus-visible {
+            color: var(--foreground);
+        }
+
+        main {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .panel {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .input-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--color-border, #d0d7de);
+            border-radius: 12px;
+            padding: 28px 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--color-accent, #0070f3);
+            background-color: rgba(0, 112, 243, 0.08);
+        }
+
+        .drop-zone:focus-visible {
+            outline: 2px solid var(--color-accent, #0070f3);
+            outline-offset: 2px;
+        }
+
+        .drop-zone input[type="file"] {
+            display: none;
+        }
+
+        .status-text {
+            color: var(--color-muted, #57606a);
+            min-height: 1.25rem;
+        }
+
+        .status-text.error {
+            color: #b42318;
+        }
+
+        .preview-wrapper {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .preview-wrapper img {
+            max-width: 100%;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+        }
+
+        .alt-text-area {
+            width: 100%;
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            background: var(--background-elevated, #f6f8fa);
+            color: var(--foreground-muted, #57606a);
+            font-size: 0.95rem;
+            width: fit-content;
+        }
+
+        .info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .tool-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Image Alt Text Extractor</h1>
+        <p class="lead">Paste or drop an image and we will surface any ALT text that came with it. If none is present, we will tell you.</p>
+    </header>
+
+    <main>
+        <section class="surface panel">
+            <div class="input-grid">
+                <label class="drop-zone" id="drop-zone" tabindex="0" aria-label="Paste or drop an image here">
+                    <strong>Paste, drop, or select an image</strong>
+                    <p class="status-text" id="drop-hint">Drop a file, press Ctrl/Cmd+V, or use the buttons below.</p>
+                    <input type="file" id="file-input" accept="image/*">
+                </label>
+                <div class="tool-actions">
+                    <button type="button" id="clipboard-button">Paste image from clipboard</button>
+                    <button type="button" id="file-button">Choose an image</button>
+                </div>
+                <p class="status-text" id="status" aria-live="polite">No image loaded yet.</p>
+            </div>
+        </section>
+
+        <section class="surface panel" aria-live="polite">
+            <div class="info-row" aria-hidden="true" id="info-row" hidden>
+                <span class="badge" id="image-info"></span>
+            </div>
+            <div class="preview-wrapper">
+                <img id="preview" alt="Preview of the pasted image" hidden>
+                <div class="form-group">
+                    <label for="alt-text">ALT text found</label>
+                    <textarea id="alt-text" class="alt-text-area" placeholder="ALT text will appear here" spellcheck="true"></textarea>
+                </div>
+                <div class="tool-actions">
+                    <button type="button" id="copy-button">Copy ALT text</button>
+                    <button type="button" id="clear-button">Clear</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const clipboardButton = document.getElementById('clipboard-button');
+        const fileButton = document.getElementById('file-button');
+        const statusEl = document.getElementById('status');
+        const previewEl = document.getElementById('preview');
+        const altTextEl = document.getElementById('alt-text');
+        const copyButton = document.getElementById('copy-button');
+        const clearButton = document.getElementById('clear-button');
+        const dropHint = document.getElementById('drop-hint');
+        const infoRow = document.getElementById('info-row');
+        const imageInfo = document.getElementById('image-info');
+
+        let lastObjectUrl = null;
+
+        function setStatus(message, isError = false) {
+            statusEl.textContent = message;
+            statusEl.classList.toggle('error', isError);
+        }
+
+        function resetPreview() {
+            previewEl.src = '';
+            previewEl.hidden = true;
+            altTextEl.value = '';
+            infoRow.hidden = true;
+            if (lastObjectUrl) {
+                URL.revokeObjectURL(lastObjectUrl);
+                lastObjectUrl = null;
+            }
+            setStatus('No image loaded yet.');
+        }
+
+        function describeImage(file) {
+            const sizeKb = file.size / 1024;
+            const kbDisplay = sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb.toFixed(0)} kB`;
+            imageInfo.textContent = `${file.name || 'clipboard image'} • ${kbDisplay}`;
+            infoRow.hidden = false;
+        }
+
+        function extractAltFromHtml(html) {
+            if (!html) return '';
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const img = doc.querySelector('img[alt]');
+                return img?.getAttribute('alt')?.trim() || '';
+            } catch (error) {
+                console.error('Failed to parse HTML clipboard content', error);
+                return '';
+            }
+        }
+
+        function handleImage(file, altText, sourceDescription) {
+            describeImage(file);
+            const objectUrl = URL.createObjectURL(file);
+            if (lastObjectUrl) {
+                URL.revokeObjectURL(lastObjectUrl);
+            }
+            lastObjectUrl = objectUrl;
+            previewEl.src = objectUrl;
+            previewEl.hidden = false;
+            altTextEl.value = altText || '';
+            if (altText) {
+                setStatus(`ALT text found from ${sourceDescription}.`);
+            } else {
+                setStatus('No ALT text found for this image.', true);
+            }
+        }
+
+        async function handleClipboardRead() {
+            if (!navigator.clipboard?.read) {
+                setStatus('Clipboard image reading is not supported in this browser.', true);
+                return;
+            }
+            try {
+                setStatus('Reading clipboard…');
+                const items = await navigator.clipboard.read();
+
+                let html = '';
+                let imageBlob = null;
+
+                for (const item of items) {
+                    if (!html && item.types.includes('text/html')) {
+                        const blob = await item.getType('text/html');
+                        html = await blob.text();
+                    }
+                    const imageType = item.types.find(type => type.startsWith('image/'));
+                    if (!imageBlob && imageType) {
+                        imageBlob = await item.getType(imageType);
+                        imageBlob.name = 'clipboard-image';
+                    }
+                }
+
+                if (!imageBlob) {
+                    setStatus('No image found in clipboard.', true);
+                    return;
+                }
+
+                const altText = extractAltFromHtml(html);
+                handleImage(imageBlob, altText, 'clipboard metadata');
+            } catch (error) {
+                console.error(error);
+                setStatus('Failed to read clipboard image or metadata. The browser may have blocked access.', true);
+            }
+        }
+
+        function handlePasteEvent(event) {
+            const file = [...event.clipboardData.files].find(item => item.type.startsWith('image/'));
+            const html = event.clipboardData.getData('text/html');
+            const altText = extractAltFromHtml(html);
+
+            if (file) {
+                event.preventDefault();
+                handleImage(file, altText, 'clipboard metadata');
+            } else if (altText) {
+                altTextEl.value = altText;
+                setStatus('ALT text found in clipboard HTML, but no image was included.');
+            } else {
+                setStatus('Clipboard does not contain an image or ALT metadata.', true);
+            }
+        }
+
+        function handleFileInput(file, sourceDescription) {
+            if (!file || !file.type.startsWith('image/')) {
+                setStatus('Please provide an image file.', true);
+                return;
+            }
+            handleImage(file, '', sourceDescription);
+        }
+
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropZone.classList.remove('dragover');
+            const [file] = event.dataTransfer.files;
+            handleFileInput(file, 'drag and drop');
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                fileInput.click();
+            }
+        });
+
+        dropZone.addEventListener('paste', handlePasteEvent);
+
+        fileInput.addEventListener('change', (event) => {
+            const [file] = event.target.files;
+            handleFileInput(file, 'file picker');
+            fileInput.value = '';
+        });
+
+        fileButton.addEventListener('click', () => fileInput.click());
+
+        clipboardButton.addEventListener('click', handleClipboardRead);
+
+        copyButton.addEventListener('click', async () => {
+            if (!altTextEl.value.trim()) {
+                setStatus('Nothing to copy yet.', true);
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(altTextEl.value.trim());
+                setStatus('ALT text copied to clipboard.');
+            } catch (error) {
+                console.error(error);
+                setStatus('Unable to copy ALT text.', true);
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            resetPreview();
+        });
+
+        dropHint.textContent = navigator.clipboard?.read ? 'Drop a file, press Ctrl/Cmd+V, or use the buttons below.' : 'Drop a file or use the choose image button.';
+        setStatus('No image loaded yet.');
+    </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+</body>
+
+</html>
