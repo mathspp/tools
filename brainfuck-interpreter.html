@@ -89,6 +89,7 @@
             margin-top: 0.5rem;
             font-size: 0.98rem;
             color: var(--tx-2);
+            white-space: pre-wrap;
         }
 
         .status.error {
@@ -194,6 +195,14 @@
             });
 
             const STORAGE_KEY = 'brainfuck-interpreter-code';
+
+            class BrainfuckTimeoutError extends Error {
+                constructor(message, debugInfo) {
+                    super(message);
+                    this.name = 'BrainfuckTimeoutError';
+                    this.debugInfo = debugInfo;
+                }
+            }
 
             function updateStatus(message, isError = false) {
                 statusEl.textContent = message;
@@ -304,6 +313,26 @@
                 return map;
             }
 
+            function formatTapeWindow(tape, pointer) {
+                const windowSize = Math.min(30, tape.length || 1);
+                const halfWindow = Math.floor(windowSize / 2);
+                let start = Math.max(0, pointer - halfWindow);
+                let end = Math.min(tape.length - 1, start + windowSize - 1);
+
+                if (end - start + 1 < windowSize) {
+                    start = Math.max(0, end - windowSize + 1);
+                }
+
+                const leftEllipsis = start > 0;
+                const rightEllipsis = end < tape.length - 1;
+                const cells = tape.slice(start, end + 1).map((value, index) => {
+                    const absoluteIndex = start + index;
+                    return absoluteIndex === pointer ? `[${value}]` : `${value}`;
+                });
+
+                return `${leftEllipsis ? '… ' : ''}${cells.join(' ')}${rightEllipsis ? ' …' : ''}`;
+            }
+
             function runProgram(program, inputs) {
                 const commands = program.replace(/[^\>\<\+\-\.\,\[\]]/g, '');
                 const jumpMap = buildJumpMap(commands);
@@ -313,8 +342,19 @@
                 let inputIndex = 0;
                 let ip = 0;
                 const output = [];
+                const timeoutMs = 3000;
+                const startTime = performance.now();
 
                 while (ip < commands.length) {
+                    if (performance.now() - startTime > timeoutMs) {
+                        const debugInfo = [
+                            `Tape length: ${tape.length}`,
+                            `Pointer position: ${pointer}`,
+                            `Tape window: ${formatTapeWindow(tape, pointer)}`,
+                        ].join('\n');
+                        throw new BrainfuckTimeoutError('Execution timed out after 3 seconds.', debugInfo);
+                    }
+
                     const instruction = commands[ip];
                     switch (instruction) {
                         case '>':
@@ -382,7 +422,10 @@
                     renderOutput(output);
                     updateStatus(`Program ran successfully. Output length: ${output.length} byte${output.length === 1 ? '' : 's'}.`);
                 } catch (error) {
-                    updateStatus(error.message, true);
+                    const debugDetails = error instanceof BrainfuckTimeoutError && error.debugInfo
+                        ? `${error.message}\n\nDebug info:\n${error.debugInfo}`
+                        : error.message;
+                    updateStatus(debugDetails, true);
                     outputAscii.textContent = '(no output)';
                     outputBytes.textContent = '(no output)';
                 }
