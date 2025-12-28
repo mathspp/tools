@@ -168,6 +168,34 @@
                 </div>
             </div>
         </section>
+
+        <section class="surface tool-card">
+            <div class="card-header">
+                <h2 style="margin: 0;">Fail-safe settings</h2>
+                <p style="margin: 0; color: var(--tx-2); max-width: 48ch;">Prevent runaway programs by stopping execution after a
+                    time limit or when the tape grows too large.</p>
+            </div>
+
+            <div class="content-flow" style="--flow-space: 0.75rem;">
+                <label class="content-flow" style="--flow-space: 0.25rem;">
+                    <span>Timeout (seconds)</span>
+                    <input id="failsafe-timeout" type="number" min="0" step="1" value="3" style="max-width: 200px;">
+                    <small class="input-help">Stops execution after this many seconds. Use 0 for no timeout.</small>
+                </label>
+
+                <label class="content-flow" style="--flow-space: 0.25rem;">
+                    <span>Tape length limit (cells)</span>
+                    <input id="failsafe-tape-limit" type="number" min="0" step="1" value="0" style="max-width: 200px;">
+                    <small class="input-help">Interrupts execution if the tape exceeds this length. Use 0 to allow unlimited
+                        growth.</small>
+                </label>
+
+                <label style="display: inline-flex; gap: 0.5rem; align-items: center;">
+                    <input id="failsafe-disabled" type="checkbox">
+                    <span>Disable the fail-safe entirely</span>
+                </label>
+            </div>
+        </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/lib/codemirror.min.js"></script>
@@ -184,6 +212,9 @@
             const bfInput = document.getElementById('bf-input');
             const inputHelp = document.getElementById('input-help');
             const asciiModeRadio = document.getElementById('mode-ascii');
+            const failsafeTimeoutInput = document.getElementById('failsafe-timeout');
+            const failsafeTapeLimitInput = document.getElementById('failsafe-tape-limit');
+            const failsafeDisabledInput = document.getElementById('failsafe-disabled');
 
             const textarea = document.getElementById('code-input');
             const editor = CodeMirror.fromTextArea(textarea, {
@@ -195,11 +226,17 @@
             });
 
             const STORAGE_KEY = 'brainfuck-interpreter-code';
+            const FAILSAFE_STORAGE_KEY = 'brainfuck-interpreter-failsafe-settings';
+            const DEFAULT_FAILSAFE_SETTINGS = {
+                timeoutSeconds: 3,
+                tapeLengthLimit: 0,
+                disabled: false,
+            };
 
-            class BrainfuckTimeoutError extends Error {
+            class BrainfuckFailSafeError extends Error {
                 constructor(message, debugInfo) {
                     super(message);
-                    this.name = 'BrainfuckTimeoutError';
+                    this.name = 'BrainfuckFailSafeError';
                     this.debugInfo = debugInfo;
                 }
             }
@@ -333,7 +370,54 @@
                 return `${leftEllipsis ? '… ' : ''}${cells.join(' ')}${rightEllipsis ? ' …' : ''}`;
             }
 
-            function runProgram(program, inputs) {
+            function getStoredFailsafeSettings() {
+                try {
+                    const raw = localStorage.getItem(FAILSAFE_STORAGE_KEY);
+                    if (!raw) return { ...DEFAULT_FAILSAFE_SETTINGS };
+                    const parsed = JSON.parse(raw);
+                    return sanitizeFailsafeSettings(parsed);
+                } catch (error) {
+                    return { ...DEFAULT_FAILSAFE_SETTINGS };
+                }
+            }
+
+            function sanitizeFailsafeSettings(settings) {
+                const timeoutSeconds = Number.isFinite(settings.timeoutSeconds)
+                    ? Math.max(0, Math.floor(settings.timeoutSeconds))
+                    : DEFAULT_FAILSAFE_SETTINGS.timeoutSeconds;
+                const tapeLengthLimit = Number.isFinite(settings.tapeLengthLimit)
+                    ? Math.max(0, Math.floor(settings.tapeLengthLimit))
+                    : DEFAULT_FAILSAFE_SETTINGS.tapeLengthLimit;
+                const disabled = Boolean(settings.disabled);
+
+                return { timeoutSeconds, tapeLengthLimit, disabled };
+            }
+
+            function persistFailsafeSettings(settings) {
+                try {
+                    localStorage.setItem(FAILSAFE_STORAGE_KEY, JSON.stringify(settings));
+                } catch (error) {
+                    // Ignore persistence errors and continue.
+                }
+            }
+
+            function applyFailsafeSettings(settings) {
+                failsafeTimeoutInput.value = settings.timeoutSeconds;
+                failsafeTapeLimitInput.value = settings.tapeLengthLimit;
+                failsafeDisabledInput.checked = settings.disabled;
+            }
+
+            function collectFailsafeSettingsFromInputs() {
+                const settings = sanitizeFailsafeSettings({
+                    timeoutSeconds: Number(failsafeTimeoutInput.value),
+                    tapeLengthLimit: Number(failsafeTapeLimitInput.value),
+                    disabled: failsafeDisabledInput.checked,
+                });
+                persistFailsafeSettings(settings);
+                return settings;
+            }
+
+            function runProgram(program, inputs, failsafeSettings) {
                 const commands = program.replace(/[^\>\<\+\-\.\,\[\]]/g, '');
                 const jumpMap = buildJumpMap(commands);
 
@@ -342,17 +426,21 @@
                 let inputIndex = 0;
                 let ip = 0;
                 const output = [];
-                const timeoutMs = 3000;
+                const timeoutMs = failsafeSettings.timeoutSeconds * 1000;
                 const startTime = performance.now();
 
+                function enforceFailSafe(message) {
+                    const debugInfo = [
+                        `Tape length: ${tape.length}`,
+                        `Pointer position: ${pointer}`,
+                        `Tape window: ${formatTapeWindow(tape, pointer)}`,
+                    ].join('\n');
+                    throw new BrainfuckFailSafeError(message, debugInfo);
+                }
+
                 while (ip < commands.length) {
-                    if (performance.now() - startTime > timeoutMs) {
-                        const debugInfo = [
-                            `Tape length: ${tape.length}`,
-                            `Pointer position: ${pointer}`,
-                            `Tape window: ${formatTapeWindow(tape, pointer)}`,
-                        ].join('\n');
-                        throw new BrainfuckTimeoutError('Execution timed out after 3 seconds.', debugInfo);
+                    if (!failsafeSettings.disabled && failsafeSettings.timeoutSeconds > 0 && performance.now() - startTime > timeoutMs) {
+                        enforceFailSafe(`Execution timed out after ${failsafeSettings.timeoutSeconds} second${failsafeSettings.timeoutSeconds === 1 ? '' : 's'}.`);
                     }
 
                     const instruction = commands[ip];
@@ -391,6 +479,10 @@
                             }
                             break;
                     }
+
+                    if (!failsafeSettings.disabled && failsafeSettings.tapeLengthLimit > 0 && tape.length > failsafeSettings.tapeLengthLimit) {
+                        enforceFailSafe(`Execution stopped because the tape exceeded ${failsafeSettings.tapeLengthLimit} cell${failsafeSettings.tapeLengthLimit === 1 ? '' : 's'}.`);
+                    }
                     ip += 1;
                 }
 
@@ -418,11 +510,11 @@
                     const mode = asciiModeRadio.checked ? 'ascii' : 'numbers';
                     const inputs = parseInputs(bfInput.value, mode);
                     const program = editor.getValue();
-                    const output = runProgram(program, inputs);
+                    const output = runProgram(program, inputs, collectFailsafeSettingsFromInputs());
                     renderOutput(output);
                     updateStatus(`Program ran successfully. Output length: ${output.length} byte${output.length === 1 ? '' : 's'}.`);
                 } catch (error) {
-                    const debugDetails = error instanceof BrainfuckTimeoutError && error.debugInfo
+                    const debugDetails = error instanceof BrainfuckFailSafeError && error.debugInfo
                         ? `${error.message}\n\nDebug info:\n${error.debugInfo}`
                         : error.message;
                     updateStatus(debugDetails, true);
@@ -463,6 +555,16 @@
             asciiModeRadio.addEventListener('change', updateInputHelp);
             document.getElementById('mode-numbers').addEventListener('change', updateInputHelp);
             updateInputHelp();
+
+            applyFailsafeSettings(getStoredFailsafeSettings());
+            [failsafeTimeoutInput, failsafeTapeLimitInput].forEach((input) => {
+                input.addEventListener('input', () => {
+                    collectFailsafeSettingsFromInputs();
+                });
+            });
+            failsafeDisabledInput.addEventListener('change', () => {
+                collectFailsafeSettingsFromInputs();
+            });
 
             const initialStatus = programFromHash !== null
                 ? 'Loaded program from URL and saved to local storage.'
