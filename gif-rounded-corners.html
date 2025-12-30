@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF Rounded Corners</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2.75rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.25rem, 3vw, 2.25rem);
+        }
+
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 1.75rem);
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .preview {
+            border: 1px dashed var(--ui-2);
+            border-radius: 12px;
+            padding: 0.75rem;
+            background: var(--bg-2);
+            min-height: 220px;
+            display: grid;
+            place-items: center;
+            text-align: center;
+        }
+
+        .preview img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: 1fr;
+        }
+
+        .controls .inline {
+            display: grid;
+            gap: 0.75rem;
+            grid-template-columns: 1fr;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .status {
+            margin: 0.25rem 0 0;
+            color: var(--tx-3);
+            min-height: 1.25rem;
+        }
+
+        .download-link[aria-disabled="true"] {
+            pointer-events: none;
+            color: var(--tx-3);
+        }
+
+        @media (min-width: 720px) {
+            .preview-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .controls .inline {
+                grid-template-columns: 2fr 1fr;
+                align-items: end;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>GIF Rounded Corners</h1>
+        <p class="lead">Upload a square GIF, choose a corner radius, and download the animation with transparent rounded corners.</p>
+    </header>
+
+    <main class="grid">
+        <section class="surface tool-card">
+            <div class="controls">
+                <div class="form-group">
+                    <label for="gif-input">GIF file</label>
+                    <input type="file" id="gif-input" accept="image/gif">
+                    <p class="status" id="file-status">Select a square GIF to begin.</p>
+                </div>
+
+                <div class="inline">
+                    <div class="form-group">
+                        <label for="radius-input">Corner radius (pixels)</label>
+                        <input type="number" id="radius-input" min="0" step="1" value="24">
+                        <p class="status">Pixels to keep inside each rounded corner.</p>
+                    </div>
+                    <div class="actions">
+                        <button id="process-button" type="button" disabled>Round corners</button>
+                        <a id="download-link" class="download-link" href="#" aria-disabled="true">Download rounded GIF</a>
+                    </div>
+                </div>
+
+                <p class="status" id="process-status" aria-live="polite"></p>
+            </div>
+        </section>
+
+        <section class="surface tool-card">
+            <div class="preview-grid">
+                <div class="preview" id="original-preview" aria-label="Original GIF preview">
+                    <p class="status">Original GIF preview appears here.</p>
+                </div>
+                <div class="preview" id="result-preview" aria-label="Rounded GIF preview">
+                    <p class="status">Processed GIF preview will appear here.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://unpkg.com/gifuct-js@2.0.5/dist/gifuct.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <script>
+        (() => {
+            const fileInput = document.getElementById('gif-input');
+            const radiusInput = document.getElementById('radius-input');
+            const processButton = document.getElementById('process-button');
+            const processStatus = document.getElementById('process-status');
+            const fileStatus = document.getElementById('file-status');
+            const downloadLink = document.getElementById('download-link');
+            const originalPreview = document.getElementById('original-preview');
+            const resultPreview = document.getElementById('result-preview');
+
+            let selectedFile = null;
+
+            function resetResult() {
+                resultPreview.innerHTML = '<p class="status">Processed GIF preview will appear here.</p>';
+                downloadLink.setAttribute('aria-disabled', 'true');
+                downloadLink.removeAttribute('download');
+                downloadLink.href = '#';
+            }
+
+            function roundedRectPath(ctx, width, height, radius) {
+                const r = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+                ctx.beginPath();
+                ctx.moveTo(r, 0);
+                ctx.lineTo(width - r, 0);
+                ctx.quadraticCurveTo(width, 0, width, r);
+                ctx.lineTo(width, height - r);
+                ctx.quadraticCurveTo(width, height, width - r, height);
+                ctx.lineTo(r, height);
+                ctx.quadraticCurveTo(0, height, 0, height - r);
+                ctx.lineTo(0, r);
+                ctx.quadraticCurveTo(0, 0, r, 0);
+                ctx.closePath();
+            }
+
+            fileInput.addEventListener('change', () => {
+                resetResult();
+                processStatus.textContent = '';
+                const [file] = fileInput.files;
+                if (!file) {
+                    selectedFile = null;
+                    fileStatus.textContent = 'Select a square GIF to begin.';
+                    processButton.disabled = true;
+                    originalPreview.innerHTML = '<p class="status">Original GIF preview appears here.</p>';
+                    return;
+                }
+
+                if (file.type !== 'image/gif') {
+                    selectedFile = null;
+                    fileStatus.textContent = 'Please choose a GIF file.';
+                    processButton.disabled = true;
+                    originalPreview.innerHTML = '<p class="status">Original GIF preview appears here.</p>';
+                    return;
+                }
+
+                selectedFile = file;
+                fileStatus.textContent = `${file.name} selected (${(file.size / 1024).toFixed(1)} KB).`;
+                processButton.disabled = false;
+
+                const previewImg = document.createElement('img');
+                previewImg.alt = 'Original GIF';
+                previewImg.src = URL.createObjectURL(file);
+                originalPreview.innerHTML = '';
+                originalPreview.appendChild(previewImg);
+            });
+
+            async function processGif() {
+                if (!selectedFile) return;
+
+                const radius = Number(radiusInput.value) || 0;
+                processStatus.textContent = 'Processing GIF...';
+                processButton.disabled = true;
+                downloadLink.setAttribute('aria-disabled', 'true');
+
+                try {
+                    const arrayBuffer = await selectedFile.arrayBuffer();
+                    const gif = window.gifuct.parseGIF(arrayBuffer);
+                    const frames = window.gifuct.decompressFrames(gif, true);
+                    if (!frames.length) {
+                        throw new Error('No frames found in the GIF.');
+                    }
+
+                    const { width, height } = frames[0].dims;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+
+                    const gifEncoder = new GIF({
+                        workers: 2,
+                        quality: 10,
+                        width,
+                        height,
+                        transparent: 'rgba(0,0,0,0)'
+                    });
+
+                    const minDelay = 20;
+
+                    frames.forEach(frame => {
+                        ctx.clearRect(0, 0, width, height);
+                        const imageData = new ImageData(new Uint8ClampedArray(frame.patch), width, height);
+                        ctx.putImageData(imageData, 0, 0);
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'destination-in';
+                        roundedRectPath(ctx, width, height, radius);
+                        ctx.fill();
+                        ctx.restore();
+
+                        const delayMs = Math.max((frame.delay || 2) * 10, minDelay);
+                        gifEncoder.addFrame(ctx, { copy: true, delay: delayMs });
+                    });
+
+                    gifEncoder.on('finished', blob => {
+                        const objectUrl = URL.createObjectURL(blob);
+                        const resultImg = document.createElement('img');
+                        resultImg.alt = 'Rounded GIF preview';
+                        resultImg.src = objectUrl;
+                        resultPreview.innerHTML = '';
+                        resultPreview.appendChild(resultImg);
+
+                        downloadLink.href = objectUrl;
+                        downloadLink.download = `rounded-${selectedFile.name}`;
+                        downloadLink.setAttribute('aria-disabled', 'false');
+                        processStatus.textContent = 'Done! Download your rounded GIF below.';
+                        processButton.disabled = false;
+                    });
+
+                    gifEncoder.render();
+                } catch (error) {
+                    console.error(error);
+                    processStatus.textContent = 'Something went wrong while rounding the GIF. Please try another file.';
+                    processButton.disabled = false;
+                }
+            }
+
+            processButton.addEventListener('click', processGif);
+        })();
+    </script>
+</body>
+
+</html>

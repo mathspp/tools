@@ -1,0 +1,1 @@
+Upload a square GIF, set a corner radius, and download the animation with transparent rounded corners. The tool masks each frame so anything outside the radius becomes fully transparent while preserving the GIF's timing.
