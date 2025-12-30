@@ -135,9 +135,8 @@
         </section>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/lib/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gifuct-js@2.1.2/dist/gifuct.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js" integrity="sha512-nNOFtIS+H0lwgdUDaPn/g1ssw3uN9AkEM7zy2wLaTQeLQNeNiitUcLpEpDIh3Z4T22MdeTNru/SQbNM4ig2rng==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
     <script>
         (() => {
             const fileInput = document.getElementById('gif-input');
@@ -214,13 +213,22 @@
 
                 try {
                     const arrayBuffer = await selectedFile.arrayBuffer();
-                    const gif = window.gifuct.parseGIF(arrayBuffer);
-                    const frames = window.gifuct.decompressFrames(gif, true);
+                    const gifuct = window.gifuct || window.GIFuct;
+                    if (!gifuct || !gifuct.parseGIF || !gifuct.decompressFrames) {
+                        throw new Error('GIF parsing library failed to load. Please retry or check your connection.');
+                    }
+
+                    const gif = gifuct.parseGIF(arrayBuffer);
+                    const frames = gifuct.decompressFrames(gif, true);
                     if (!frames.length) {
                         throw new Error('No frames found in the GIF.');
                     }
 
                     const { width, height } = frames[0].dims;
+                    if (width !== height) {
+                        throw new Error(`GIF must be square. This one is ${width}x${height}.`);
+                    }
+
                     const canvas = document.createElement('canvas');
                     canvas.width = width;
                     canvas.height = height;
@@ -268,7 +276,7 @@
                     gifEncoder.render();
                 } catch (error) {
                     console.error(error);
-                    processStatus.textContent = 'Something went wrong while rounding the GIF. Please try another file.';
+                    processStatus.textContent = error.message || 'Something went wrong while rounding the GIF. Please try another file.';
                     processButton.disabled = false;
                 }
             }
