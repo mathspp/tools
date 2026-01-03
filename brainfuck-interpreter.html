@@ -417,7 +417,7 @@
                 return settings;
             }
 
-            function runProgram(program, inputs, failsafeSettings) {
+            function runProgram(program, inputs, failsafeSettings, onOutput) {
                 const commands = program.replace(/[^\>\<\+\-\.\,\[\]]/g, '');
                 const jumpMap = buildJumpMap(commands);
 
@@ -462,6 +462,9 @@
                             break;
                         case '.':
                             output.push(tape[pointer]);
+                            if (onOutput) {
+                                onOutput(tape[pointer], output);
+                            }
                             break;
                         case ',':
                             if (inputIndex < inputs.length) {
@@ -495,6 +498,11 @@
                 outputBytes.textContent = bytes.length ? bytes.join(', ') : '(no output)';
             }
 
+            function clearOutputs() {
+                outputAscii.textContent = '(no output)';
+                outputBytes.textContent = '(no output)';
+            }
+
             function updateInputHelp() {
                 if (asciiModeRadio.checked) {
                     inputHelp.textContent = 'ASCII mode sends each character, including new lines, as its byte value.';
@@ -510,7 +518,15 @@
                     const mode = asciiModeRadio.checked ? 'ascii' : 'numbers';
                     const inputs = parseInputs(bfInput.value, mode);
                     const program = editor.getValue();
-                    const output = runProgram(program, inputs, collectFailsafeSettingsFromInputs());
+                    clearOutputs();
+
+                    const liveOutput = [];
+                    const onOutput = (byte) => {
+                        liveOutput.push(clampByte(byte));
+                        renderOutput(liveOutput);
+                    };
+
+                    const output = runProgram(program, inputs, collectFailsafeSettingsFromInputs(), onOutput);
                     renderOutput(output);
                     updateStatus(`Program ran successfully. Output length: ${output.length} byte${output.length === 1 ? '' : 's'}.`);
                 } catch (error) {
