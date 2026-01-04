@@ -417,7 +417,17 @@
                 return settings;
             }
 
-            function runProgram(program, inputs, failsafeSettings, onOutput) {
+            function waitForNextFrame() {
+                return new Promise((resolve) => {
+                    if (typeof requestAnimationFrame === 'function') {
+                        requestAnimationFrame(() => resolve());
+                    } else {
+                        setTimeout(resolve, 0);
+                    }
+                });
+            }
+
+            async function runProgram(program, inputs, failsafeSettings, onOutput) {
                 const commands = program.replace(/[^\>\<\+\-\.\,\[\]]/g, '');
                 const jumpMap = buildJumpMap(commands);
 
@@ -428,6 +438,8 @@
                 const output = [];
                 const timeoutMs = failsafeSettings.timeoutSeconds * 1000;
                 const startTime = performance.now();
+                const yieldInterval = 2000;
+                let stepsUntilYield = yieldInterval;
 
                 function enforceFailSafe(message) {
                     const debugInfo = [
@@ -463,7 +475,7 @@
                         case '.':
                             output.push(tape[pointer]);
                             if (onOutput) {
-                                onOutput(tape[pointer], output);
+                                await onOutput(tape[pointer], output);
                             }
                             break;
                         case ',':
@@ -487,6 +499,12 @@
                         enforceFailSafe(`Execution stopped because the tape exceeded ${failsafeSettings.tapeLengthLimit} cell${failsafeSettings.tapeLengthLimit === 1 ? '' : 's'}.`);
                     }
                     ip += 1;
+
+                    stepsUntilYield -= 1;
+                    if (stepsUntilYield <= 0) {
+                        stepsUntilYield = yieldInterval;
+                        await waitForNextFrame();
+                    }
                 }
 
                 return output;
@@ -513,20 +531,23 @@
                 }
             }
 
-            runButton.addEventListener('click', () => {
+            runButton.addEventListener('click', async () => {
                 try {
                     const mode = asciiModeRadio.checked ? 'ascii' : 'numbers';
                     const inputs = parseInputs(bfInput.value, mode);
                     const program = editor.getValue();
+                    updateStatus('');
                     clearOutputs();
+                    await waitForNextFrame();
 
                     const liveOutput = [];
-                    const onOutput = (byte) => {
+                    const onOutput = async (byte) => {
                         liveOutput.push(clampByte(byte));
                         renderOutput(liveOutput);
+                        await waitForNextFrame();
                     };
 
-                    const output = runProgram(program, inputs, collectFailsafeSettingsFromInputs(), onOutput);
+                    const output = await runProgram(program, inputs, collectFailsafeSettingsFromInputs(), onOutput);
                     renderOutput(output);
                     updateStatus(`Program ran successfully. Output length: ${output.length} byte${output.length === 1 ? '' : 's'}.`);
                 } catch (error) {
