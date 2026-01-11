@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS Code to Beehiiv</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2.75rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 240px;
+        }
+
+        .output-wrapper {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .preview {
+            border: 1px solid var(--ui-2);
+            border-radius: 12px;
+            padding: clamp(1rem, 2vw, 1.25rem);
+            background: var(--bg);
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .secondary {
+            background: var(--bg);
+            color: var(--tx);
+            border: 1px solid var(--ui-2);
+        }
+
+        .secondary:hover,
+        .secondary:focus-visible {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .status {
+            color: var(--tx-3);
+            min-height: 1.25rem;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1.25rem 1rem 2.5rem;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>VS Code to Beehiiv</h1>
+        <p class="lead">Paste Markdown from VS Code and copy Beehiiv-ready rich text.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="form-group">
+                <label for="markdown-input">Markdown content</label>
+                <textarea id="markdown-input" name="markdown-input" placeholder="Paste Markdown from VS Code" spellcheck="false"></textarea>
+            </div>
+            <div class="button-row">
+                <button id="copy-html" type="button" class="btn">Copy to clipboard</button>
+                <button id="clear-input" type="button" class="btn secondary">Clear</button>
+            </div>
+            <p class="status" id="status" aria-live="polite"></p>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <h2>Beehiiv output</h2>
+            <p class="lead">This preview uses the same HTML that will be copied.</p>
+            <div class="output-wrapper">
+                <div id="beehiiv-preview" class="preview"></div>
+                <div class="form-group">
+                    <label for="beehiiv-html">HTML output</label>
+                    <textarea id="beehiiv-html" readonly></textarea>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const markdownInput = document.getElementById('markdown-input');
+            const copyButton = document.getElementById('copy-html');
+            const clearButton = document.getElementById('clear-input');
+            const preview = document.getElementById('beehiiv-preview');
+            const htmlOutput = document.getElementById('beehiiv-html');
+            const status = document.getElementById('status');
+
+            const BLOCK_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: auto; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: auto; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
+
+            const updateStatus = (message) => {
+                status.textContent = message;
+                if (message) {
+                    setTimeout(() => {
+                        status.textContent = '';
+                    }, 3500);
+                }
+            };
+
+            const normalizeCodeLanguage = (codeElement) => {
+                const className = codeElement.getAttribute('class') || '';
+                if (className.includes('language-py')) {
+                    codeElement.setAttribute('class', className.replace('language-py', 'language-python'));
+                }
+            };
+
+            const convertMarkdownToBeehiiv = (markdown) => {
+                if (!markdown.trim()) {
+                    return '';
+                }
+
+                const rawHtml = marked.parse(markdown, { breaks: true, gfm: true });
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(rawHtml, 'text/html');
+                const blocks = [];
+
+                const nodes = Array.from(doc.body.childNodes).filter(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        return node.textContent.trim() !== '';
+                    }
+                    return true;
+                });
+
+                nodes.forEach((node, index) => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const paragraph = document.createElement('p');
+                        paragraph.textContent = node.textContent.trim();
+                        node = paragraph;
+                    }
+
+                    if (node.nodeType !== Node.ELEMENT_NODE) {
+                        return;
+                    }
+
+                    if (node.tagName === 'P') {
+                        const paragraph = document.createElement('p');
+                        paragraph.setAttribute('data-id', crypto.randomUUID());
+                        if (index === 0) {
+                            paragraph.setAttribute('data-pm-slice', '1 1 []');
+                        }
+                        paragraph.setAttribute('style', BLOCK_STYLE);
+                        paragraph.innerHTML = node.innerHTML;
+
+                        paragraph.querySelectorAll('a').forEach(anchor => {
+                            anchor.setAttribute('target', '_blank');
+                            anchor.setAttribute('rel', 'noopener noreferrer nofollow');
+                            anchor.setAttribute('class', 'link');
+                        });
+
+                        paragraph.querySelectorAll('code').forEach(code => {
+                            normalizeCodeLanguage(code);
+                        });
+
+                        blocks.push(paragraph.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'PRE') {
+                        const pre = document.createElement('pre');
+                        pre.setAttribute('data-id', crypto.randomUUID());
+                        pre.setAttribute('style', BLOCK_STYLE.replace('white-space: normal;', ''));
+                        pre.innerHTML = node.innerHTML;
+
+                        pre.querySelectorAll('code').forEach(code => {
+                            normalizeCodeLanguage(code);
+                        });
+
+                        blocks.push(pre.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'UL' || node.tagName === 'OL') {
+                        const listParagraph = document.createElement('p');
+                        listParagraph.setAttribute('data-id', crypto.randomUUID());
+                        listParagraph.setAttribute('style', BLOCK_STYLE);
+                        listParagraph.innerHTML = node.outerHTML;
+                        blocks.push(listParagraph.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName.startsWith('H')) {
+                        const headingParagraph = document.createElement('p');
+                        headingParagraph.setAttribute('data-id', crypto.randomUUID());
+                        headingParagraph.setAttribute('style', BLOCK_STYLE);
+                        headingParagraph.innerHTML = `<strong>${node.textContent}</strong>`;
+                        blocks.push(headingParagraph.outerHTML);
+                    }
+                });
+
+                return `<head><meta charset="UTF-8"></head>${blocks.join('')}`;
+            };
+
+            const renderOutput = () => {
+                const markdown = markdownInput.value;
+                const html = convertMarkdownToBeehiiv(markdown);
+                htmlOutput.value = html;
+                preview.innerHTML = html.replace(/<head>[\s\S]*?<\/head>/, '') || '<p><em>No content yet.</em></p>';
+            };
+
+            markdownInput.addEventListener('paste', (event) => {
+                const text = event.clipboardData?.getData('text/plain');
+                if (text !== undefined) {
+                    event.preventDefault();
+                    markdownInput.value = text;
+                    renderOutput();
+                }
+            });
+
+            markdownInput.addEventListener('input', renderOutput);
+
+            copyButton.addEventListener('click', async () => {
+                const markdown = markdownInput.value;
+                const html = convertMarkdownToBeehiiv(markdown);
+
+                if (!html) {
+                    updateStatus('Add some Markdown before copying.');
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            'text/html': new Blob([html], { type: 'text/html' }),
+                            'text/plain': new Blob([markdown], { type: 'text/plain' })
+                        })
+                    ]);
+                    updateStatus('Beehiiv HTML copied to clipboard.');
+                } catch (error) {
+                    updateStatus('Clipboard access failed.');
+                }
+            });
+
+            clearButton.addEventListener('click', () => {
+                markdownInput.value = '';
+                renderOutput();
+            });
+
+            renderOutput();
+        });
+    </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+</body>
+
+</html>
