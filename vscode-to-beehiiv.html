@@ -119,6 +119,7 @@
             const status = document.getElementById('status');
 
             const BLOCK_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: auto; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: auto; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
+            const HEADING_STYLE = BLOCK_STYLE.replace('font-weight: 400; ', '');
 
             const updateStatus = (message) => {
                 status.textContent = message;
@@ -211,11 +212,22 @@
                     }
 
                     if (node.tagName.startsWith('H')) {
-                        const headingParagraph = document.createElement('p');
-                        headingParagraph.setAttribute('data-id', crypto.randomUUID());
-                        headingParagraph.setAttribute('style', BLOCK_STYLE);
-                        headingParagraph.innerHTML = `<strong>${node.textContent}</strong>`;
-                        blocks.push(headingParagraph.outerHTML);
+                        const level = Number.parseInt(node.tagName.replace('H', ''), 10);
+                        const heading = document.createElement(node.tagName.toLowerCase());
+                        const headingId = `h-${level}`;
+                        heading.setAttribute('data-id', crypto.randomUUID());
+                        heading.setAttribute('id', headingId);
+                        heading.setAttribute('data-anchor', '');
+                        heading.setAttribute('data-anchor-title', node.textContent);
+                        heading.setAttribute('data-anchor-id', headingId);
+                        heading.setAttribute('data-anchor-title-sync', 'true');
+                        heading.setAttribute('data-anchor-id-sync', 'true');
+                        heading.setAttribute('style', HEADING_STYLE);
+                        if (blocks.length === 0) {
+                            heading.setAttribute('data-pm-slice', '1 1 []');
+                        }
+                        heading.innerHTML = node.innerHTML;
+                        blocks.push(heading.outerHTML);
                     }
                 });
 
