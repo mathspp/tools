@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipboard HTML to Markdown</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .site-link {
+            font-weight: 600;
+            color: var(--foreground-subtle);
+            text-decoration: none;
+        }
+
+        .site-link:hover,
+        .site-link:focus-visible {
+            color: var(--foreground);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .tool-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        @media (min-width: 860px) {
+            .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        textarea {
+            font-family: var(--font-mono);
+            min-height: 220px;
+            resize: vertical;
+        }
+
+        .status {
+            font-size: 0.95rem;
+            color: var(--foreground-subtle);
+        }
+
+        .status.error {
+            color: var(--re);
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Clipboard HTML to Markdown</h1>
+        <p class="lead">Paste rich HTML from your clipboard and get clean Markdown that you can copy instantly.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="tool-actions">
+                <button type="button" id="paste-button">Paste from clipboard</button>
+                <button type="button" id="copy-button">Copy Markdown</button>
+            </div>
+            <p class="status" id="status">Waiting for clipboard input.</p>
+        </section>
+
+        <section class="surface tool-card">
+            <div class="grid">
+                <div>
+                    <label for="source-input">Clipboard contents (HTML or text)</label>
+                    <textarea id="source-input" placeholder="Paste rich HTML here or click the button to pull from your clipboard."></textarea>
+                </div>
+                <div>
+                    <label for="markdown-output">Markdown output</label>
+                    <textarea id="markdown-output" readonly placeholder="Markdown will appear here."></textarea>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/turndown@7.1.2/dist/turndown.js"></script>
+    <script>
+        (function () {
+            const pasteButton = document.getElementById('paste-button');
+            const copyButton = document.getElementById('copy-button');
+            const sourceInput = document.getElementById('source-input');
+            const markdownOutput = document.getElementById('markdown-output');
+            const status = document.getElementById('status');
+
+            const turndownService = new TurndownService({
+                codeBlockStyle: 'fenced',
+                headingStyle: 'atx'
+            });
+
+            const isProbablyHtml = (text) => /<\s*\/?[a-z][\s\S]*>/i.test(text);
+
+            const setStatus = (message, isError = false) => {
+                status.textContent = message;
+                status.classList.toggle('error', isError);
+            };
+
+            const updateMarkdown = (source, preferHtml = false) => {
+                if (!source) {
+                    markdownOutput.value = '';
+                    setStatus('Waiting for clipboard input.');
+                    return;
+                }
+
+                const treatAsHtml = preferHtml || isProbablyHtml(source);
+                if (treatAsHtml) {
+                    markdownOutput.value = turndownService.turndown(source);
+                    setStatus('Converted HTML to Markdown.');
+                } else {
+                    markdownOutput.value = source;
+                    setStatus('Using plain text from clipboard.');
+                }
+            };
+
+            pasteButton.addEventListener('click', async () => {
+                try {
+                    if (!navigator.clipboard || !navigator.clipboard.read) {
+                        setStatus('Clipboard read is not supported in this browser.', true);
+                        return;
+                    }
+                    const items = await navigator.clipboard.read();
+                    let html = '';
+                    let text = '';
+
+                    for (const item of items) {
+                        if (item.types.includes('text/html')) {
+                            const blob = await item.getType('text/html');
+                            html = await blob.text();
+                            break;
+                        }
+                        if (item.types.includes('text/plain') && !text) {
+                            const blob = await item.getType('text/plain');
+                            text = await blob.text();
+                        }
+                    }
+
+                    const source = html || text;
+                    sourceInput.value = source;
+                    updateMarkdown(source, Boolean(html));
+                } catch (error) {
+                    setStatus(`Clipboard read failed: ${error.message}`, true);
+                }
+            });
+
+            copyButton.addEventListener('click', async () => {
+                const text = markdownOutput.value;
+                if (!text) {
+                    setStatus('Nothing to copy yet.', true);
+                    return;
+                }
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const original = copyButton.textContent;
+                    copyButton.textContent = 'Copied!';
+                    setStatus('Markdown copied to clipboard.');
+                    setTimeout(() => {
+                        copyButton.textContent = original;
+                    }, 1600);
+                } catch (error) {
+                    setStatus(`Copy failed: ${error.message}`, true);
+                }
+            });
+
+            sourceInput.addEventListener('paste', (event) => {
+                const html = event.clipboardData?.getData('text/html');
+                const text = event.clipboardData?.getData('text/plain');
+                if (html || text) {
+                    event.preventDefault();
+                    const source = html || text;
+                    sourceInput.value = source;
+                    updateMarkdown(source, Boolean(html));
+                }
+            });
+
+            sourceInput.addEventListener('input', () => {
+                updateMarkdown(sourceInput.value, false);
+            });
+        })();
+    </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+</body>
+
+</html>
