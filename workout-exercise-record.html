@@ -349,18 +349,20 @@
             noRecordNote.textContent = '';
             try {
                 const data = await apiFetch(`/exercises/${encodeURIComponent(name)}/records`);
-                (data.records || []).forEach((rec) => {
+                const sortedRecords = sortRecords(data.records || []);
+
+                sortedRecords.forEach((rec) => {
                     const row = document.createElement('tr');
                     row.innerHTML = `<td>${rec.weight}</td><td>${rec.reps}</td>`;
                     recordRows.appendChild(row);
                 });
-                if (!data.records || data.records.length === 0) {
+                if (sortedRecords.length === 0) {
                     const row = document.createElement('tr');
                     row.innerHTML = '<td colspan="2">No personal bests yet.</td>';
                     recordRows.appendChild(row);
                     noRecordNote.textContent = `${displayName} has no records yet.`;
                 }
-                updateRecordsCaption(displayName, data.records && data.records.length > 0);
+                updateRecordsCaption(displayName, sortedRecords.length > 0);
                 loadStatus.textContent = '';
             } catch (error) {
                 loadStatus.textContent = error.message;
@@ -374,6 +376,13 @@
                 a.reps >= b.reps &&
                 (a.weight > b.weight || a.reps > b.reps)
             );
+        }
+
+        function sortRecords(records) {
+            return [...records].sort((a, b) => {
+                if (b.weight !== a.weight) return b.weight - a.weight;
+                return a.reps - b.reps;
+            });
         }
 
         function clearRecordInputs() {
