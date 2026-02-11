@@ -142,6 +142,11 @@
             font-weight: 600;
             margin-bottom: 0.25rem;
         }
+
+        .records-context {
+            margin: 0;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -173,6 +178,7 @@
                     <button id="refresh-exercises">Refresh list</button>
                 </div>
             </div>
+            <p id="records-context" class="status-text records-context">No exercise selected.</p>
             <div class="record-table-container">
                 <div id="load-status" class="status"></div>
                 <table class="record-table">
@@ -180,6 +186,7 @@
                     <thead><tr><th>Weight</th><th>Reps</th></tr></thead>
                     <tbody id="record-rows"></tbody>
                 </table>
+                <p id="no-record-note" class="status-text" aria-live="polite"></p>
             </div>
         </section>
 
@@ -218,6 +225,8 @@
         const recordWeight = document.getElementById('record-weight');
         const recordReps = document.getElementById('record-reps');
         const recordsCaption = document.getElementById('records-caption');
+        const recordsContext = document.getElementById('records-context');
+        const noRecordNote = document.getElementById('no-record-note');
 
         const STORAGE_KEYS = { base: 'workout-api-base', token: 'workout-api-token' };
 
@@ -314,8 +323,12 @@
         function updateRecordsCaption(name, hasRecords) {
             if (!name) {
                 recordsCaption.textContent = 'Select an exercise to view records';
+                recordsContext.textContent = 'No exercise selected.';
+                noRecordNote.textContent = '';
                 return;
             }
+
+            recordsContext.textContent = `Showing records for: ${name}`;
 
             recordsCaption.textContent = hasRecords === false
                 ? `No ${name} records`
@@ -333,6 +346,7 @@
             updateRecordsCaption(displayName);
             loadStatus.textContent = `Loading records for ${displayName}...`;
             recordRows.innerHTML = '';
+            noRecordNote.textContent = '';
             try {
                 const data = await apiFetch(`/exercises/${encodeURIComponent(name)}/records`);
                 (data.records || []).forEach((rec) => {
@@ -344,11 +358,13 @@
                     const row = document.createElement('tr');
                     row.innerHTML = '<td colspan="2">No personal bests yet.</td>';
                     recordRows.appendChild(row);
+                    noRecordNote.textContent = `${displayName} has no records yet.`;
                 }
                 updateRecordsCaption(displayName, data.records && data.records.length > 0);
                 loadStatus.textContent = '';
             } catch (error) {
                 loadStatus.textContent = error.message;
+                noRecordNote.textContent = '';
             }
         }
 
@@ -374,17 +390,23 @@
         exerciseSelect.addEventListener('input', () => {
             clearRecordInputs();
             recordStatus.textContent = '';
-            loadStatus.textContent = '';
-            updateRecordsCaption('');
-            recordRows.innerHTML = '';
-        });
+            if (!getSelectedExercise()) {
+                loadStatus.textContent = '';
+                updateRecordsCaption('');
+                recordRows.innerHTML = '';
+                return;
+            }
 
+            loadRecords();
+        });
         exerciseBrowseSelect.addEventListener('change', (event) => {
             const selectedOption = event.target.selectedOptions[0];
             if (!selectedOption) return;
             const value = selectedOption.value || selectedOption.textContent;
             exerciseSelect.value = value;
-            exerciseSelect.dispatchEvent(new Event('input', { bubbles: true }));
+            clearRecordInputs();
+            recordStatus.textContent = '';
+            loadRecords();
             const details = exerciseBrowseSelect.closest('details');
             if (details) details.open = false;
         });
