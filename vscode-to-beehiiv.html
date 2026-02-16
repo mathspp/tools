@@ -120,6 +120,7 @@
 
             const BLOCK_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: auto; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: auto; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
             const HEADING_STYLE = BLOCK_STYLE.replace('font-weight: 400; ', '');
+            const BLOCKQUOTE_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-line: none; text-decoration-thickness: auto; text-decoration-style: solid; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
 
             const updateStatus = (message) => {
                 status.textContent = message;
@@ -208,6 +209,45 @@
                         listParagraph.setAttribute('style', BLOCK_STYLE);
                         listParagraph.innerHTML = node.outerHTML;
                         blocks.push(listParagraph.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'BLOCKQUOTE') {
+                        const figure = document.createElement('figure');
+                        figure.setAttribute('data-id', crypto.randomUUID());
+                        figure.setAttribute('data-variant', '2');
+                        figure.setAttribute('data-type', 'blockquoteFigure');
+                        figure.setAttribute('style', BLOCKQUOTE_STYLE);
+
+                        const quote = document.createElement('blockquote');
+
+                        const quoteParagraphs = Array.from(node.querySelectorAll('p'));
+                        if (quoteParagraphs.length === 0) {
+                            const paragraph = document.createElement('p');
+                            paragraph.textContent = node.textContent.trim();
+                            quoteParagraphs.push(paragraph);
+                        }
+
+                        quoteParagraphs.forEach((sourceParagraph) => {
+                            const paragraph = document.createElement('p');
+                            paragraph.setAttribute('data-id', crypto.randomUUID());
+                            paragraph.innerHTML = sourceParagraph.innerHTML;
+
+                            paragraph.querySelectorAll('a').forEach(anchor => {
+                                anchor.setAttribute('target', '_blank');
+                                anchor.setAttribute('rel', 'noopener noreferrer nofollow');
+                                anchor.setAttribute('class', 'link');
+                            });
+
+                            paragraph.querySelectorAll('code').forEach(code => {
+                                normalizeCodeLanguage(code);
+                            });
+
+                            quote.appendChild(paragraph);
+                        });
+
+                        figure.appendChild(quote);
+                        blocks.push(figure.outerHTML);
                         return;
                     }
 
