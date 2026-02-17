@@ -362,9 +362,10 @@
             function repOptions(block) {
                 if (block.amrap) return [];
                 const options = [];
-                const min = Number(block.min_reps) || 1;
-                const max = Number(block.max_reps) || min;
-                for (let i = min; i <= max; i += 1) {
+                const maxReps = Number(block.max_reps);
+                const fallbackMax = Number(block.min_reps);
+                const rangeEnd = (Number.isFinite(maxReps) ? maxReps : (Number.isFinite(fallbackMax) ? fallbackMax : 0)) + 3;
+                for (let i = 0; i <= rangeEnd; i += 1) {
                     options.push(i);
                 }
                 return options;
