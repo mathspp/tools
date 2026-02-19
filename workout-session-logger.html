@@ -113,6 +113,13 @@
             font-size: 0.95rem;
         }
 
+        .exercise-info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
         .template-grid {
             display: grid;
             gap: 0.75rem;
@@ -462,26 +469,37 @@
             function renderExercise(block, draft) {
                 const details = document.createElement('details');
                 details.className = 'exercise-card';
-                details.open = true;
 
                 const summary = document.createElement('summary');
-                summary.innerHTML = `
-                    <div>
-                        <div>${block.exercise_name}</div>
-                        <div class="exercise-meta">${block.sets} sets${block.amrap ? ' · AMRAP' : ''}${block.notes ? ` · ${block.notes}` : ''}</div>
-                    </div>
-                `;
+                summary.textContent = block.exercise_name;
+
+                const repRangeLabel = block.amrap
+                    ? 'AMRAP'
+                    : `${block.min_reps ?? 0}–${block.max_reps ?? 0} reps`;
 
                 const previousChip = renderPreviousChip(block);
-                if (previousChip) {
-                    const chipRow = document.createElement('div');
-                    chipRow.className = 'chip-row';
-                    chipRow.appendChild(previousChip);
-                    summary.appendChild(chipRow);
-                }
 
                 const body = document.createElement('div');
                 body.className = 'exercise-body';
+
+                const infoRow = document.createElement('div');
+                infoRow.className = 'exercise-info-row';
+
+                const notesMeta = document.createElement('span');
+                notesMeta.className = 'exercise-meta';
+                notesMeta.textContent = block.notes || 'No exercise notes';
+
+                const repRangeMeta = document.createElement('span');
+                repRangeMeta.className = 'exercise-meta';
+                repRangeMeta.textContent = repRangeLabel;
+
+                infoRow.appendChild(notesMeta);
+                infoRow.appendChild(repRangeMeta);
+
+                if (previousChip) {
+                    infoRow.appendChild(previousChip);
+                }
+
                 const setsGrid = document.createElement('div');
                 setsGrid.className = 'stack';
 
@@ -517,6 +535,7 @@
                 progressionLabel.appendChild(progressionNotes);
                 rpeLabel.appendChild(rpeInput);
 
+                body.appendChild(infoRow);
                 body.appendChild(setsGrid);
                 body.appendChild(progressionLabel);
                 body.appendChild(rpeLabel);
