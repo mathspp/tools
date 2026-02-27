@@ -271,7 +271,8 @@
                     }
                 });
 
-                return `<head><meta charset="UTF-8"></head>${blocks.join('')}`;
+                const html = `<head><meta charset="UTF-8"></head>${blocks.join('')}`;
+                return html.replace(/\n{2,}/g, '\n');
             };
 
             const renderOutput = () => {
