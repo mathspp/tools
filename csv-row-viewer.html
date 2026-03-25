@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Row Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .page-header {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .site-link {
+            color: var(--foreground-subtle);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .site-link:hover,
+        .site-link:focus-visible {
+            color: var(--foreground);
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .status {
+            margin-top: 0.75rem;
+            color: var(--foreground-subtle);
+        }
+
+        .status.error {
+            color: var(--error-foreground, #b42318);
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            color: var(--foreground-subtle);
+        }
+
+        .row-nav {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }
+
+        .jump-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 16px 40px;
+            }
+
+            .jump-group {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>CSV Row Viewer</h1>
+        <p class="lead">Upload a CSV file and browse each data row as a separate page.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <label for="csv-file">Choose CSV file</label>
+            <input id="csv-file" type="file" accept=".csv,text/csv">
+            <p id="load-status" class="status" aria-live="polite">No file loaded.</p>
+        </section>
+
+        <section id="viewer" class="surface tool-card" hidden>
+            <div class="meta">
+                <span id="row-indicator">Row 1 of 1</span>
+                <span id="file-summary"></span>
+            </div>
+
+            <div class="table-container" aria-live="polite">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="row-table-body"></tbody>
+                </table>
+            </div>
+
+            <div class="row-nav">
+                <button id="prev-row" type="button">Previous row</button>
+                <button id="next-row" type="button">Next row</button>
+                <div class="jump-group">
+                    <label for="jump-row">Jump to row</label>
+                    <input id="jump-row" type="number" min="1" step="1" inputmode="numeric" style="max-width: 110px;">
+                    <button id="jump-button" type="button">Go</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+
+    <script>
+        (function () {
+            const fileInput = document.getElementById('csv-file');
+            const loadStatus = document.getElementById('load-status');
+            const viewer = document.getElementById('viewer');
+            const rowIndicator = document.getElementById('row-indicator');
+            const fileSummary = document.getElementById('file-summary');
+            const tableBody = document.getElementById('row-table-body');
+            const prevButton = document.getElementById('prev-row');
+            const nextButton = document.getElementById('next-row');
+            const jumpInput = document.getElementById('jump-row');
+            const jumpButton = document.getElementById('jump-button');
+
+            let headers = [];
+            let rows = [];
+            let currentIndex = 0;
+
+            const parseCsv = (text) => {
+                const output = [];
+                let row = [];
+                let field = '';
+                let i = 0;
+                let inQuotes = false;
+
+                while (i < text.length) {
+                    const char = text[i];
+
+                    if (inQuotes) {
+                        if (char === '"') {
+                            if (text[i + 1] === '"') {
+                                field += '"';
+                                i += 2;
+                                continue;
+                            }
+                            inQuotes = false;
+                            i += 1;
+                            continue;
+                        }
+
+                        field += char;
+                        i += 1;
+                        continue;
+                    }
+
+                    if (char === '"') {
+                        inQuotes = true;
+                        i += 1;
+                        continue;
+                    }
+
+                    if (char === ',') {
+                        row.push(field);
+                        field = '';
+                        i += 1;
+                        continue;
+                    }
+
+                    if (char === '\n') {
+                        row.push(field);
+                        output.push(row);
+                        row = [];
+                        field = '';
+                        i += 1;
+                        continue;
+                    }
+
+                    if (char === '\r') {
+                        i += 1;
+                        continue;
+                    }
+
+                    field += char;
+                    i += 1;
+                }
+
+                if (field.length > 0 || row.length > 0) {
+                    row.push(field);
+                    output.push(row);
+                }
+
+                return output.filter(parsedRow => parsedRow.some(cell => cell !== ''));
+            };
+
+            const renderRow = () => {
+                const row = rows[currentIndex] || [];
+                const totalColumns = Math.max(headers.length, row.length);
+
+                const mergedHeaders = Array.from({ length: totalColumns }, (_, index) => {
+                    if (headers[index]) {
+                        return headers[index];
+                    }
+                    return `Extra column ${index - headers.length + 1}`;
+                });
+
+                tableBody.innerHTML = mergedHeaders.map((header, index) => {
+                    const value = row[index] ?? '—';
+                    return `\n<tr><th scope="row">${escapeHtml(header || `Column ${index + 1}`)}</th><td>${escapeHtml(value)}</td></tr>`;
+                }).join('');
+
+                rowIndicator.textContent = `Row ${currentIndex + 1} of ${rows.length}`;
+                prevButton.disabled = currentIndex === 0;
+                nextButton.disabled = currentIndex >= rows.length - 1;
+                jumpInput.value = String(currentIndex + 1);
+            };
+
+            const escapeHtml = (value) => value
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+
+            const loadCsv = async (file) => {
+                try {
+                    const text = await file.text();
+                    const parsed = parseCsv(text);
+
+                    if (parsed.length < 2) {
+                        throw new Error('CSV must include a header row and at least one data row.');
+                    }
+
+                    headers = parsed[0];
+                    rows = parsed.slice(1);
+                    currentIndex = 0;
+
+                    viewer.hidden = false;
+                    fileSummary.textContent = `${file.name} • ${rows.length} data row${rows.length === 1 ? '' : 's'}`;
+                    loadStatus.textContent = 'CSV loaded successfully.';
+                    loadStatus.classList.remove('error');
+
+                    jumpInput.min = '1';
+                    jumpInput.max = String(rows.length);
+
+                    renderRow();
+                } catch (error) {
+                    viewer.hidden = true;
+                    headers = [];
+                    rows = [];
+                    loadStatus.textContent = error.message || 'Unable to parse this CSV file.';
+                    loadStatus.classList.add('error');
+                }
+            };
+
+            fileInput.addEventListener('change', (event) => {
+                const file = event.target.files?.[0];
+                if (!file) {
+                    return;
+                }
+                loadCsv(file);
+            });
+
+            prevButton.addEventListener('click', () => {
+                if (currentIndex > 0) {
+                    currentIndex -= 1;
+                    renderRow();
+                }
+            });
+
+            nextButton.addEventListener('click', () => {
+                if (currentIndex < rows.length - 1) {
+                    currentIndex += 1;
+                    renderRow();
+                }
+            });
+
+            const jumpToRow = () => {
+                const target = Number.parseInt(jumpInput.value, 10);
+                if (Number.isNaN(target) || target < 1 || target > rows.length) {
+                    loadStatus.textContent = `Enter a row number between 1 and ${rows.length}.`;
+                    loadStatus.classList.add('error');
+                    return;
+                }
+
+                loadStatus.textContent = 'CSV loaded successfully.';
+                loadStatus.classList.remove('error');
+                currentIndex = target - 1;
+                renderRow();
+            };
+
+            jumpButton.addEventListener('click', jumpToRow);
+            jumpInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    jumpToRow();
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>
