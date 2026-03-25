@@ -66,11 +66,6 @@
         .column-filter-card {
             display: grid;
             gap: 1rem;
-            margin-bottom: 1.25rem;
-            padding: 1rem;
-            border: 1px solid var(--border-subtle, #d0d5dd);
-            border-radius: 0.75rem;
-            background: var(--background-subtle, #f8f9fb);
         }
 
         .column-filter-header {
@@ -84,7 +79,12 @@
         .column-checkboxes {
             display: grid;
             gap: 0.5rem;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-template-columns: 1fr;
+        }
+
+        .column-filter-details>summary {
+            cursor: pointer;
+            font-weight: 700;
         }
 
         .checkbox-row {
@@ -126,21 +126,26 @@
             <p id="load-status" class="status" aria-live="polite">No file loaded.</p>
         </section>
 
+        <section id="column-selector" class="surface tool-card" hidden>
+            <details id="column-filter-details" class="column-filter-details">
+                <summary>Column selection</summary>
+                <div id="column-filter-card" class="column-filter-card" hidden>
+                    <div class="column-filter-header">
+                        <strong>Visible columns</strong>
+                        <label class="checkbox-row" for="toggle-all-columns">
+                            <input id="toggle-all-columns" type="checkbox">
+                            <span>Select all</span>
+                        </label>
+                    </div>
+                    <div id="column-checkboxes" class="column-checkboxes"></div>
+                </div>
+            </details>
+        </section>
+
         <section id="viewer" class="surface tool-card" hidden>
             <div class="meta">
                 <span id="row-indicator">Row 1 of 1</span>
                 <span id="file-summary"></span>
-            </div>
-
-            <div id="column-filter-card" class="column-filter-card" hidden>
-                <div class="column-filter-header">
-                    <strong>Visible columns</strong>
-                    <label class="checkbox-row" for="toggle-all-columns">
-                        <input id="toggle-all-columns" type="checkbox">
-                        <span>Select all</span>
-                    </label>
-                </div>
-                <div id="column-checkboxes" class="column-checkboxes"></div>
             </div>
 
             <div class="table-container" aria-live="polite">
@@ -183,6 +188,7 @@
             const nextButton = document.getElementById('next-row');
             const jumpInput = document.getElementById('jump-row');
             const jumpButton = document.getElementById('jump-button');
+            const columnSelector = document.getElementById('column-selector');
             const columnFilterCard = document.getElementById('column-filter-card');
             const columnCheckboxes = document.getElementById('column-checkboxes');
             const toggleAllColumns = document.getElementById('toggle-all-columns');
@@ -285,10 +291,12 @@
 
             const renderColumnFilters = () => {
                 if (!columnLabels.length) {
+                    columnSelector.hidden = true;
                     columnFilterCard.hidden = true;
                     return;
                 }
 
+                columnSelector.hidden = false;
                 columnFilterCard.hidden = false;
                 columnCheckboxes.innerHTML = columnLabels.map((label, index) => `
                     <label class="checkbox-row" for="column-toggle-${index}">
@@ -342,6 +350,7 @@
                     renderRow();
                 } catch (error) {
                     viewer.hidden = true;
+                    columnSelector.hidden = true;
                     headers = [];
                     rows = [];
                     columnLabels = [];
