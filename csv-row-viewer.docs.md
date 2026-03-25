@@ -1,0 +1,1 @@
+Upload a CSV file and inspect one data row at a time. The first row is treated as the header, each following row is shown as a key/value table, and built-in navigation lets you go to the previous row, next row, or jump directly to any row number.
