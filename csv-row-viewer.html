@@ -63,6 +63,36 @@
             margin-top: 1.25rem;
         }
 
+        .column-filter-card {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            padding: 1rem;
+            border: 1px solid var(--border-subtle, #d0d5dd);
+            border-radius: 0.75rem;
+            background: var(--background-subtle, #f8f9fb);
+        }
+
+        .column-filter-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .column-checkboxes {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        }
+
+        .checkbox-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
         .jump-group {
             display: inline-flex;
             align-items: center;
@@ -100,6 +130,17 @@
             <div class="meta">
                 <span id="row-indicator">Row 1 of 1</span>
                 <span id="file-summary"></span>
+            </div>
+
+            <div id="column-filter-card" class="column-filter-card" hidden>
+                <div class="column-filter-header">
+                    <strong>Visible columns</strong>
+                    <label class="checkbox-row" for="toggle-all-columns">
+                        <input id="toggle-all-columns" type="checkbox">
+                        <span>Select all</span>
+                    </label>
+                </div>
+                <div id="column-checkboxes" class="column-checkboxes"></div>
             </div>
 
             <div class="table-container" aria-live="polite">
@@ -142,10 +183,15 @@
             const nextButton = document.getElementById('next-row');
             const jumpInput = document.getElementById('jump-row');
             const jumpButton = document.getElementById('jump-button');
+            const columnFilterCard = document.getElementById('column-filter-card');
+            const columnCheckboxes = document.getElementById('column-checkboxes');
+            const toggleAllColumns = document.getElementById('toggle-all-columns');
 
             let headers = [];
             let rows = [];
             let currentIndex = 0;
+            let columnLabels = [];
+            let selectedColumns = [];
 
             const parseCsv = (text) => {
                 const output = [];
@@ -215,24 +261,45 @@
 
             const renderRow = () => {
                 const row = rows[currentIndex] || [];
-                const totalColumns = Math.max(headers.length, row.length);
-
-                const mergedHeaders = Array.from({ length: totalColumns }, (_, index) => {
-                    if (headers[index]) {
-                        return headers[index];
+                const visibleColumns = columnLabels.reduce((output, header, index) => {
+                    if (selectedColumns[index]) {
+                        output.push({ header, index });
                     }
-                    return `Extra column ${index - headers.length + 1}`;
-                });
+                    return output;
+                }, []);
 
-                tableBody.innerHTML = mergedHeaders.map((header, index) => {
+                tableBody.innerHTML = visibleColumns.map(({ header, index }) => {
                     const value = row[index] ?? '—';
                     return `\n<tr><th scope="row">${escapeHtml(header || `Column ${index + 1}`)}</th><td>${escapeHtml(value)}</td></tr>`;
                 }).join('');
+
+                if (visibleColumns.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="2">No columns selected.</td></tr>';
+                }
 
                 rowIndicator.textContent = `Row ${currentIndex + 1} of ${rows.length}`;
                 prevButton.disabled = currentIndex === 0;
                 nextButton.disabled = currentIndex >= rows.length - 1;
                 jumpInput.value = String(currentIndex + 1);
+            };
+
+            const renderColumnFilters = () => {
+                if (!columnLabels.length) {
+                    columnFilterCard.hidden = true;
+                    return;
+                }
+
+                columnFilterCard.hidden = false;
+                columnCheckboxes.innerHTML = columnLabels.map((label, index) => `
+                    <label class="checkbox-row" for="column-toggle-${index}">
+                        <input id="column-toggle-${index}" type="checkbox" data-column-index="${index}" ${selectedColumns[index] ? 'checked' : ''}>
+                        <span>${escapeHtml(label || `Column ${index + 1}`)}</span>
+                    </label>
+                `).join('');
+
+                const allSelected = selectedColumns.every(Boolean);
+                toggleAllColumns.checked = allSelected;
+                toggleAllColumns.indeterminate = !allSelected && selectedColumns.some(Boolean);
             };
 
             const escapeHtml = (value) => value
@@ -254,6 +321,14 @@
                     headers = parsed[0];
                     rows = parsed.slice(1);
                     currentIndex = 0;
+                    const longestRowLength = rows.reduce((max, row) => Math.max(max, row.length), headers.length);
+                    columnLabels = Array.from({ length: longestRowLength }, (_, index) => {
+                        if (headers[index]) {
+                            return headers[index];
+                        }
+                        return `Extra column ${index - headers.length + 1}`;
+                    });
+                    selectedColumns = columnLabels.map(() => true);
 
                     viewer.hidden = false;
                     fileSummary.textContent = `${file.name} • ${rows.length} data row${rows.length === 1 ? '' : 's'}`;
@@ -263,11 +338,14 @@
                     jumpInput.min = '1';
                     jumpInput.max = String(rows.length);
 
+                    renderColumnFilters();
                     renderRow();
                 } catch (error) {
                     viewer.hidden = true;
                     headers = [];
                     rows = [];
+                    columnLabels = [];
+                    selectedColumns = [];
                     loadStatus.textContent = error.message || 'Unable to parse this CSV file.';
                     loadStatus.classList.add('error');
                 }
@@ -315,6 +393,29 @@
                     event.preventDefault();
                     jumpToRow();
                 }
+            });
+
+            columnCheckboxes.addEventListener('change', (event) => {
+                const target = event.target;
+                if (!(target instanceof HTMLInputElement)) {
+                    return;
+                }
+
+                const index = Number.parseInt(target.dataset.columnIndex || '', 10);
+                if (Number.isNaN(index)) {
+                    return;
+                }
+
+                selectedColumns[index] = target.checked;
+                renderColumnFilters();
+                renderRow();
+            });
+
+            toggleAllColumns.addEventListener('change', () => {
+                const isChecked = toggleAllColumns.checked;
+                selectedColumns = selectedColumns.map(() => isChecked);
+                renderColumnFilters();
+                renderRow();
             });
         })();
     </script>
