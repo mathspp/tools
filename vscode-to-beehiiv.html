@@ -138,6 +138,16 @@
                 }
             };
 
+            const isEmptyParagraph = (element) => {
+                if (element.tagName !== 'P') {
+                    return false;
+                }
+
+                const hasMedia = element.querySelector('img, video, iframe, embed, object');
+                const text = element.textContent.replace(/\u00A0/g, ' ').trim();
+                return !hasMedia && text === '';
+            };
+
             const convertMarkdownToBeehiiv = (markdown) => {
                 if (!markdown.trim()) {
                     return '';
@@ -167,9 +177,13 @@
                     }
 
                     if (node.tagName === 'P') {
+                        if (isEmptyParagraph(node)) {
+                            return;
+                        }
+
                         const paragraph = document.createElement('p');
                         paragraph.setAttribute('data-id', crypto.randomUUID());
-                        if (index === 0) {
+                        if (blocks.length === 0) {
                             paragraph.setAttribute('data-pm-slice', '1 1 []');
                         }
                         paragraph.setAttribute('style', BLOCK_STYLE);
@@ -197,6 +211,7 @@
 
                         pre.querySelectorAll('code').forEach(code => {
                             normalizeCodeLanguage(code);
+                            code.textContent = code.textContent.replace(/\n$/, '');
                         });
 
                         blocks.push(pre.outerHTML);
@@ -204,11 +219,11 @@
                     }
 
                     if (node.tagName === 'UL' || node.tagName === 'OL') {
-                        const listParagraph = document.createElement('p');
-                        listParagraph.setAttribute('data-id', crypto.randomUUID());
-                        listParagraph.setAttribute('style', BLOCK_STYLE);
-                        listParagraph.innerHTML = node.outerHTML;
-                        blocks.push(listParagraph.outerHTML);
+                        const list = document.createElement(node.tagName.toLowerCase());
+                        list.setAttribute('data-id', crypto.randomUUID());
+                        list.setAttribute('style', BLOCK_STYLE);
+                        list.innerHTML = node.innerHTML;
+                        blocks.push(list.outerHTML);
                         return;
                     }
 
