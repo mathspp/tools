@@ -121,6 +121,7 @@
             const BLOCK_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: auto; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: auto; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
             const HEADING_STYLE = BLOCK_STYLE.replace('font-weight: 400; ', '');
             const BLOCKQUOTE_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-line: none; text-decoration-thickness: auto; text-decoration-style: solid; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
+            const TABLE_STYLE = `${BLOCKQUOTE_STYLE} min-width: 75px;`;
 
             const updateStatus = (message) => {
                 status.textContent = message;
@@ -146,6 +147,75 @@
                 const hasMedia = element.querySelector('img, video, iframe, embed, object');
                 const text = element.textContent.replace(/\u00A0/g, ' ').trim();
                 return !hasMedia && text === '';
+            };
+
+            const applyInlineFormatting = (element) => {
+                element.querySelectorAll('a').forEach(anchor => {
+                    anchor.setAttribute('target', '_blank');
+                    anchor.setAttribute('rel', 'noopener noreferrer nofollow');
+                    anchor.setAttribute('class', 'link');
+                });
+
+                element.querySelectorAll('code').forEach(code => {
+                    normalizeCodeLanguage(code);
+                });
+            };
+
+            const convertTable = (tableNode) => {
+                const rows = Array.from(tableNode.querySelectorAll('tr'));
+                if (!rows.length) {
+                    return '';
+                }
+
+                const columnCount = rows.reduce((maxColumns, row) => {
+                    const columnTotal = Array.from(row.children).reduce((sum, cell) => {
+                        const span = Number.parseInt(cell.getAttribute('colspan') || '1', 10);
+                        return sum + (Number.isFinite(span) && span > 0 ? span : 1);
+                    }, 0);
+                    return Math.max(maxColumns, columnTotal);
+                }, 0);
+
+                const table = document.createElement('table');
+                table.setAttribute('class', 'table-fixed');
+                table.setAttribute('data-id', crypto.randomUUID());
+                table.setAttribute('style', TABLE_STYLE);
+
+                const colgroup = document.createElement('colgroup');
+                const safeColumnCount = Math.max(columnCount, 1);
+                for (let i = 0; i < safeColumnCount; i += 1) {
+                    const col = document.createElement('col');
+                    col.setAttribute('style', 'min-width: 25px;');
+                    colgroup.appendChild(col);
+                }
+                table.appendChild(colgroup);
+
+                const tbody = document.createElement('tbody');
+
+                rows.forEach((sourceRow) => {
+                    const row = document.createElement('tr');
+
+                    Array.from(sourceRow.children).forEach((sourceCell) => {
+                        const targetTag = sourceCell.tagName === 'TH' ? 'th' : 'td';
+                        const targetCell = document.createElement(targetTag);
+                        const colspan = sourceCell.getAttribute('colspan') || '1';
+                        const rowspan = sourceCell.getAttribute('rowspan') || '1';
+                        targetCell.setAttribute('colspan', colspan);
+                        targetCell.setAttribute('rowspan', rowspan);
+
+                        const paragraph = document.createElement('p');
+                        paragraph.setAttribute('data-id', crypto.randomUUID());
+                        paragraph.innerHTML = sourceCell.innerHTML;
+                        applyInlineFormatting(paragraph);
+
+                        targetCell.appendChild(paragraph);
+                        row.appendChild(targetCell);
+                    });
+
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(tbody);
+                return table.outerHTML;
             };
 
             const convertMarkdownToBeehiiv = (markdown) => {
@@ -188,16 +258,7 @@
                         }
                         paragraph.setAttribute('style', BLOCK_STYLE);
                         paragraph.innerHTML = node.innerHTML;
-
-                        paragraph.querySelectorAll('a').forEach(anchor => {
-                            anchor.setAttribute('target', '_blank');
-                            anchor.setAttribute('rel', 'noopener noreferrer nofollow');
-                            anchor.setAttribute('class', 'link');
-                        });
-
-                        paragraph.querySelectorAll('code').forEach(code => {
-                            normalizeCodeLanguage(code);
-                        });
+                        applyInlineFormatting(paragraph);
 
                         blocks.push(paragraph.outerHTML);
                         return;
@@ -247,22 +308,21 @@
                             const paragraph = document.createElement('p');
                             paragraph.setAttribute('data-id', crypto.randomUUID());
                             paragraph.innerHTML = sourceParagraph.innerHTML;
-
-                            paragraph.querySelectorAll('a').forEach(anchor => {
-                                anchor.setAttribute('target', '_blank');
-                                anchor.setAttribute('rel', 'noopener noreferrer nofollow');
-                                anchor.setAttribute('class', 'link');
-                            });
-
-                            paragraph.querySelectorAll('code').forEach(code => {
-                                normalizeCodeLanguage(code);
-                            });
+                            applyInlineFormatting(paragraph);
 
                             quote.appendChild(paragraph);
                         });
 
                         figure.appendChild(quote);
                         blocks.push(figure.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'TABLE') {
+                        const tableHtml = convertTable(node);
+                        if (tableHtml) {
+                            blocks.push(tableHtml);
+                        }
                         return;
                     }
 
