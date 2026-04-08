@@ -1,0 +1,1 @@
+This utility lets you upload multiple PDF files, reorder them by dragging cards vertically, and merge them into one file. Click **Merge** to download the combined document as `merged-pdf-year-month-day.pdf`.
