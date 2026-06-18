@@ -1,0 +1,1 @@
+This PyScript-powered code editor lets you write and run Python directly in the browser. It loads PyScript 2026.6.1, configures the Python runtime with pandas and lxml, and mounts local CSV files named world_population.csv and wc_countries.csv into PyScript's virtual filesystem so they can be opened from Python code with pandas.read_csv.

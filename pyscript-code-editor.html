@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyScript Code Editor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://pyscript.net/releases/2026.6.1/core.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/lib/codemirror.min.css">
+    <script type="module" src="https://pyscript.net/releases/2026.6.1/core.js"></script>
+    <style>
+        body { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+        .page-header { display: flex; flex-direction: column; gap: 0.5rem; }
+        .site-link { font-weight: 600; color: var(--foreground-subtle); text-decoration: none; }
+        .site-link:hover, .site-link:focus-visible { color: var(--foreground); }
+        main { display: grid; gap: 1.5rem; }
+        .tool-card { padding: clamp(1.25rem, 3vw, 2rem); }
+        .editor-grid { display: grid; gap: 1rem; }
+        .tool-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+        .status { color: var(--foreground-subtle); font-size: 0.95rem; }
+        .CodeMirror { height: 420px; border: 1px solid var(--border-subtle); border-radius: 10px; font-family: "Fira Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 15px; }
+        .output { background: #111827; color: #f9fafb; border-radius: 10px; min-height: 220px; margin: 0; overflow: auto; padding: 1rem; white-space: pre-wrap; word-break: break-word; }
+        .output.error { color: #fecaca; }
+        .help-list { margin-bottom: 0; }
+        @media (max-width: 720px) { body { padding: 20px 16px 40px; } .CodeMirror { height: 340px; } }
+    </style>
+</head>
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>PyScript Code Editor</h1>
+        <p class="lead">Write Python in the browser and run it with PyScript 2026.6.1, pandas, lxml, and two bundled CSV files.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="editor-grid">
+                <label for="code-input">Python code</label>
+                <textarea id="code-input" name="code-input">import pandas as pd
+
+print("Hello from PyScript!")
+print("pandas", pd.__version__)
+
+# These CSV files are mounted next to this page:
+# world = pd.read_csv("world_population.csv")
+# countries = pd.read_csv("wc_countries.csv")
+# print(world.head())</textarea>
+            </div>
+            <div class="tool-actions">
+                <button type="button" id="run-code" disabled>Loading PyScript…</button>
+                <button type="button" id="clear-output">Clear output</button>
+                <span id="status" class="status" role="status">Preparing Python runtime and packages.</span>
+            </div>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <h2>Output</h2>
+            <pre id="output" class="output">PyScript is loading. The first run may take a moment while packages are prepared.</pre>
+        </section>
+
+        <section class="surface tool-card">
+            <h2>Available in Python</h2>
+            <ul class="help-list">
+                <li><code>pandas</code> and <code>lxml</code> are installed by PyScript.</li>
+                <li><code>world_population.csv</code> and <code>wc_countries.csv</code> are mounted in the current working directory.</li>
+                <li>Use <code>pd.read_csv("world_population.csv")</code> or <code>pd.read_csv("wc_countries.csv")</code> to load the data.</li>
+            </ul>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/lib/codemirror.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.15/mode/python/python.min.js"></script>
+    <py-config>
+    {
+        "packages": ["pandas", "lxml"],
+        "files": {
+            "./world_population.csv": "world_population.csv",
+            "./wc_countries.csv": "wc_countries.csv"
+        }
+    }
+    </py-config>
+    <script type="py">
+from pyodide.ffi import create_proxy
+from pyscript import window
+import contextlib
+import io
+import traceback
+
+_namespace = {"__name__": "__main__"}
+
+
+def run_user_code(source):
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            exec(source, _namespace)
+        return {"ok": True, "stdout": stdout.getvalue(), "stderr": stderr.getvalue()}
+    except Exception:
+        return {"ok": False, "stdout": stdout.getvalue(), "stderr": stderr.getvalue() + traceback.format_exc()}
+
+
+window.runUserPython = create_proxy(run_user_code)
+window.pyscriptEditorReady()
+    </script>
+    <script>
+        (function () {
+            const textarea = document.getElementById('code-input');
+            const runButton = document.getElementById('run-code');
+            const clearButton = document.getElementById('clear-output');
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+
+            const editor = CodeMirror.fromTextArea(textarea, {
+                mode: 'python',
+                lineNumbers: true,
+                indentUnit: 4,
+                indentWithTabs: false,
+                lineWrapping: true,
+                viewportMargin: Infinity,
+            });
+
+            function pyResultToObject(result) {
+                if (result && typeof result.toJs === 'function') {
+                    const converted = result.toJs({ dict_converter: Object.fromEntries });
+                    if (typeof result.destroy === 'function') result.destroy();
+                    return converted;
+                }
+                return result;
+            }
+
+            window.pyscriptEditorReady = function () {
+                runButton.disabled = false;
+                runButton.textContent = 'Run code';
+                status.textContent = 'Ready.';
+            };
+
+            runButton.addEventListener('click', async () => {
+                if (typeof window.runUserPython !== 'function') return;
+                runButton.disabled = true;
+                runButton.textContent = 'Running…';
+                status.textContent = 'Running code.';
+                output.classList.remove('error');
+                output.textContent = '';
+
+                try {
+                    const result = pyResultToObject(window.runUserPython(editor.getValue()));
+                    const text = `${result.stdout || ''}${result.stderr || ''}` || '(No output)';
+                    output.textContent = text;
+                    output.classList.toggle('error', !result.ok);
+                    status.textContent = result.ok ? 'Finished successfully.' : 'Finished with an error.';
+                } catch (error) {
+                    output.textContent = error.stack || error.message || String(error);
+                    output.classList.add('error');
+                    status.textContent = 'JavaScript error while running code.';
+                } finally {
+                    runButton.disabled = false;
+                    runButton.textContent = 'Run code';
+                }
+            });
+
+            clearButton.addEventListener('click', () => {
+                output.classList.remove('error');
+                output.textContent = '';
+                status.textContent = typeof window.runUserPython === 'function' ? 'Ready.' : 'Preparing Python runtime and packages.';
+            });
+        })();
+    </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+</body>
+</html>
