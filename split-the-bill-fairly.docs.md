@@ -1,0 +1,1 @@
+Split a shared bill by adding the people involved, entering each bill item with its price, and selecting who shared each item. The tool calculates every person's total by splitting each item evenly among only the selected people, while showing any unassigned amount when an item has nobody selected.

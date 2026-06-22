@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split the Bill Fairly</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 1040px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2.75rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.25rem, 2.5vw, 2rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        .card-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-heading h2,
+        .item-card h3 {
+            margin: 0;
+        }
+
+        .inline-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .item-form {
+            display: grid;
+            grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 0.35fr) auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .pill-list,
+        .participant-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            min-height: 2.25rem;
+        }
+
+        .pill,
+        .participant-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: 1px solid var(--ui-3);
+            border-radius: 999px;
+            background: var(--bg);
+            color: var(--tx);
+            padding: 0.35rem 0.55rem 0.35rem 0.75rem;
+            min-height: 2rem;
+        }
+
+        .pill button,
+        .icon-button,
+        .participant-toggle {
+            min-width: 2rem;
+        }
+
+        .pill button,
+        .icon-button {
+            display: inline-grid;
+            place-items: center;
+            width: 1.6rem;
+            height: 1.6rem;
+            padding: 0;
+            border-radius: 999px;
+            line-height: 1;
+        }
+
+        .participant-toggle {
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .participant-toggle[aria-pressed="true"] {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .item-list {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .item-card {
+            background: var(--bg);
+            border: 1px solid var(--ui-2);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            display: grid;
+            gap: 0.9rem;
+        }
+
+        .item-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.25fr) auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+
+        .item-share {
+            color: var(--tx-2);
+            margin: 0;
+        }
+
+        .totals-list {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .total-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 1rem;
+            align-items: center;
+            background: var(--bg);
+            border: 1px solid var(--ui-2);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 0.9rem;
+        }
+
+        .total-name {
+            font-weight: 700;
+        }
+
+        .total-amount,
+        .grand-total {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+        }
+
+        .summary-line,
+        .empty-state,
+        .helper-text,
+        .error-text {
+            color: var(--tx-2);
+            margin: 0;
+        }
+
+        .error-text {
+            color: var(--re);
+            min-height: 1.5rem;
+        }
+
+        .summary-line {
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 720px) {
+            .inline-form,
+            .item-form,
+            .item-header {
+                grid-template-columns: 1fr;
+            }
+
+            .card-heading {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Split the Bill Fairly</h1>
+        <p class="lead">Add people, enter bill items, and assign each item to the people who shared it.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card" aria-labelledby="people-heading">
+            <div class="card-heading">
+                <h2 id="people-heading">People</h2>
+            </div>
+
+            <form id="person-form" class="inline-form">
+                <div class="form-group">
+                    <label for="person-name">Name</label>
+                    <input id="person-name" name="person-name" type="text" autocomplete="off" placeholder="Add a person">
+                </div>
+                <button type="submit">Add person</button>
+            </form>
+            <p id="person-error" class="error-text" aria-live="polite"></p>
+            <div id="people-list" class="pill-list" aria-label="People splitting the bill"></div>
+        </section>
+
+        <section class="surface tool-card" aria-labelledby="items-heading">
+            <div class="card-heading">
+                <h2 id="items-heading">Bill items</h2>
+            </div>
+
+            <form id="item-form" class="item-form">
+                <div class="form-group">
+                    <label for="item-name">Item</label>
+                    <input id="item-name" name="item-name" type="text" autocomplete="off" placeholder="e.g. Pizza">
+                </div>
+                <div class="form-group">
+                    <label for="item-price">Price</label>
+                    <input id="item-price" name="item-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+                </div>
+                <button type="submit">Add item</button>
+            </form>
+            <p id="item-error" class="error-text" aria-live="polite"></p>
+            <div id="item-list" class="item-list"></div>
+        </section>
+
+        <section class="surface tool-card" aria-labelledby="totals-heading" aria-live="polite">
+            <div class="card-heading">
+                <h2 id="totals-heading">Total per person</h2>
+                <span class="grand-total" id="grand-total">Bill total: 0.00</span>
+            </div>
+            <p class="summary-line" id="summary-line">Add people and items to calculate each share.</p>
+            <div id="totals-list" class="totals-list"></div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const people = [];
+            const items = [];
+            let nextItemId = 1;
+
+            const personForm = document.getElementById('person-form');
+            const personInput = document.getElementById('person-name');
+            const personError = document.getElementById('person-error');
+            const peopleList = document.getElementById('people-list');
+
+            const itemForm = document.getElementById('item-form');
+            const itemNameInput = document.getElementById('item-name');
+            const itemPriceInput = document.getElementById('item-price');
+            const itemError = document.getElementById('item-error');
+            const itemList = document.getElementById('item-list');
+
+            const totalsList = document.getElementById('totals-list');
+            const grandTotal = document.getElementById('grand-total');
+            const summaryLine = document.getElementById('summary-line');
+
+            function formatMoney(value) {
+                return value.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            function normaliseName(name) {
+                return name.trim().replace(/\s+/g, ' ');
+            }
+
+            function clearNode(node) {
+                while (node.firstChild) {
+                    node.removeChild(node.firstChild);
+                }
+            }
+
+            function makeEmptyState(message) {
+                const empty = document.createElement('p');
+                empty.className = 'empty-state';
+                empty.textContent = message;
+                return empty;
+            }
+
+            function renderPeople() {
+                clearNode(peopleList);
+
+                if (people.length === 0) {
+                    peopleList.appendChild(makeEmptyState('No people added yet.'));
+                    return;
+                }
+
+                people.forEach(name => {
+                    const pill = document.createElement('span');
+                    pill.className = 'pill';
+
+                    const label = document.createElement('span');
+                    label.textContent = name;
+
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.setAttribute('aria-label', `Remove ${name}`);
+                    removeButton.textContent = '×';
+                    removeButton.addEventListener('click', () => {
+                        removePerson(name);
+                    });
+
+                    pill.append(label, removeButton);
+                    peopleList.appendChild(pill);
+                });
+            }
+
+            function renderItems() {
+                clearNode(itemList);
+
+                if (items.length === 0) {
+                    itemList.appendChild(makeEmptyState('No bill items added yet.'));
+                    return;
+                }
+
+                items.forEach(item => {
+                    const article = document.createElement('article');
+                    article.className = 'item-card';
+
+                    const header = document.createElement('div');
+                    header.className = 'item-header';
+
+                    const nameGroup = document.createElement('div');
+                    nameGroup.className = 'form-group';
+                    const nameLabel = document.createElement('label');
+                    nameLabel.htmlFor = `item-name-${item.id}`;
+                    nameLabel.textContent = 'Item';
+                    const nameInput = document.createElement('input');
+                    nameInput.id = `item-name-${item.id}`;
+                    nameInput.type = 'text';
+                    nameInput.value = item.name;
+                    nameInput.addEventListener('input', () => {
+                        item.name = nameInput.value;
+                    });
+                    nameGroup.append(nameLabel, nameInput);
+
+                    const priceGroup = document.createElement('div');
+                    priceGroup.className = 'form-group';
+                    const priceLabel = document.createElement('label');
+                    priceLabel.htmlFor = `item-price-${item.id}`;
+                    priceLabel.textContent = 'Price';
+                    const priceInput = document.createElement('input');
+                    priceInput.id = `item-price-${item.id}`;
+                    priceInput.type = 'number';
+                    priceInput.min = '0';
+                    priceInput.step = '0.01';
+                    priceInput.inputMode = 'decimal';
+                    priceInput.value = item.price;
+                    priceGroup.append(priceLabel, priceInput);
+
+                    const removeItemButton = document.createElement('button');
+                    removeItemButton.type = 'button';
+                    removeItemButton.className = 'icon-button';
+                    removeItemButton.setAttribute('aria-label', `Remove ${item.name || 'item'}`);
+                    removeItemButton.textContent = '×';
+                    removeItemButton.addEventListener('click', () => {
+                        removeItem(item.id);
+                    });
+
+                    header.append(nameGroup, priceGroup, removeItemButton);
+
+                    const participantList = document.createElement('div');
+                    participantList.className = 'participant-list';
+                    participantList.setAttribute('aria-label', `People sharing ${item.name || 'this item'}`);
+
+                    if (people.length === 0) {
+                        participantList.appendChild(makeEmptyState('Add people first, then choose who shared this item.'));
+                    } else {
+                        people.forEach(name => {
+                            const button = document.createElement('button');
+                            button.type = 'button';
+                            button.className = 'participant-toggle';
+                            button.textContent = name;
+                            button.setAttribute('aria-pressed', String(item.people.includes(name)));
+                            button.addEventListener('click', () => {
+                                togglePersonForItem(item.id, name);
+                            });
+                            participantList.appendChild(button);
+                        });
+                    }
+
+                    const share = document.createElement('p');
+                    share.className = 'item-share';
+
+                    function updateItemShareText() {
+                        if (item.people.length === 0) {
+                            share.textContent = 'Not assigned to anyone yet.';
+                        } else {
+                            share.textContent = `${formatMoney(item.price / item.people.length)} each for ${item.people.length} ${item.people.length === 1 ? 'person' : 'people'}.`;
+                        }
+                    }
+
+                    priceInput.addEventListener('input', () => {
+                        item.price = Number.parseFloat(priceInput.value) || 0;
+                        updateItemShareText();
+                        renderTotals();
+                    });
+
+                    updateItemShareText();
+
+                    article.append(header, participantList, share);
+                    itemList.appendChild(article);
+                });
+            }
+
+            function renderTotals() {
+                clearNode(totalsList);
+
+                const totals = new Map(people.map(name => [name, 0]));
+                const billTotal = items.reduce((sum, item) => sum + item.price, 0);
+                const assignedTotal = items.reduce((sum, item) => {
+                    if (item.people.length === 0) {
+                        return sum;
+                    }
+                    return sum + item.price;
+                }, 0);
+
+                items.forEach(item => {
+                    if (item.people.length === 0) {
+                        return;
+                    }
+                    const share = item.price / item.people.length;
+                    item.people.forEach(name => {
+                        totals.set(name, (totals.get(name) || 0) + share);
+                    });
+                });
+
+                grandTotal.textContent = `Bill total: ${formatMoney(billTotal)}`;
+
+                if (people.length === 0) {
+                    summaryLine.textContent = 'Add people and items to calculate each share.';
+                    totalsList.appendChild(makeEmptyState('No people added yet.'));
+                    return;
+                }
+
+                const unassignedTotal = billTotal - assignedTotal;
+                summaryLine.textContent = unassignedTotal > 0
+                    ? `${formatMoney(unassignedTotal)} is not assigned because some items have no people selected.`
+                    : 'Every assigned item is split evenly among its selected people.';
+
+                people.forEach(name => {
+                    const row = document.createElement('div');
+                    row.className = 'total-row';
+
+                    const label = document.createElement('span');
+                    label.className = 'total-name';
+                    label.textContent = name;
+
+                    const amount = document.createElement('span');
+                    amount.className = 'total-amount';
+                    amount.textContent = formatMoney(totals.get(name) || 0);
+
+                    row.append(label, amount);
+                    totalsList.appendChild(row);
+                });
+            }
+
+            function renderAll() {
+                renderPeople();
+                renderItems();
+                renderTotals();
+            }
+
+            function addPerson(name) {
+                const cleanName = normaliseName(name);
+                if (!cleanName) {
+                    personError.textContent = 'Enter a name before adding a person.';
+                    return;
+                }
+                if (people.some(existing => existing.toLowerCase() === cleanName.toLowerCase())) {
+                    personError.textContent = `${cleanName} is already in the list.`;
+                    return;
+                }
+
+                people.push(cleanName);
+                personInput.value = '';
+                personError.textContent = '';
+                renderAll();
+            }
+
+            function removePerson(name) {
+                const index = people.indexOf(name);
+                if (index === -1) {
+                    return;
+                }
+                people.splice(index, 1);
+                items.forEach(item => {
+                    item.people = item.people.filter(person => person !== name);
+                });
+                renderAll();
+            }
+
+            function addItem(name, price) {
+                const cleanName = normaliseName(name);
+                const numericPrice = Number.parseFloat(price);
+                if (!cleanName) {
+                    itemError.textContent = 'Enter an item name before adding it.';
+                    return;
+                }
+                if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+                    itemError.textContent = 'Enter a valid price of 0 or more.';
+                    return;
+                }
+
+                items.push({
+                    id: nextItemId,
+                    name: cleanName,
+                    price: numericPrice,
+                    people: [...people]
+                });
+                nextItemId += 1;
+                itemNameInput.value = '';
+                itemPriceInput.value = '';
+                itemError.textContent = '';
+                renderAll();
+                itemNameInput.focus();
+            }
+
+            function removeItem(id) {
+                const index = items.findIndex(item => item.id === id);
+                if (index === -1) {
+                    return;
+                }
+                items.splice(index, 1);
+                renderAll();
+            }
+
+            function togglePersonForItem(id, name) {
+                const item = items.find(candidate => candidate.id === id);
+                if (!item) {
+                    return;
+                }
+                if (item.people.includes(name)) {
+                    item.people = item.people.filter(person => person !== name);
+                } else {
+                    item.people.push(name);
+                }
+                renderItems();
+                renderTotals();
+            }
+
+            personForm.addEventListener('submit', event => {
+                event.preventDefault();
+                addPerson(personInput.value);
+            });
+
+            itemForm.addEventListener('submit', event => {
+                event.preventDefault();
+                addItem(itemNameInput.value, itemPriceInput.value);
+            });
+
+            renderAll();
+        })();
+    </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+</body>
+
+</html>
