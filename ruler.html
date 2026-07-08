@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruler</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            --ruler-size: 48px;
+            --tick-colour: var(--tx);
+            --tick-subtle: var(--tx-2);
+            --ruler-bg: color-mix(in srgb, var(--bg) 86%, transparent);
+        }
+
+        body {
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .ruler-page {
+            min-height: 100vh;
+            padding: calc(var(--ruler-size) + 1.5rem) 1.5rem 1.5rem calc(var(--ruler-size) + 1.5rem);
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34rem),
+                linear-gradient(135deg, var(--bg), var(--bg-2));
+        }
+
+        .panel {
+            width: min(680px, 100%);
+            padding: clamp(1.25rem, 3vw, 2rem);
+            z-index: 2;
+        }
+
+        .panel h1 {
+            margin-top: 0;
+        }
+
+        .readout {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+            margin: 1.25rem 0;
+        }
+
+        .metric {
+            border: 1px solid var(--ui-2);
+            border-radius: var(--radius-md);
+            padding: 0.85rem;
+            background: var(--bg);
+        }
+
+        .metric strong {
+            display: block;
+            font-family: var(--font-heading);
+            font-size: clamp(1.2rem, 3vw, 1.7rem);
+            line-height: 1.2;
+        }
+
+        .metric span {
+            color: var(--tx-2);
+            font-size: 0.9rem;
+        }
+
+        .ruler {
+            position: fixed;
+            z-index: 10;
+            background: var(--ruler-bg);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-soft);
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .horizontal-ruler {
+            top: 0;
+            left: var(--ruler-size);
+            right: 0;
+            height: var(--ruler-size);
+            border-bottom: 1px solid var(--ui-3);
+        }
+
+        .vertical-ruler {
+            top: var(--ruler-size);
+            left: 0;
+            bottom: 0;
+            width: var(--ruler-size);
+            border-right: 1px solid var(--ui-3);
+        }
+
+        .corner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--ruler-size);
+            height: var(--ruler-size);
+            z-index: 11;
+            display: grid;
+            place-items: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: var(--accent);
+            color: var(--bg);
+            border-right: 1px solid var(--ui-3);
+            border-bottom: 1px solid var(--ui-3);
+        }
+
+        .tick {
+            position: absolute;
+            background: var(--tick-colour);
+        }
+
+        .horizontal-ruler .tick {
+            top: 0;
+            width: 1px;
+            height: 32%;
+        }
+
+        .vertical-ruler .tick {
+            left: 0;
+            width: 32%;
+            height: 1px;
+        }
+
+        .horizontal-ruler .tick.half {
+            height: 52%;
+            background: var(--tick-subtle);
+        }
+
+        .vertical-ruler .tick.half {
+            width: 52%;
+            background: var(--tick-subtle);
+        }
+
+        .horizontal-ruler .tick.cm {
+            height: 100%;
+            width: 2px;
+        }
+
+        .vertical-ruler .tick.cm {
+            width: 100%;
+            height: 2px;
+        }
+
+        .label {
+            position: absolute;
+            color: var(--tx);
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .horizontal-ruler .label {
+            top: 28px;
+            transform: translateX(4px);
+        }
+
+        .vertical-ruler .label {
+            left: 28px;
+            transform: translateY(4px) rotate(90deg);
+            transform-origin: left top;
+        }
+
+        @media (max-width: 640px) {
+            :root {
+                --ruler-size: 40px;
+            }
+
+            .ruler-page {
+                padding: calc(var(--ruler-size) + 1rem) 1rem 1rem calc(var(--ruler-size) + 1rem);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="corner" aria-hidden="true">cm</div>
+    <div id="horizontal-ruler" class="ruler horizontal-ruler" aria-hidden="true"></div>
+    <div id="vertical-ruler" class="ruler vertical-ruler" aria-hidden="true"></div>
+
+    <main class="ruler-page">
+        <section class="surface panel" aria-live="polite">
+            <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+            <h1>Ruler</h1>
+            <p class="lead">A full-screen browser ruler with millimetre ticks and centimetre labels along the top and left edges of the viewport.</p>
+            <div class="readout">
+                <div class="metric">
+                    <strong id="viewport-px">—</strong>
+                    <span>viewport pixels</span>
+                </div>
+                <div class="metric">
+                    <strong id="viewport-cm">—</strong>
+                    <span>CSS centimetres visible</span>
+                </div>
+                <div class="metric">
+                    <strong id="pixel-ratio">—</strong>
+                    <span>device pixel ratio</span>
+                </div>
+            </div>
+            <p>The browser maps CSS centimetres to screen pixels, so this is best for layout and on-screen measurement. Physical accuracy depends on your browser, display scaling, zoom level, and operating system settings.</p>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const horizontalRuler = document.getElementById('horizontal-ruler');
+            const verticalRuler = document.getElementById('vertical-ruler');
+            const viewportPx = document.getElementById('viewport-px');
+            const viewportCm = document.getElementById('viewport-cm');
+            const pixelRatio = document.getElementById('pixel-ratio');
+
+            function pixelsPerCentimetre() {
+                const probe = document.createElement('div');
+                probe.style.position = 'absolute';
+                probe.style.visibility = 'hidden';
+                probe.style.width = '1cm';
+                document.body.appendChild(probe);
+                const px = probe.getBoundingClientRect().width;
+                probe.remove();
+                return px;
+            }
+
+            function makeTick(axis, position, kind, label) {
+                const tick = document.createElement('span');
+                tick.className = `tick ${kind}`.trim();
+                tick.style[axis === 'x' ? 'left' : 'top'] = `${position}px`;
+                if (label) {
+                    const labelElement = document.createElement('span');
+                    labelElement.className = 'label';
+                    labelElement.textContent = label;
+                    labelElement.style[axis === 'x' ? 'left' : 'top'] = `${position}px`;
+                    return [tick, labelElement];
+                }
+                return [tick];
+            }
+
+            function drawRuler(ruler, axis, length, pxPerCm) {
+                const fragment = document.createDocumentFragment();
+                const pxPerMm = pxPerCm / 10;
+                const tickCount = Math.ceil(length / pxPerMm);
+
+                for (let mm = 0; mm <= tickCount; mm += 1) {
+                    const position = Math.round(mm * pxPerMm * 100) / 100;
+                    const isCentimetre = mm % 10 === 0;
+                    const isHalfCentimetre = mm % 5 === 0;
+                    const kind = isCentimetre ? 'cm' : (isHalfCentimetre ? 'half' : '');
+                    const label = isCentimetre ? String(mm / 10) : '';
+                    makeTick(axis, position, kind, label).forEach(element => fragment.appendChild(element));
+                }
+
+                ruler.replaceChildren(fragment);
+            }
+
+            function render() {
+                const pxPerCm = pixelsPerCentimetre();
+                const rulerSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ruler-size')) || 48;
+                const horizontalLength = Math.max(0, window.innerWidth - rulerSize);
+                const verticalLength = Math.max(0, window.innerHeight - rulerSize);
+
+                drawRuler(horizontalRuler, 'x', horizontalLength, pxPerCm);
+                drawRuler(verticalRuler, 'y', verticalLength, pxPerCm);
+
+                viewportPx.textContent = `${window.innerWidth} × ${window.innerHeight}`;
+                viewportCm.textContent = `${(window.innerWidth / pxPerCm).toFixed(1)} × ${(window.innerHeight / pxPerCm).toFixed(1)}`;
+                pixelRatio.textContent = `${window.devicePixelRatio || 1}×`;
+            }
+
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                window.clearTimeout(resizeTimer);
+                resizeTimer = window.setTimeout(render, 100);
+            });
+
+            render();
+        })();
+    </script>
+</body>
+
+</html>
