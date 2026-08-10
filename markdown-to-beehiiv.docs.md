@@ -1,0 +1,1 @@
+Convert raw Markdown into Beehiiv-ready rich HTML, with a live preview and one-click rich-text clipboard copy. Supports headings, links, lists, blockquotes, fenced code blocks, images, and GFM tables.

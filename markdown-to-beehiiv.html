@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown to Beehiiv</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2.75rem) clamp(3rem, 4vw, 4rem);
+        }
+
+        header {
+            margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+        }
+
+        main {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            padding: clamp(1.25rem, 3vw, 2rem);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 240px;
+        }
+
+        .output-wrapper {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .preview {
+            border: 1px solid var(--ui-2);
+            border-radius: 12px;
+            padding: clamp(1rem, 2vw, 1.25rem);
+            background: var(--bg);
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .secondary {
+            background: var(--bg);
+            color: var(--tx);
+            border: 1px solid var(--ui-2);
+        }
+
+        .secondary:hover,
+        .secondary:focus-visible {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .status {
+            color: var(--tx-3);
+            min-height: 1.25rem;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1.25rem 1rem 2.5rem;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" defer></script>
+</head>
+
+<body>
+    <header class="page-header">
+        <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
+        <h1>Markdown to Beehiiv</h1>
+        <p class="lead">Turn raw Markdown into Beehiiv-ready rich text, then copy it in one click.</p>
+    </header>
+
+    <main>
+        <section class="surface tool-card">
+            <div class="form-group">
+                <label for="markdown-input">Markdown content</label>
+                <textarea id="markdown-input" name="markdown-input" placeholder="# Newsletter title
+
+Write **bold text**, add [links](https://example.com), lists, quotes, code, and tables…" spellcheck="false"></textarea>
+            </div>
+            <div class="button-row">
+                <button id="copy-html" type="button" class="btn">Copy to clipboard</button>
+                <button id="clear-input" type="button" class="btn secondary">Clear</button>
+            </div>
+            <p class="status" id="status" aria-live="polite"></p>
+        </section>
+
+        <section class="surface tool-card" aria-live="polite">
+            <h2>Beehiiv output</h2>
+            <p class="lead">This preview uses the same HTML that will be copied.</p>
+            <div class="output-wrapper">
+                <div id="beehiiv-preview" class="preview"></div>
+                <div class="form-group">
+                    <label for="beehiiv-html">HTML output</label>
+                    <textarea id="beehiiv-html" readonly></textarea>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const markdownInput = document.getElementById('markdown-input');
+            const copyButton = document.getElementById('copy-html');
+            const clearButton = document.getElementById('clear-input');
+            const preview = document.getElementById('beehiiv-preview');
+            const htmlOutput = document.getElementById('beehiiv-html');
+            const status = document.getElementById('status');
+
+            const BLOCK_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: auto; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: auto; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration: none; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
+            const HEADING_STYLE = BLOCK_STYLE.replace('font-weight: 400; ', '');
+            const BLOCKQUOTE_STYLE = 'font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-line: none; text-decoration-thickness: auto; text-decoration-style: solid; caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0);';
+            const TABLE_STYLE = `${BLOCKQUOTE_STYLE} min-width: 75px;`;
+
+            const updateStatus = (message) => {
+                status.textContent = message;
+                if (message) {
+                    setTimeout(() => {
+                        status.textContent = '';
+                    }, 3500);
+                }
+            };
+
+            const normalizeCodeLanguage = (codeElement) => {
+                const className = codeElement.getAttribute('class') || '';
+                if (className.includes('language-py')) {
+                    codeElement.setAttribute('class', className.replace('language-py', 'language-python'));
+                }
+            };
+
+            const isEmptyParagraph = (element) => {
+                if (element.tagName !== 'P') {
+                    return false;
+                }
+
+                const hasMedia = element.querySelector('img, video, iframe, embed, object');
+                const text = element.textContent.replace(/\u00A0/g, ' ').trim();
+                return !hasMedia && text === '';
+            };
+
+            const applyInlineFormatting = (element) => {
+                element.querySelectorAll('a').forEach(anchor => {
+                    anchor.setAttribute('target', '_blank');
+                    anchor.setAttribute('rel', 'noopener noreferrer nofollow');
+                    anchor.setAttribute('class', 'link');
+                });
+
+                element.querySelectorAll('code').forEach(code => {
+                    normalizeCodeLanguage(code);
+                });
+            };
+
+            const convertTable = (tableNode) => {
+                const rows = Array.from(tableNode.querySelectorAll('tr'));
+                if (!rows.length) {
+                    return '';
+                }
+
+                const columnCount = rows.reduce((maxColumns, row) => {
+                    const columnTotal = Array.from(row.children).reduce((sum, cell) => {
+                        const span = Number.parseInt(cell.getAttribute('colspan') || '1', 10);
+                        return sum + (Number.isFinite(span) && span > 0 ? span : 1);
+                    }, 0);
+                    return Math.max(maxColumns, columnTotal);
+                }, 0);
+
+                const table = document.createElement('table');
+                table.setAttribute('class', 'table-fixed');
+                table.setAttribute('data-id', crypto.randomUUID());
+                table.setAttribute('style', TABLE_STYLE);
+
+                const colgroup = document.createElement('colgroup');
+                const safeColumnCount = Math.max(columnCount, 1);
+                for (let i = 0; i < safeColumnCount; i += 1) {
+                    const col = document.createElement('col');
+                    col.setAttribute('style', 'min-width: 25px;');
+                    colgroup.appendChild(col);
+                }
+                table.appendChild(colgroup);
+
+                const tbody = document.createElement('tbody');
+
+                rows.forEach((sourceRow) => {
+                    const row = document.createElement('tr');
+
+                    Array.from(sourceRow.children).forEach((sourceCell) => {
+                        const targetTag = sourceCell.tagName === 'TH' ? 'th' : 'td';
+                        const targetCell = document.createElement(targetTag);
+                        const colspan = sourceCell.getAttribute('colspan') || '1';
+                        const rowspan = sourceCell.getAttribute('rowspan') || '1';
+                        targetCell.setAttribute('colspan', colspan);
+                        targetCell.setAttribute('rowspan', rowspan);
+
+                        const paragraph = document.createElement('p');
+                        paragraph.setAttribute('data-id', crypto.randomUUID());
+                        paragraph.innerHTML = sourceCell.innerHTML;
+                        applyInlineFormatting(paragraph);
+
+                        targetCell.appendChild(paragraph);
+                        row.appendChild(targetCell);
+                    });
+
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(tbody);
+                return table.outerHTML;
+            };
+
+            const convertMarkdownToBeehiiv = (markdown) => {
+                if (!markdown.trim()) {
+                    return '';
+                }
+
+                const rawHtml = marked.parse(markdown, { breaks: true, gfm: true });
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(rawHtml, 'text/html');
+                const blocks = [];
+
+                const nodes = Array.from(doc.body.childNodes).filter(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        return node.textContent.trim() !== '';
+                    }
+                    return true;
+                });
+
+                nodes.forEach((node, index) => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const paragraph = document.createElement('p');
+                        paragraph.textContent = node.textContent.trim();
+                        node = paragraph;
+                    }
+
+                    if (node.nodeType !== Node.ELEMENT_NODE) {
+                        return;
+                    }
+
+                    if (node.tagName === 'P') {
+                        if (isEmptyParagraph(node)) {
+                            return;
+                        }
+
+                        const paragraph = document.createElement('p');
+                        paragraph.setAttribute('data-id', crypto.randomUUID());
+                        if (blocks.length === 0) {
+                            paragraph.setAttribute('data-pm-slice', '1 1 []');
+                        }
+                        paragraph.setAttribute('style', BLOCK_STYLE);
+                        paragraph.innerHTML = node.innerHTML;
+                        applyInlineFormatting(paragraph);
+
+                        blocks.push(paragraph.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'PRE') {
+                        const pre = document.createElement('pre');
+                        pre.setAttribute('data-id', crypto.randomUUID());
+                        pre.setAttribute('style', BLOCK_STYLE.replace('white-space: normal;', ''));
+                        pre.innerHTML = node.innerHTML;
+
+                        pre.querySelectorAll('code').forEach(code => {
+                            normalizeCodeLanguage(code);
+                            code.textContent = code.textContent.replace(/\n$/, '');
+                        });
+
+                        blocks.push(pre.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'UL' || node.tagName === 'OL') {
+                        const list = document.createElement(node.tagName.toLowerCase());
+                        list.setAttribute('data-id', crypto.randomUUID());
+                        list.setAttribute('style', BLOCK_STYLE);
+                        list.innerHTML = node.innerHTML;
+                        blocks.push(list.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'BLOCKQUOTE') {
+                        const figure = document.createElement('figure');
+                        figure.setAttribute('data-id', crypto.randomUUID());
+                        figure.setAttribute('data-variant', '2');
+                        figure.setAttribute('data-type', 'blockquoteFigure');
+                        figure.setAttribute('style', BLOCKQUOTE_STYLE);
+
+                        const quote = document.createElement('blockquote');
+
+                        const quoteParagraphs = Array.from(node.querySelectorAll('p'));
+                        if (quoteParagraphs.length === 0) {
+                            const paragraph = document.createElement('p');
+                            paragraph.textContent = node.textContent.trim();
+                            quoteParagraphs.push(paragraph);
+                        }
+
+                        quoteParagraphs.forEach((sourceParagraph) => {
+                            const paragraph = document.createElement('p');
+                            paragraph.setAttribute('data-id', crypto.randomUUID());
+                            paragraph.innerHTML = sourceParagraph.innerHTML;
+                            applyInlineFormatting(paragraph);
+
+                            quote.appendChild(paragraph);
+                        });
+
+                        figure.appendChild(quote);
+                        blocks.push(figure.outerHTML);
+                        return;
+                    }
+
+                    if (node.tagName === 'TABLE') {
+                        const tableHtml = convertTable(node);
+                        if (tableHtml) {
+                            blocks.push(tableHtml);
+                        }
+                        return;
+                    }
+
+                    if (node.tagName === 'HR') {
+                        const rule = document.createElement('hr');
+                        rule.setAttribute('data-id', crypto.randomUUID());
+                        blocks.push(rule.outerHTML);
+                        return;
+                    }
+
+                    if (/^H[1-6]$/.test(node.tagName)) {
+                        const level = Number.parseInt(node.tagName.replace('H', ''), 10);
+                        const heading = document.createElement(node.tagName.toLowerCase());
+                        const headingId = `h-${level}`;
+                        heading.setAttribute('data-id', crypto.randomUUID());
+                        heading.setAttribute('id', headingId);
+                        heading.setAttribute('data-anchor', '');
+                        heading.setAttribute('data-anchor-title', node.textContent);
+                        heading.setAttribute('data-anchor-id', headingId);
+                        heading.setAttribute('data-anchor-title-sync', 'true');
+                        heading.setAttribute('data-anchor-id-sync', 'true');
+                        heading.setAttribute('style', HEADING_STYLE);
+                        if (blocks.length === 0) {
+                            heading.setAttribute('data-pm-slice', '1 1 []');
+                        }
+                        heading.innerHTML = node.innerHTML;
+                        blocks.push(heading.outerHTML);
+                    }
+                });
+
+                const html = `<head><meta charset="UTF-8"></head>${blocks.join('')}`;
+                return html;
+            };
+
+            const renderOutput = () => {
+                const markdown = markdownInput.value;
+                const html = convertMarkdownToBeehiiv(markdown);
+                htmlOutput.value = html;
+                preview.innerHTML = html.replace(/<head>[\s\S]*?<\/head>/, '') || '<p><em>No content yet.</em></p>';
+            };
+
+            markdownInput.addEventListener('input', renderOutput);
+
+            copyButton.addEventListener('click', async () => {
+                const markdown = markdownInput.value;
+                const html = convertMarkdownToBeehiiv(markdown);
+
+                if (!html) {
+                    updateStatus('Add some Markdown before copying.');
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.write([
+                        new ClipboardItem({
+                            'text/html': new Blob([html], { type: 'text/html' }),
+                            'text/plain': new Blob([markdown], { type: 'text/plain' })
+                        })
+                    ]);
+                    updateStatus('Beehiiv HTML copied to clipboard.');
+                } catch (error) {
+                    updateStatus('Clipboard access failed.');
+                }
+            });
+
+            clearButton.addEventListener('click', () => {
+                markdownInput.value = '';
+                renderOutput();
+            });
+
+            renderOutput();
+        });
+    </script>
+
+    <footer class="page-footer">
+        <p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p>
+    </footer>
+</body>
+
+</html>
