@@ -73,6 +73,85 @@
             align-items: center;
         }
 
+        fieldset {
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        .style-controls {
+            display: grid;
+            gap: 1.1rem;
+        }
+
+        .style-controls legend {
+            margin-bottom: 0.55rem;
+            font-weight: 600;
+        }
+
+        .style-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+            gap: 0.5rem;
+        }
+
+        .style-option {
+            position: relative;
+        }
+
+        .style-option input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+        }
+
+        .style-option label {
+            display: flex;
+            min-height: 3rem;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.55rem 0.7rem;
+            border: 1px solid var(--ui-2);
+            border-radius: 8px;
+            background: var(--bg);
+            cursor: pointer;
+            font-size: 0.9rem;
+            line-height: 1.15;
+        }
+
+        .style-option input:checked + label {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent);
+            color: var(--accent);
+        }
+
+        .style-option input:focus-visible + label {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .style-swatch {
+            width: 1.35rem;
+            height: 1.35rem;
+            flex: 0 0 auto;
+            border: 0.28rem solid currentColor;
+            background: currentColor;
+        }
+
+        .style-swatch.square { border-radius: 0; }
+        .style-swatch.dots,
+        .style-swatch.dot { border-radius: 50%; }
+        .style-swatch.rounded { border-radius: 0.28rem; }
+        .style-swatch.extra-rounded { border-radius: 0.55rem; }
+        .style-swatch.classy { border-radius: 0.55rem 0 0.55rem 0; }
+        .style-swatch.classy-rounded { border-radius: 0.55rem 0.2rem 0.55rem 0.2rem; }
+
+        .style-swatch.corner {
+            background: transparent;
+        }
+
         label {
             font-weight: 600;
         }
@@ -183,8 +262,8 @@
     <header class="page-header">
         <a class="site-link" href="https://tools.mathspp.com/" aria-label="Back to tools.mathspp.com">← tools.mathspp.com</a>
         <h1>Custom QR Code Builder</h1>
-        <p class="lead">Generate downloadable QR codes with custom colours and preset styles. Paste your link, pick your
-            palette, and export the code in SVG or PNG.</p>
+        <p class="lead">Generate downloadable QR codes with custom colours and module, frame, and centre styles. Paste
+            your link, customise every part, and export the code in SVG or PNG.</p>
     </header>
 
     <div class="layout">
@@ -234,15 +313,21 @@
 
             <section class="form-section">
                 <h2>Style</h2>
-                <div class="field-group">
-                    <label for="style-select">Preset</label>
-                    <select id="style-select" name="style-select">
-                        <option value="sharp" selected>Sharp squares</option>
-                        <option value="rounded">Rounded modules</option>
-                        <option value="dots">Soft dots</option>
-                        <option value="mixed">Rounded + framed corners</option>
-                    </select>
-                    <p class="note">Switch between classic square QR codes or more fluid rounded variants.</p>
+                <div class="style-controls">
+                    <fieldset>
+                        <legend>Modules</legend>
+                        <div class="style-options" id="dots-options"></div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Corner frames</legend>
+                        <div class="style-options" id="corner-square-options"></div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Corner centres</legend>
+                        <div class="style-options" id="corner-dot-options"></div>
+                    </fieldset>
+                    <p class="note">Each part can be styled independently. Strong contrast helps QR scanners read the
+                        finished code.</p>
                 </div>
             </section>
 
@@ -277,61 +362,90 @@
         const bgHexInput = document.getElementById('bg-hex');
         const bgRgbInput = document.getElementById('bg-rgb');
         const bgPicker = document.getElementById('bg-picker');
-        const styleSelect = document.getElementById('style-select');
         const downloadSelect = document.getElementById('download-option');
         const downloadButton = document.getElementById('download-button');
 
-        const presets = {
-            sharp: {
-                dotsOptions: { type: 'square' },
-                cornersSquareOptions: { type: 'square' },
-                cornersDotOptions: { type: 'square' }
-            },
-            rounded: {
-                dotsOptions: { type: 'rounded' },
-                cornersSquareOptions: { type: 'extra-rounded' },
-                cornersDotOptions: { type: 'dot' }
-            },
+        const styleGroups = {
             dots: {
-                dotsOptions: { type: 'dots' },
-                cornersSquareOptions: { type: 'square' },
-                cornersDotOptions: { type: 'dot' }
+                containerId: 'dots-options',
+                stateKey: 'dotsType',
+                options: ['square', 'dots', 'rounded', 'extra-rounded', 'classy', 'classy-rounded']
             },
-            mixed: {
-                dotsOptions: { type: 'classy-rounded' },
-                cornersSquareOptions: { type: 'classy' },
-                cornersDotOptions: { type: 'dot' }
+            cornerSquare: {
+                containerId: 'corner-square-options',
+                stateKey: 'cornerSquareType',
+                options: ['square', 'dot', 'extra-rounded']
+            },
+            cornerDot: {
+                containerId: 'corner-dot-options',
+                stateKey: 'cornerDotType',
+                options: ['square', 'dot']
             }
+        };
+
+        const styleLabels = {
+            square: 'Square',
+            dots: 'Dots',
+            rounded: 'Rounded',
+            'extra-rounded': 'Extra rounded',
+            classy: 'Classy',
+            'classy-rounded': 'Classy rounded',
+            dot: 'Round'
         };
 
         const state = {
             data: '',
             foreground: '#101828',
             background: '#ffffff',
-            presetKey: 'sharp'
+            dotsType: 'square',
+            cornerSquareType: 'square',
+            cornerDotType: 'square'
         };
+
+        Object.entries(styleGroups).forEach(([groupName, group]) => {
+            const container = document.getElementById(group.containerId);
+            group.options.forEach(type => {
+                const option = document.createElement('div');
+                option.className = 'style-option';
+                const isCorner = groupName !== 'dots';
+                option.innerHTML = `
+                    <input type="radio" id="${groupName}-${type}" name="${groupName}" value="${type}"
+                        ${state[group.stateKey] === type ? 'checked' : ''}>
+                    <label for="${groupName}-${type}">
+                        <span class="style-swatch ${type}${isCorner ? ' corner' : ''}" aria-hidden="true"></span>
+                        <span>${styleLabels[type]}</span>
+                    </label>`;
+                container.append(option);
+            });
+
+            container.addEventListener('change', event => {
+                if (event.target.matches('input[type="radio"]')) {
+                    state[group.stateKey] = event.target.value;
+                    refreshQr();
+                }
+            });
+        });
 
         const qr = new QRCodeStyling({
             width: 320,
             height: 320,
             margin: 16,
             data: state.data,
-            dotsOptions: { color: state.foreground, ...presets[state.presetKey].dotsOptions },
+            dotsOptions: { color: state.foreground, type: state.dotsType },
             backgroundOptions: { color: state.background },
-            cornersSquareOptions: { color: state.foreground, ...presets[state.presetKey].cornersSquareOptions },
-            cornersDotOptions: { color: state.foreground, ...presets[state.presetKey].cornersDotOptions }
+            cornersSquareOptions: { color: state.foreground, type: state.cornerSquareType },
+            cornersDotOptions: { color: state.foreground, type: state.cornerDotType }
         });
 
         qr.append(document.getElementById('qr-preview'));
 
         function refreshQr() {
-            const preset = presets[state.presetKey] || presets.sharp;
             qr.update({
                 data: state.data,
-                dotsOptions: { ...preset.dotsOptions, color: state.foreground },
+                dotsOptions: { type: state.dotsType, color: state.foreground },
                 backgroundOptions: { color: state.background },
-                cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
-                cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
+                cornersSquareOptions: { type: state.cornerSquareType, color: state.foreground },
+                cornersDotOptions: { type: state.cornerDotType, color: state.foreground }
             });
         }
 
@@ -504,11 +618,6 @@
             setError();
         });
 
-        styleSelect.addEventListener('change', () => {
-            state.presetKey = styleSelect.value in presets ? styleSelect.value : 'sharp';
-            refreshQr();
-        });
-
         function tryParseUrl(value) {
             if (!value) {
                 return null;
@@ -564,16 +673,15 @@
 
         async function downloadPng(size) {
             try {
-                const preset = presets[state.presetKey] || presets.sharp;
                 const downloadQr = new QRCodeStyling({
                     width: size,
                     height: size,
                     margin: 16,
                     data: state.data,
-                    dotsOptions: { ...preset.dotsOptions, color: state.foreground },
+                    dotsOptions: { type: state.dotsType, color: state.foreground },
                     backgroundOptions: { color: state.background },
-                    cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
-                    cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
+                    cornersSquareOptions: { type: state.cornerSquareType, color: state.foreground },
+                    cornersDotOptions: { type: state.cornerDotType, color: state.foreground }
                 });
                 const name = `${buildDownloadBaseName()}${size}`;
                 await downloadQr.download({ name, extension: 'png' });
@@ -585,16 +693,15 @@
 
         async function downloadSvg() {
             try {
-                const preset = presets[state.presetKey] || presets.sharp;
                 const downloadQr = new QRCodeStyling({
                     width: 320,
                     height: 320,
                     margin: 16,
                     data: state.data,
-                    dotsOptions: { ...preset.dotsOptions, color: state.foreground },
+                    dotsOptions: { type: state.dotsType, color: state.foreground },
                     backgroundOptions: { color: state.background },
-                    cornersSquareOptions: { ...preset.cornersSquareOptions, color: state.foreground },
-                    cornersDotOptions: { ...preset.cornersDotOptions, color: state.foreground }
+                    cornersSquareOptions: { type: state.cornerSquareType, color: state.foreground },
+                    cornersDotOptions: { type: state.cornerDotType, color: state.foreground }
                 });
                 const name = buildDownloadBaseName();
                 await downloadQr.download({ name, extension: 'svg' });
