@@ -343,8 +343,8 @@
                 <label class="sr-only" for="download-option">Download format</label>
                 <select id="download-option" aria-label="Download format">
                     <option value="png-256">PNG — 256 × 256</option>
-                    <option value="png-512" selected>PNG — 512 × 512</option>
-                    <option value="png-1024">PNG — 1024 × 1024</option>
+                    <option value="png-512">PNG — 512 × 512</option>
+                    <option value="png-1024" selected>PNG — 1024 × 1024</option>
                     <option value="svg">SVG</option>
                 </select>
                 <button type="button" id="download-button" class="secondary">Download</button>
@@ -395,11 +395,11 @@
 
         const state = {
             data: '',
-            foreground: '#101828',
-            background: '#ffffff',
-            dotsType: 'square',
-            cornerSquareType: 'square',
-            cornerDotType: 'square'
+            foreground: '#100f0f',
+            background: '#fffcf0',
+            dotsType: 'rounded',
+            cornerSquareType: 'extra-rounded',
+            cornerDotType: 'dot'
         };
 
         Object.entries(styleGroups).forEach(([groupName, group]) => {
