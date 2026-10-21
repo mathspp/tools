@@ -39,6 +39,55 @@
   Outdated base version: https://github.com/primer/github-syntax-light
   Current colors taken from GitHub's CSS
 */.hljs{color:#24292e;background:#fff}[data-code-theme="github"] .hljs-doctag,[data-code-theme="github"] .hljs-keyword,[data-code-theme="github"] .hljs-meta .hljs-keyword,[data-code-theme="github"] .hljs-template-tag,[data-code-theme="github"] .hljs-template-variable,[data-code-theme="github"] .hljs-type,[data-code-theme="github"] .hljs-variable.language_{color:#d73a49}[data-code-theme="github"] .hljs-title,[data-code-theme="github"] .hljs-title.class_,[data-code-theme="github"] .hljs-title.class_.inherited__,[data-code-theme="github"] .hljs-title.function_{color:#6f42c1}[data-code-theme="github"] .hljs-attr,[data-code-theme="github"] .hljs-attribute,[data-code-theme="github"] .hljs-literal,[data-code-theme="github"] .hljs-meta,[data-code-theme="github"] .hljs-number,[data-code-theme="github"] .hljs-operator,[data-code-theme="github"] .hljs-selector-attr,[data-code-theme="github"] .hljs-selector-class,[data-code-theme="github"] .hljs-selector-id,[data-code-theme="github"] .hljs-variable{color:#005cc5}[data-code-theme="github"] .hljs-meta .hljs-string,[data-code-theme="github"] .hljs-regexp,[data-code-theme="github"] .hljs-string{color:#032f62}[data-code-theme="github"] .hljs-built_in,[data-code-theme="github"] .hljs-symbol{color:#e36209}[data-code-theme="github"] .hljs-code,[data-code-theme="github"] .hljs-comment,[data-code-theme="github"] .hljs-formula{color:#6a737d}[data-code-theme="github"] .hljs-name,[data-code-theme="github"] .hljs-quote,[data-code-theme="github"] .hljs-selector-pseudo,[data-code-theme="github"] .hljs-selector-tag{color:#22863a}[data-code-theme="github"] .hljs-subst{color:#24292e}[data-code-theme="github"] .hljs-section{color:#005cc5;font-weight:700}[data-code-theme="github"] .hljs-bullet{color:#735c0f}[data-code-theme="github"] .hljs-emphasis{color:#24292e;font-style:italic}[data-code-theme="github"] .hljs-strong{color:#24292e;font-weight:700}[data-code-theme="github"] .hljs-addition{color:#22863a;background-color:#f0fff4}[data-code-theme="github"] .hljs-deletion{color:#b31d28;background-color:#ffeef0}
+        /* Custom highlight.js themes using Steph Ango's Flexoki palette:
+           https://stephango.com/flexoki — 400 accents in dark, 600 in light. */
+        [data-code-theme="flexoki-dark"] {
+            --fx-bg: #100f0f; --fx-tx: #cecdc3; --fx-muted: #878580;
+            --fx-ui: #282726; --fx-red: #d14d41; --fx-orange: #da702c;
+            --fx-yellow: #d0a215; --fx-green: #879a39; --fx-cyan: #3aa99f;
+            --fx-blue: #4385be; --fx-purple: #8b7ec8; --fx-magenta: #ce5d97;
+        }
+        [data-code-theme="flexoki-light"] {
+            --fx-bg: #fffcf0; --fx-tx: #100f0f; --fx-muted: #6f6e69;
+            --fx-ui: #e6e4d9; --fx-red: #af3029; --fx-orange: #bc5215;
+            --fx-yellow: #ad8301; --fx-green: #66800b; --fx-cyan: #24837b;
+            --fx-blue: #205ea6; --fx-purple: #5e409d; --fx-magenta: #a02f6f;
+        }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs { background: var(--fx-bg); color: var(--fx-tx); --highlight-border: var(--fx-ui); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-keyword,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-selector-tag { color: var(--fx-green); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-title,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-section { color: var(--fx-orange); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-title.class_,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-type,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-built_in { color: var(--fx-yellow); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-string,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-regexp { color: var(--fx-cyan); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-number,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-literal,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-symbol,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-bullet { color: var(--fx-purple); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-comment,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-code,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-quote { color: var(--fx-muted); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-meta,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-doctag { color: var(--fx-magenta); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-operator,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-template-tag,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-template-variable { color: var(--fx-red); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-attr,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-attribute,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-property { color: var(--fx-blue); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-variable,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-params,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-subst { color: var(--fx-tx); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-emphasis { font-style: italic; }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-strong,
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-section { font-weight: bold; }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-addition { color: var(--fx-green); }
+        :is([data-code-theme="flexoki-dark"], [data-code-theme="flexoki-light"]) .hljs-deletion { color: var(--fx-red); }
+        [data-code-theme="github-dark"] .hljs { --highlight-border: #30363d; }
+        [data-code-theme="github"] .hljs { --highlight-border: #d0d7de; }
         .preview-scroll { overflow: auto; max-height: 650px; border: 1px solid var(--ui-2); border-radius: 8px; }
         canvas { display: block; }
         .preview-scroll.transparent {
@@ -60,7 +109,7 @@
     <main>
         <section class="surface tool-card" aria-label="Code and appearance">
             <div class="controls" id="controls">
-                <label class="field">Theme<select id="theme"><option value="github-dark">GitHub dark</option><option value="github">GitHub light</option></select></label>
+                <label class="field">Theme<select id="theme"><option value="github-dark">GitHub dark</option><option value="github">GitHub light</option><option value="flexoki-dark">Flexoki Dark</option><option value="flexoki-light">Flexoki Light</option></select></label>
                 <label class="field">Window filename<input id="filename" value="snippet.py" maxlength="120"></label>
                 <label class="field">Font size (px)<input id="font-size" type="number" value="18" min="10" max="40"></label>
                 <label class="field">Outer padding (px)<input id="padding" type="number" value="32" min="0" max="120"></label>
@@ -85,7 +134,7 @@ print(differences([1, 3, 6, 10]))</textarea>
             <h2 id="preview-heading">Preview</h2>
             <div class="preview-scroll transparent"><canvas id="preview" role="img" aria-label="Python code image preview"></canvas></div>
             <div class="actions"><button id="export" type="button" disabled>Export</button><span id="status" role="status">Loading syntax highlighting…</span></div>
-            <p class="hint">PNG exports at 2× resolution. The checkerboard shows transparency and is not included in the PNG. Scroll the preview to see wide or tall snippets. Highlighting by <a href="https://highlightjs.org/">highlight.js</a>, with GitHub dark and light themes.</p>
+            <p class="hint">PNG exports at 2× resolution. The checkerboard shows transparency and is not included in the PNG. Scroll the preview to see wide or tall snippets. Highlighting by <a href="https://highlightjs.org/">highlight.js</a>, with GitHub themes and custom <a href="https://stephango.com/flexoki">Flexoki</a> Dark and Light themes.</p>
         </section>
     </main>
     <footer class="page-footer"><p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p></footer>
@@ -145,7 +194,7 @@ print(differences([1, 3, 6, 10]))</textarea>
             // highlight() escapes code before adding its own span markup.
             tokenRoot.innerHTML = hljs.highlight(code, { language: 'python', ignoreIllegals: true }).value;
             const base = getComputedStyle(tokenRoot);
-            const palette = { bg: base.backgroundColor, tx: base.color, ui: theme === 'github-dark' ? '#30363d' : '#d0d7de' };
+            const palette = { bg: base.backgroundColor, tx: base.color, ui: base.getPropertyValue('--highlight-border').trim() };
             const comment = document.createElement('span'); comment.className = 'hljs-comment';
             tokenRoot.append(comment); palette.muted = getComputedStyle(comment).color; comment.remove();
             const tokens = []; let position = 0;
