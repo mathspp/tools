@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Code Image</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { max-width: 1200px; margin: auto; padding: 24px 20px 48px; }
+        main { display: grid; gap: 24px; }
+        .tool-card { padding: clamp(16px, 3vw, 28px); min-width: 0; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .field { display: grid; gap: 6px; align-content: start; }
+        .check { display: flex; gap: 8px; align-items: center; }
+        .check input { width: auto; }
+        .cm-editor { border: 1px solid var(--ui-2); border-radius: 8px; overflow: hidden; }
+        .cm-scroller { height: 330px; font: 16px/1.5 Menlo, Consolas, monospace; }
+        .cm-editor, .cm-gutters { background: var(--code-bg) !important; color: var(--code-tx) !important; }
+        .cm-gutters { border-color: var(--code-ui) !important; color: var(--code-muted) !important; }
+        .cm-cursor { border-left-color: var(--code-tx) !important; }
+        .cm-selectionBackground { background: var(--code-ui) !important; }
+[data-code-theme="github-dark"] /*!
+  Theme: GitHub Dark
+  Description: Dark theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-dark
+  Current colors taken from GitHub's CSS
+*/.hljs{color:#c9d1d9;background:#0d1117}[data-code-theme="github-dark"] .hljs-doctag,[data-code-theme="github-dark"] .hljs-keyword,[data-code-theme="github-dark"] .hljs-meta .hljs-keyword,[data-code-theme="github-dark"] .hljs-template-tag,[data-code-theme="github-dark"] .hljs-template-variable,[data-code-theme="github-dark"] .hljs-type,[data-code-theme="github-dark"] .hljs-variable.language_{color:#ff7b72}[data-code-theme="github-dark"] .hljs-title,[data-code-theme="github-dark"] .hljs-title.class_,[data-code-theme="github-dark"] .hljs-title.class_.inherited__,[data-code-theme="github-dark"] .hljs-title.function_{color:#d2a8ff}[data-code-theme="github-dark"] .hljs-attr,[data-code-theme="github-dark"] .hljs-attribute,[data-code-theme="github-dark"] .hljs-literal,[data-code-theme="github-dark"] .hljs-meta,[data-code-theme="github-dark"] .hljs-number,[data-code-theme="github-dark"] .hljs-operator,[data-code-theme="github-dark"] .hljs-selector-attr,[data-code-theme="github-dark"] .hljs-selector-class,[data-code-theme="github-dark"] .hljs-selector-id,[data-code-theme="github-dark"] .hljs-variable{color:#79c0ff}[data-code-theme="github-dark"] .hljs-meta .hljs-string,[data-code-theme="github-dark"] .hljs-regexp,[data-code-theme="github-dark"] .hljs-string{color:#a5d6ff}[data-code-theme="github-dark"] .hljs-built_in,[data-code-theme="github-dark"] .hljs-symbol{color:#ffa657}[data-code-theme="github-dark"] .hljs-code,[data-code-theme="github-dark"] .hljs-comment,[data-code-theme="github-dark"] .hljs-formula{color:#8b949e}[data-code-theme="github-dark"] .hljs-name,[data-code-theme="github-dark"] .hljs-quote,[data-code-theme="github-dark"] .hljs-selector-pseudo,[data-code-theme="github-dark"] .hljs-selector-tag{color:#7ee787}[data-code-theme="github-dark"] .hljs-subst{color:#c9d1d9}[data-code-theme="github-dark"] .hljs-section{color:#1f6feb;font-weight:700}[data-code-theme="github-dark"] .hljs-bullet{color:#f2cc60}[data-code-theme="github-dark"] .hljs-emphasis{color:#c9d1d9;font-style:italic}[data-code-theme="github-dark"] .hljs-strong{color:#c9d1d9;font-weight:700}[data-code-theme="github-dark"] .hljs-addition{color:#aff5b4;background-color:#033a16}[data-code-theme="github-dark"] .hljs-deletion{color:#ffdcd7;background-color:#67060c}
+[data-code-theme="github"] /*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/.hljs{color:#24292e;background:#fff}[data-code-theme="github"] .hljs-doctag,[data-code-theme="github"] .hljs-keyword,[data-code-theme="github"] .hljs-meta .hljs-keyword,[data-code-theme="github"] .hljs-template-tag,[data-code-theme="github"] .hljs-template-variable,[data-code-theme="github"] .hljs-type,[data-code-theme="github"] .hljs-variable.language_{color:#d73a49}[data-code-theme="github"] .hljs-title,[data-code-theme="github"] .hljs-title.class_,[data-code-theme="github"] .hljs-title.class_.inherited__,[data-code-theme="github"] .hljs-title.function_{color:#6f42c1}[data-code-theme="github"] .hljs-attr,[data-code-theme="github"] .hljs-attribute,[data-code-theme="github"] .hljs-literal,[data-code-theme="github"] .hljs-meta,[data-code-theme="github"] .hljs-number,[data-code-theme="github"] .hljs-operator,[data-code-theme="github"] .hljs-selector-attr,[data-code-theme="github"] .hljs-selector-class,[data-code-theme="github"] .hljs-selector-id,[data-code-theme="github"] .hljs-variable{color:#005cc5}[data-code-theme="github"] .hljs-meta .hljs-string,[data-code-theme="github"] .hljs-regexp,[data-code-theme="github"] .hljs-string{color:#032f62}[data-code-theme="github"] .hljs-built_in,[data-code-theme="github"] .hljs-symbol{color:#e36209}[data-code-theme="github"] .hljs-code,[data-code-theme="github"] .hljs-comment,[data-code-theme="github"] .hljs-formula{color:#6a737d}[data-code-theme="github"] .hljs-name,[data-code-theme="github"] .hljs-quote,[data-code-theme="github"] .hljs-selector-pseudo,[data-code-theme="github"] .hljs-selector-tag{color:#22863a}[data-code-theme="github"] .hljs-subst{color:#24292e}[data-code-theme="github"] .hljs-section{color:#005cc5;font-weight:700}[data-code-theme="github"] .hljs-bullet{color:#735c0f}[data-code-theme="github"] .hljs-emphasis{color:#24292e;font-style:italic}[data-code-theme="github"] .hljs-strong{color:#24292e;font-weight:700}[data-code-theme="github"] .hljs-addition{color:#22863a;background-color:#f0fff4}[data-code-theme="github"] .hljs-deletion{color:#b31d28;background-color:#ffeef0}
+        .preview-scroll { overflow: auto; max-height: 650px; border: 1px solid var(--ui-2); border-radius: 8px; }
+        canvas { display: block; }
+        .actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+        .hint { color: var(--tx-2); font-size: .9rem; }
+        @media (max-width: 600px) { body { padding: 20px 12px; } .controls { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="https://tools.mathspp.com/">← tools.mathspp.com</a>
+        <h1>Python Code Image</h1>
+        <p>Turn Python snippets into syntax-highlighted PNG images. Your code stays in your browser.</p>
+    </header>
+    <main>
+        <section class="surface tool-card" aria-label="Code and appearance">
+            <div class="controls" id="controls">
+                <label class="field">Theme<select id="theme"><option value="github-dark">GitHub dark</option><option value="github">GitHub light</option></select></label>
+                <label class="field">Window filename<input id="filename" value="snippet.py" maxlength="120"></label>
+                <label class="field">Font size (px)<input id="font-size" type="number" value="18" min="10" max="40"></label>
+                <label class="field">Outer padding (px)<input id="padding" type="number" value="32" min="0" max="120"></label>
+                <label class="field">Background colour<input id="background" type="color" value="#4385be"></label>
+                <label class="check"><input id="line-numbers" type="checkbox">Line numbers</label>
+            </div>
+            <label for="code">Python code</label>
+            <textarea id="code" spellcheck="false">from itertools import pairwise
+
+
+def differences(numbers):
+    """Find the difference between neighbours."""
+    return [b - a for a, b in pairwise(numbers)]
+
+
+# A little Python, ready to share.
+print(differences([1, 3, 6, 10]))</textarea>
+            <p class="hint">Tab inserts four spaces. Long lines stay unwrapped.</p>
+        </section>
+        <section class="surface tool-card" aria-labelledby="preview-heading">
+            <h2 id="preview-heading">Preview</h2>
+            <div class="preview-scroll"><canvas id="preview" role="img" aria-label="Python code image preview"></canvas></div>
+            <div class="actions"><button id="export" type="button" disabled>Export</button><span id="status" role="status">Loading syntax highlighting…</span></div>
+            <p class="hint">PNG exports at 2× resolution. Scroll the preview to see wide or tall snippets. Highlighting by <a href="https://highlightjs.org/">highlight.js</a>, with GitHub dark and light themes.</p>
+        </section>
+    </main>
+    <footer class="page-footer"><p>Built with ❤️, 🤖, and 🐍, by <a href="https://mathspp.com/">Rodrigo Girão Serrão</a></p></footer>
+    <script type="importmap">
+{
+    "imports": {
+        "@lezer/highlight": "https://esm.sh/@lezer/highlight@1.2.3?external=*",
+        "@marijn/find-cluster-break": "https://esm.sh/@marijn/find-cluster-break@1.0.2?external=*",
+        "@codemirror/view": "https://esm.sh/@codemirror/view@6.38.6?external=*",
+        "@codemirror/state": "https://esm.sh/@codemirror/state@6.5.2?external=*",
+        "@codemirror/language": "https://esm.sh/@codemirror/language@6.11.3?external=*",
+        "@codemirror/commands": "https://esm.sh/@codemirror/commands@6.8.1?external=*",
+        "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6.18.6?external=*",
+        "@lezer/common": "https://esm.sh/@lezer/common@1.2.3?external=*",
+        "@lezer/lr": "https://esm.sh/@lezer/lr@1.4.2?external=*",
+        "style-mod": "https://esm.sh/style-mod@4.1.2?external=*",
+        "w3c-keyname": "https://esm.sh/w3c-keyname@2.2.8?external=*",
+        "crelt": "https://esm.sh/crelt@1.0.6?external=*"
+    }
+}
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+    <script type="module">
+    (async () => {
+        const $ = id => document.getElementById(id);
+        const canvas = $('preview'), status = $('status'), exportButton = $('export');
+        let EditorView, keymap, lineNumbers, Decoration, ViewPlugin, EditorState, Compartment, StateEffect, defaultKeymap, indentWithTab, indentUnit;
+        try {
+            const modules = await Promise.all([
+                import('@codemirror/view'),
+                import('@codemirror/state'),
+                import('@codemirror/language'),
+                import('@codemirror/commands')
+            ]);
+            ({ EditorView, keymap, lineNumbers, Decoration, ViewPlugin } = modules[0]);
+            ({ EditorState, Compartment, StateEffect } = modules[1]);
+            ({ indentUnit } = modules[2]);
+            ({ defaultKeymap, indentWithTab } = modules[3]);
+            if (!window.hljs || !hljs.getLanguage('python')) throw new Error('Python highlighter did not load.');
+        } catch (error) {
+            console.error(error);
+            status.textContent = 'Could not load the editor. Check your internet connection and reload.';
+            return;
+        }
+        // Use the actual theme CSS for editor decorations and canvas text alike.
+        const tokenHost = document.createElement('div');
+        tokenHost.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;left:-100000px;top:0';
+        tokenHost.setAttribute('aria-hidden', 'true');
+        const tokenRoot = document.createElement('div'); tokenRoot.className = 'hljs';
+        tokenHost.append(tokenRoot); document.body.append(tokenHost);
+        let tokenCache;
+        function highlighted(code) {
+            const theme = $('theme').value;
+            if (tokenCache?.code === code && tokenCache.theme === theme) return tokenCache;
+            if (code.length > 100000) throw new Error('Please keep snippets under 100,000 characters.');
+            tokenHost.dataset.codeTheme = theme;
+            // highlight() escapes code before adding its own span markup.
+            tokenRoot.innerHTML = hljs.highlight(code, { language: 'python', ignoreIllegals: true }).value;
+            const base = getComputedStyle(tokenRoot);
+            const palette = { bg: base.backgroundColor, tx: base.color, ui: theme === 'github-dark' ? '#30363d' : '#d0d7de' };
+            const comment = document.createElement('span'); comment.className = 'hljs-comment';
+            tokenRoot.append(comment); palette.muted = getComputedStyle(comment).color; comment.remove();
+            const tokens = []; let position = 0;
+            function walk(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const style = getComputedStyle(node.parentElement);
+                    const text = node.textContent;
+                    tokens.push({ text, from: position, to: position + text.length,
+                        color: style.color, fontStyle: style.fontStyle, fontWeight: style.fontWeight });
+                    position += text.length;
+                } else for (const child of node.childNodes) walk(child);
+            }
+            walk(tokenRoot);
+            tokenCache = { code, theme, tokens, palette };
+            return tokenCache;
+        }
+        const refreshHighlight = StateEffect.define();
+        const decorationsFor = view => {
+            if (view.state.doc.length > 100000) return Decoration.none;
+            const { tokens } = highlighted(view.state.doc.toString());
+            return Decoration.set(tokens.filter(t => t.to > t.from).map(t => Decoration.mark({
+                attributes: { style: `color:${t.color};font-style:${t.fontStyle};font-weight:${t.fontWeight}` }
+            }).range(t.from, t.to)));
+        };
+        const highlighting = ViewPlugin.fromClass(class {
+            constructor(view) { this.decorations = decorationsFor(view); }
+            update(update) {
+                if (update.docChanged || update.transactions.some(tr => tr.effects.some(e => e.is(refreshHighlight)))) {
+                    this.decorations = decorationsFor(update.view);
+                }
+            }
+        }, { decorations: plugin => plugin.decorations });
+        const numberSetting = new Compartment();
+        const source = $('code');
+        const host = document.createElement('div');
+        source.after(host); source.hidden = true;
+        host.setAttribute('aria-label', 'Python code');
+        let timer;
+        const editor = new EditorView({
+            parent: host,
+            state: EditorState.create({ doc: source.value, extensions: [
+                highlighting, indentUnit.of('    '), EditorState.tabSize.of(4),
+                numberSetting.of([]), keymap.of([indentWithTab, ...defaultKeymap]),
+                EditorView.contentAttributes.of({ 'aria-label': 'Python code' }),
+                EditorView.updateListener.of(update => {
+                    if (update.docChanged) {
+                        exportButton.disabled = true; clearTimeout(timer); timer = setTimeout(render, 100);
+                    }
+                })
+            ] })
+        });
+        let showNumbers = false;
+        const numeric = (id, min, max) => Math.min(max, Math.max(min, Number($(id).value) || min));
+        function render() {
+            exportButton.disabled = true;
+            try {
+                const code = editor.state.doc.toString();
+                const { tokens: highlightedTokens, palette: p } = highlighted(code);
+                editor.dispatch({ effects: refreshHighlight.of(null) });
+                for (const [key, value] of Object.entries(p)) editor.dom.style.setProperty('--code-' + key, value);
+                const size = numeric('font-size', 10, 40), pad = numeric('padding', 0, 120);
+                const lineHeight = Math.ceil(size * 1.55), inset = 24, header = 52;
+                const numbered = $('line-numbers').checked;
+                if (numbered !== showNumbers) {
+                    showNumbers = numbered;
+                    editor.dispatch({ effects: numberSetting.reconfigure(numbered ? lineNumbers() : []) });
+                }
+                if (code.length > 100000) throw new Error('Please keep snippets under 100,000 characters.');
+                const lines = [[]];
+                for (const token of highlightedTokens) {
+                    token.text.split('\n').forEach((part, index) => {
+                        if (index) lines.push([]);
+                        if (part) lines[lines.length - 1].push({ ...token, text: part });
+                    });
+                }
+                // Expand tabs before measuring or drawing, preserving Python indentation.
+                for (const line of lines) {
+                    let column = 0;
+                    for (const token of line) {
+                        let expanded = '';
+                        for (const ch of token.text) {
+                            const part = ch === '\t' ? ' '.repeat(4 - column % 4) : ch;
+                            expanded += part; column += part.length;
+                        }
+                        token.text = expanded;
+                    }
+                }
+                const ctx = canvas.getContext('2d');
+                const font = `${size}px Menlo, Consolas, monospace`;
+                ctx.font = font;
+                const gutter = numbered ? ctx.measureText(String(lines.length)).width + 22 : 0;
+                let textWidth = 0;
+                for (const line of lines) textWidth = Math.max(textWidth, line.reduce((width, token) => { ctx.font = `${token.fontStyle} ${token.fontWeight} ${font}`; return width + ctx.measureText(token.text).width; }, 0));
+                const title = $('filename').value.trim();
+                ctx.font = '13px Menlo, Consolas, monospace';
+                const windowWidth = Math.ceil(Math.max(300, inset * 2 + gutter + textWidth + 4, ctx.measureText(title).width + 180));
+                const windowHeight = header + inset * 2 + lineHeight * lines.length;
+                const width = windowWidth + pad * 2, height = windowHeight + pad * 2;
+                // Bound allocations to avoid blank images or browser canvas limits.
+                if (width * 2 > 16000 || height * 2 > 16000 || width * height * 4 > 32000000) {
+                    throw new Error('This image is too large. Shorten the snippet or reduce font size and padding.');
+                }
+                canvas.width = width * 2; canvas.height = height * 2;
+                canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
+                ctx.scale(2, 2);
+                ctx.fillStyle = $('background').value; ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = p.bg;
+                ctx.beginPath(); ctx.roundRect(pad, pad, windowWidth, windowHeight, 12); ctx.fill();
+                ['#ff5f57', '#febc2e', '#28c840'].forEach((colour, i) => {
+                    ctx.fillStyle = colour; ctx.beginPath(); ctx.arc(pad + 24 + i * 20, pad + header / 2, 6, 0, Math.PI * 2); ctx.fill();
+                });
+                ctx.font = '13px Menlo, Consolas, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = p.muted; ctx.fillText(title, pad + windowWidth / 2, pad + header / 2);
+                ctx.fillStyle = p.ui; ctx.fillRect(pad, pad + header, windowWidth, 1);
+                ctx.font = font;
+                lines.forEach((tokens, i) => {
+                    ctx.font = font;
+                    const y = pad + header + inset + lineHeight * (i + .5);
+                    if (numbered) {
+                        ctx.textAlign = 'right'; ctx.fillStyle = p.muted;
+                        ctx.fillText(String(i + 1), pad + inset + gutter - 22, y);
+                    }
+                    ctx.textAlign = 'left';
+                    let x = pad + inset + gutter;
+                    for (const token of tokens) {
+                        ctx.font = `${token.fontStyle} ${token.fontWeight} ${font}`;
+                        ctx.fillStyle = token.color; ctx.fillText(token.text, x, y);
+                        x += ctx.measureText(token.text).width;
+                    }
+                });
+                status.textContent = `${canvas.width} × ${canvas.height} px · PNG · 2× resolution`;
+                exportButton.disabled = !code.trim();
+                if (!code.trim()) status.textContent = 'Enter some Python code to export.';
+            } catch (error) {
+                // Clear the previous preview rather than displaying stale code.
+                canvas.width = 0; canvas.height = 0;
+                status.textContent = error.message;
+            }
+        }
+        $('controls').addEventListener('input', render);
+        exportButton.addEventListener('click', () => {
+            render();
+            if (exportButton.disabled) return;
+            exportButton.disabled = true;
+            canvas.toBlob(blob => {
+                if (!blob) { status.textContent = 'Could not create the PNG. Try a smaller snippet.'; exportButton.disabled = false; return; }
+                const url = URL.createObjectURL(blob), link = document.createElement('a');
+                const name = $('filename').value.trim().replace(/\.py$/i, '').replace(/[^\p{L}\p{N}._-]+/gu, '-') || 'snippet';
+                link.href = url; link.download = name + '.png'; link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                exportButton.disabled = false;
+            }, 'image/png');
+        });
+        render();
+    })();
+    </script>
+</body>
+</html>
